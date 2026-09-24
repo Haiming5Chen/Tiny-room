@@ -1,0 +1,1137 @@
+{
+  "components": [
+    {
+      "id": "pedestal",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.16,
+          0.16,
+          0.12
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.06
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": null,
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_root",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.1,
+          0.1,
+          0.012
+        ]
+      },
+      "material": "anodized",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.068
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "pedestal",
+      "dynamic": false,
+      "attachments": [
+        {
+          "id": "mount",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              -0.006
+            ],
+            "quaternion": [
+              0.0,
+              1.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "id": "assembly_top",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.006
+            ],
+            "quaternion": [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        }
+      ],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_yaw",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.033,
+          0.026
+        ]
+      },
+      "material": "steel",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.019
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_root",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_yaw_joint",
+      "body": "robot_arm_1_yaw",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "damping": 0.08,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "limits": [
+        -160.0,
+        160.0
+      ],
+      "kind": "hinge"
+    },
+    {
+      "id": "robot_arm_1_yaw_joint_motor",
+      "joint": "robot_arm_1_yaw_joint",
+      "max_torque": 3.0,
+      "profile": null,
+      "kind": "motor"
+    },
+    {
+      "id": "robot_arm_1_shoulder_fork_0",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.04,
+          0.008,
+          0.06
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          -0.026,
+          0.04
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_yaw",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_shoulder_fork_2",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.04,
+          0.008,
+          0.06
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          0.026,
+          0.04
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_yaw",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_upper_arm",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.18,
+          0.022,
+          0.024
+        ]
+      },
+      "material": "anodized",
+      "transform": {
+        "position": [
+          0.09,
+          0.0,
+          0.06
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_yaw",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_shoulder_joint",
+      "body": "robot_arm_1_upper_arm",
+      "axis": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "damping": 0.08,
+      "position": [
+        -0.09,
+        0.0,
+        0.0
+      ],
+      "limits": [
+        -65.0,
+        110.0
+      ],
+      "kind": "hinge"
+    },
+    {
+      "id": "robot_arm_1_shoulder_joint_motor",
+      "joint": "robot_arm_1_shoulder_joint",
+      "max_torque": 1.02,
+      "profile": {
+        "model": "ROBOTIS XH430-W350",
+        "voltage": 12.0,
+        "stall_torque": 3.4,
+        "no_load_rpm": 30.0,
+        "source": "https://emanual.robotis.com/docs/en/dxl/x/xh430-w350/",
+        "checked_on": "2026-09-14",
+        "envelope": "linear_estimate_v1"
+      },
+      "kind": "motor"
+    },
+    {
+      "id": "robot_arm_1_shoulder_cap",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.024,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          -0.09,
+          0.0295,
+          0.0
+        ],
+        "quaternion": [
+          0.7071067811865476,
+          -0.7071067811865476,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_upper_arm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_shoulder_back",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.024,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          -0.09,
+          -0.0295,
+          0.0
+        ],
+        "quaternion": [
+          0.7071067811865476,
+          -0.7071067811865476,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_upper_arm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_forearm",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.16,
+          0.02,
+          0.022
+        ]
+      },
+      "material": "anodized",
+      "transform": {
+        "position": [
+          0.17,
+          0.0,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_upper_arm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_elbow_joint",
+      "body": "robot_arm_1_forearm",
+      "axis": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "damping": 0.08,
+      "position": [
+        -0.08,
+        0.0,
+        0.0
+      ],
+      "limits": [
+        -100.0,
+        120.0
+      ],
+      "kind": "hinge"
+    },
+    {
+      "id": "robot_arm_1_elbow_joint_motor",
+      "joint": "robot_arm_1_elbow_joint",
+      "max_torque": 3.0,
+      "profile": null,
+      "kind": "motor"
+    },
+    {
+      "id": "robot_arm_1_elbow_cap",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.021,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          -0.08,
+          0.0245,
+          0.0
+        ],
+        "quaternion": [
+          0.7071067811865476,
+          -0.7071067811865476,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_forearm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_elbow_back",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.021,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          -0.08,
+          -0.0245,
+          0.0
+        ],
+        "quaternion": [
+          0.7071067811865476,
+          -0.7071067811865476,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_forearm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_wrist",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.035,
+          0.045,
+          0.025
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0975,
+          0.0,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_forearm",
+      "dynamic": false,
+      "attachments": [
+        {
+          "id": "tool",
+          "transform": {
+            "position": [
+              0.0175,
+              0.0,
+              0.0
+            ],
+            "quaternion": [
+              0.7071067811865476,
+              0.0,
+              0.7071067811865476,
+              0.0
+            ]
+          }
+        }
+      ],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_wrist_joint",
+      "body": "robot_arm_1_wrist",
+      "axis": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "damping": 0.08,
+      "position": [
+        -0.0175,
+        0.0,
+        0.0
+      ],
+      "limits": [
+        -90.0,
+        90.0
+      ],
+      "kind": "hinge"
+    },
+    {
+      "id": "robot_arm_1_wrist_joint_motor",
+      "joint": "robot_arm_1_wrist_joint",
+      "max_torque": 1.5,
+      "profile": null,
+      "kind": "motor"
+    },
+    {
+      "id": "robot_arm_1_upper_arm_rail_0",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.135,
+          0.004,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          -0.014,
+          0.008
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_upper_arm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_upper_arm_rail_2",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.135,
+          0.004,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          0.014,
+          0.008
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_upper_arm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_forearm_rail_0",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.115,
+          0.004,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          -0.014,
+          0.008
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_forearm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "robot_arm_1_forearm_rail_2",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.115,
+          0.004,
+          0.006
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.0,
+          0.014,
+          0.008
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_forearm",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_root",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.03,
+          0.085,
+          0.025
+        ]
+      },
+      "material": "anodized",
+      "transform": {
+        "position": [
+          0.03250000000000001,
+          0.0,
+          0.0
+        ],
+        "quaternion": [
+          0.0,
+          1.0000000000000002,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "robot_arm_1_wrist",
+      "dynamic": false,
+      "attachments": [
+        {
+          "id": "tool_mount",
+          "transform": {
+            "position": [
+              -0.015,
+              0.0,
+              0.0
+            ],
+            "quaternion": [
+              0.7071067811865476,
+              0.0,
+              -0.7071067811865476,
+              0.0
+            ]
+          }
+        },
+        {
+          "id": "mount",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              -0.0125
+            ],
+            "quaternion": [
+              0.0,
+              1.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        {
+          "id": "assembly_top",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0125
+            ],
+            "quaternion": [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        }
+      ],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_palm_stop",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.02,
+          0.06,
+          0.025
+        ]
+      },
+      "material": "rubber",
+      "transform": {
+        "position": [
+          0.025,
+          0.0,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_root",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_right",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.09,
+          0.01,
+          0.026
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.055,
+          -0.04,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_root",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_right_joint",
+      "body": "two_finger_gripper_1_finger_right",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "damping": 0.08,
+      "position": [
+        -0.045,
+        0.0,
+        0.0
+      ],
+      "limits": [
+        -12.0,
+        30.0
+      ],
+      "kind": "hinge"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_right_joint_motor",
+      "joint": "two_finger_gripper_1_finger_right_joint",
+      "max_torque": 0.6,
+      "profile": null,
+      "kind": "motor"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_right_pad",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.075,
+          0.008,
+          0.035
+        ]
+      },
+      "material": "rubber",
+      "transform": {
+        "position": [
+          0.0075,
+          0.007,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_finger_right",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_right_pivot_cap",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.009,
+          0.032
+        ]
+      },
+      "material": "steel",
+      "transform": {
+        "position": [
+          -0.045,
+          0.0,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_finger_right",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_left",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.09,
+          0.01,
+          0.026
+        ]
+      },
+      "material": "metal",
+      "transform": {
+        "position": [
+          0.055,
+          0.04,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_root",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_left_joint",
+      "body": "two_finger_gripper_1_finger_left",
+      "axis": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "damping": 0.08,
+      "position": [
+        -0.045,
+        0.0,
+        0.0
+      ],
+      "limits": [
+        -12.0,
+        30.0
+      ],
+      "kind": "hinge"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_left_joint_motor",
+      "joint": "two_finger_gripper_1_finger_left_joint",
+      "max_torque": 0.6,
+      "profile": null,
+      "kind": "motor"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_left_pad",
+      "geometry": {
+        "shape": "box",
+        "size": [
+          0.075,
+          0.008,
+          0.035
+        ]
+      },
+      "material": "rubber",
+      "transform": {
+        "position": [
+          0.0075,
+          -0.007,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_finger_left",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    },
+    {
+      "id": "two_finger_gripper_1_finger_left_pivot_cap",
+      "geometry": {
+        "shape": "cylinder",
+        "size": [
+          0.009,
+          0.032
+        ]
+      },
+      "material": "steel",
+      "transform": {
+        "position": [
+          -0.045,
+          0.0,
+          0.0
+        ],
+        "quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "parent": "two_finger_gripper_1_finger_left",
+      "dynamic": false,
+      "attachments": [],
+      "kind": "body"
+    }
+  ],
+  "materials": [
+    {
+      "id": "metal",
+      "density": 2700,
+      "sliding_friction": 0.5,
+      "rgba": [
+        0.72,
+        0.77,
+        0.8,
+        1.0
+      ],
+      "texture": "brushed_metal",
+      "roughness": 0.25
+    },
+    {
+      "id": "rubber",
+      "density": 1100,
+      "sliding_friction": 1.2,
+      "rgba": [
+        0.16,
+        0.18,
+        0.2,
+        1.0
+      ],
+      "texture": "rubber_tread",
+      "roughness": 0.95
+    },
+    {
+      "id": "plastic",
+      "density": 1050,
+      "sliding_friction": 0.5,
+      "rgba": [
+        0.18,
+        0.38,
+        0.53,
+        1.0
+      ],
+      "texture": "matte_plastic",
+      "roughness": 0.7
+    },
+    {
+      "id": "anodized",
+      "density": 2700,
+      "sliding_friction": 0.5,
+      "rgba": [
+        0.12,
+        0.15,
+        0.18,
+        1.0
+      ],
+      "texture": "brushed_metal",
+      "roughness": 0.42
+    },
+    {
+      "id": "steel",
+      "density": 7800,
+      "sliding_friction": 0.5,
+      "rgba": [
+        0.58,
+        0.62,
+        0.66,
+        1.0
+      ],
+      "texture": "brushed_metal",
+      "roughness": 0.22
+    },
+    {
+      "id": "copper",
+      "density": 8900,
+      "sliding_friction": 0.5,
+      "rgba": [
+        0.72,
+        0.37,
+        0.16,
+        1.0
+      ],
+      "texture": "brushed_metal",
+      "roughness": 0.35
+    },
+    {
+      "id": "skid",
+      "density": 500,
+      "sliding_friction": 0.01,
+      "rgba": [
+        0.85,
+        0.85,
+        0.86,
+        1.0
+      ],
+      "texture": null,
+      "roughness": 0.6
+    },
+    {
+      "id": "wood",
+      "density": 600,
+      "sliding_friction": 0.6,
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "wood_grain",
+      "roughness": 0.75
+    }
+  ],
+  "controllers": [
+    {
+      "id": "control_yaw",
+      "kind": "keyboard_position",
+      "actuators": [
+        "robot_arm_1_yaw_joint_motor"
+      ],
+      "label": "Base yaw",
+      "positive_key": "Q",
+      "negative_key": "E",
+      "speed": 25,
+      "kp": 18,
+      "kd": 1.0
+    },
+    {
+      "id": "control_upper_arm",
+      "kind": "keyboard_position",
+      "actuators": [
+        "robot_arm_1_shoulder_joint_motor"
+      ],
+      "label": "Shoulder",
+      "positive_key": "R",
+      "negative_key": "V",
+      "speed": 25,
+      "kp": 18,
+      "kd": 1.0
+    },
+    {
+      "id": "control_forearm",
+      "kind": "keyboard_position",
+      "actuators": [
+        "robot_arm_1_elbow_joint_motor"
+      ],
+      "label": "Elbow",
+      "positive_key": "T",
+      "negative_key": "B",
+      "speed": 25,
+      "kp": 18,
+      "kd": 1.0
+    },
+    {
+      "id": "control_wrist",
+      "kind": "keyboard_position",
+      "actuators": [
+        "robot_arm_1_wrist_joint_motor"
+      ],
+      "label": "Wrist",
+      "positive_key": "Y",
+      "negative_key": "N",
+      "speed": 25,
+      "kp": 18,
+      "kd": 1.0
+    },
+    {
+      "id": "keyboard_1",
+      "kind": "keyboard_position",
+      "actuators": [
+        "two_finger_gripper_1_finger_right_joint_motor",
+        "two_finger_gripper_1_finger_left_joint_motor"
+      ],
+      "label": "Gripper close / open",
+      "positive_key": "G",
+      "negative_key": "H",
+      "speed": 30,
+      "kp": 8,
+      "kd": 0.25
+    }
+  ],
+  "version": 1
+}

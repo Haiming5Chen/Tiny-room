@@ -1,0 +1,63 @@
+{
+  "blocks": [
+    {
+      "kind": "wait",
+      "target": "",
+      "value": 0.0,
+      "duration": 0.5,
+      "other": "",
+      "secondary": 0.0
+    },
+    {
+      "kind": "action",
+      "target": "keyboard_1",
+      "value": 1,
+      "duration": 0.9,
+      "other": "",
+      "secondary": 0.0
+    },
+    {
+      "kind": "wait",
+      "target": "",
+      "value": 0.0,
+      "duration": 0.2,
+      "other": "",
+      "secondary": 0.0
+    },
+    {
+      "kind": "action",
+      "target": "control_upper_arm",
+      "value": 1,
+      "duration": 0.8,
+      "other": "",
+      "secondary": 0.0
+    },
+    {
+      "kind": "wait",
+      "target": "",
+      "value": 0.0,
+      "duration": 0.6,
+      "other": "",
+      "secondary": 0.0
+    },
+    {
+      "kind": "action",
+      "target": "keyboard_1",
+      "value": -1,
+      "duration": 1,
+      "other": "",
+      "secondary": 0.0
+    },
+    {
+      "kind": "wait",
+      "target": "",
+      "value": 0.0,
+      "duration": 0.8,
+      "other": "",
+      "secondary": 0.0
+    }
+  ],
+  "repeat": 1,
+  "trigger": "F6",
+  "version": 1
+}

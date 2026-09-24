@@ -1,0 +1,81 @@
+{
+  "center": [
+    -0.07749972451331082,
+    0.2300085939308943,
+    0.3240001464752847
+  ],
+  "size": [
+    0.5210009182947252,
+    0.6110151809596486,
+    0.6480002947548938
+  ],
+  "mass": 20.9949,
+  "moving_mass": 16.9949,
+  "home": [
+    -1.5708,
+    -1.5708,
+    1.5708,
+    -1.5708,
+    -1.5708,
+    0.0
+  ],
+  "ctrl": [
+    -1.5708,
+    -1.5708,
+    1.5708,
+    -1.5708,
+    -1.5708,
+    0.0
+  ],
+  "root": "base",
+  "joints": [
+    "shoulder_pan_joint",
+    "shoulder_lift_joint",
+    "elbow_joint",
+    "wrist_1_joint",
+    "wrist_2_joint",
+    "wrist_3_joint"
+  ],
+  "actuators": [
+    "shoulder_pan",
+    "shoulder_lift",
+    "elbow",
+    "wrist_1",
+    "wrist_2",
+    "wrist_3"
+  ],
+  "servo_joints": [
+    "shoulder_pan_joint",
+    "shoulder_lift_joint",
+    "elbow_joint",
+    "wrist_1_joint",
+    "wrist_2_joint",
+    "wrist_3_joint"
+  ],
+  "limits": [
+    [
+      -6.28319,
+      6.28319
+    ],
+    [
+      -6.28319,
+      6.28319
+    ],
+    [
+      -3.1415,
+      3.1415
+    ],
+    [
+      -6.28319,
+      6.28319
+    ],
+    [
+      -6.28319,
+      6.28319
+    ],
+    [
+      -6.28319,
+      6.28319
+    ]
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/google-deepmind/mujoco_menagerie",
+  "revision": "8161bba264d7fa7c99ca301e91e7fb44737676ad",
+  "path": "kinova_gen3",
+  "sha256": {
+    "CHANGELOG.md": "03cc18fb40fe79f6bbbfaaf5e460ffedc977309bca631a5ac6a8cafdc46fe5b7",
+    "LICENSE": "50ee431dbfbfcc53d976d3a5a2918e2fff4236f7f3c492d405e98a3f72106736",
+    "README.md": "74ae79d0852be720af732284d8316b883258913623c4126524ea015c287d5c29",
+    "assets/base_link.stl": "3e38517e653d58f4160cfdcee34c9dea983d8b3ecb8f2c147444f58235335260",
+    "assets/bracelet_no_vision_link.stl": "5b2ec7dafbf6a3c9a2cac717d18132a8a1efd9fcb8f2c40d9c12c8ece7323ec8",
+    "assets/bracelet_with_vision_link.stl": "8bb05e420a88532b4eee3948a0047fb8e7f341c3e5cc971d54e97e2aaffcf878",
+    "assets/forearm_link.stl": "a00d96d2c7ec37e9fe4c5fb6d3fa2b4386dfd48fea5ac25632f4cb83b3505105",
+    "assets/half_arm_1_link.stl": "8df461a71780d8e2d09104a507584424279d85173adf14867e359f7e58b3bba7",
+    "assets/half_arm_2_link.stl": "8a9f38de21648804b3ab7076ec73726031f2ade7c95eb2541d070553e025407b",
+    "assets/shoulder_link.stl": "a98e232e5197f09e9cd520e7a450c21bcec74bc49e2a19ce7cf86c5dc25f2e18",
+    "assets/spherical_wrist_1_link.stl": "0b97a5e3b2de535344f8e8d4176d77f0cdb3455b235f35430fa0413208856e66",
+    "assets/spherical_wrist_2_link.stl": "12271fb7d0ee78fb5642424cf5078be20f0476061e74203db964b674031ce879",
+    "gen3.xml": "730a6073afc63e1ba6efc1eb048b8d7e43dd0a81df0192abcea3afe876fba3cb"
+  },
+  "license": "BSD-3-Clause"
+}

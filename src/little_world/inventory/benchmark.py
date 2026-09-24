@@ -1,0 +1,72 @@
+"""Isolated reproducible trials; never touches the interactive world."""
+from dataclasses import asdict
+from datetime import datetime,timezone
+from math import degrees,radians,acos,hypot
+import hashlib,json
+from .store import fingerprint
+
+
+def environment_fingerprint():
+    from little_world.scenes.workshop import workshop_entities
+    return hashlib.sha256(json.dumps([asdict(e) for e in workshop_entities()],sort_keys=True).encode()).hexdigest()
+
+
+def compare_trials(left,right,program,mode='hold_drive',seconds=5.,dt=.002):
+    import mujoco
+    from little_world.scenes.workshop import workshop_entities
+    if mode not in ('hold_drive','program'):raise ValueError('Unknown trial')
+    if not 0<seconds<=10 or dt!=.002:raise ValueError('Trial requires at most 10 seconds and 0.002s steps')
+    if mode=='program' and not program.blocks:raise ValueError('The current program is empty')
+    protocol=dict(mode=mode,seconds=seconds,timestep=dt,solver=mujoco.__version__,environment=environment_fingerprint(),program=fingerprint(program) if mode=='program' else None,revision=1)
+    return dict(version=1,created=datetime.now(timezone.utc).isoformat(),left_hash=fingerprint(left),right_hash=fingerprint(right),protocol=protocol,
+                left=trial(left,program,mode,seconds,dt),right=trial(right,program,mode,seconds,dt),
+                evidence='Simulated under identical conditions; mechanical work is not electrical energy; no physical validation')
+
+
+def trial(bp,program,mode,seconds,dt):
+    from little_world.physics.mujoco_backend import MujocoBackend
+    from little_world.core.world import World
+    from little_world.core.entity import Entity
+    from little_world.core.component import Body
+    from little_world.scenes.workshop import workshop_scene
+    from little_world.control.mujoco_keyboard import MujocoKeyboardControl
+    from little_world.programming.program import Runner
+    from little_world.programming.observations import Observations
+    backend=MujocoBackend()
+    with World(backend,workshop_scene(Entity('machine',bp)),dt) as world:
+        world.start();model,data=backend.model,backend.data;control=MujocoKeyboardControl(backend,bp);obs=Observations(model,data)
+        runner=Runner()
+        if mode=='program':program.validate(bp,tuple(obs.indices));runner.start(program)
+        specs={s.id:s for s in control.specs}
+        from little_world.control.mujoco_drive import MujocoDrive
+        drive_control=MujocoDrive(backend,bp)
+        motor_channels={}
+        for i in range(model.nu):motor_channels[i]=i
+        root=next(b.id for b in bp.components if isinstance(b,Body) and b.parent is None)
+        root_id=model.body('machine/'+root).id;start=data.xpos[root_id].copy()
+        peak_tilt=peak_error=work=0.;limited=0;trace=[]
+        for step in range(round(seconds/dt)):
+            drive=(3.,3.) if mode=='hold_drive' and step*dt<2 else (0.,0.)
+            control.clear()
+            if mode=='program' and runner.state=='running':
+                angles={s.id:tuple(control.display_position(a)[0] for a in s.actuators) for s in control.specs}
+                contacts,distances=obs.program_inputs(program);output=runner.tick(dt,angles,contacts,distances)
+                drive=output['drive']
+                if output['action']:
+                    name,direction=output['action'];spec=specs[name];control.press(spec.positive_key if direction==1 else spec.negative_key)
+                if output['move']:
+                    name,angle=output['move']
+                    for a in specs[name].actuators:control.set_position_target(a,angle)
+            commands=control.step_commands(dt)
+            commands.update(drive_control.step_commands(drive,dt,angular=mode=='program'))
+            velocities={i:float(data.actuator_velocity[i]) for i in motor_channels}
+            world.step(commands)
+            work+=sum(abs(float(data.actuator_force[i])*v)*dt for i,v in velocities.items())
+            peak_tilt=max(peak_tilt,degrees(acos(max(-1,min(1,float(data.xmat[root_id,8]))))))
+            error=max((abs(degrees(control.targets[n]-data.qpos[c[0]])) for n,c in control.channels.items() if n not in control.servos or control.servos[n][1]<7),default=0.)
+            peak_error=max(peak_error,error)
+            if any(abs(float(data.actuator_force[i]))>=max(abs(float(v)) for v in model.actuator_forcerange[i])*.95 if model.actuator_forcelimited[i] else abs(float(data.ctrl[i]))>=float(model.actuator_ctrlrange[i,1])*.95 for i in motor_channels):limited+=1
+            if step%50==0:trace.append(dict(time_s=round(float(data.time),3),distance_m=hypot(*(data.xpos[root_id,:2]-start[:2])),joint_error_deg=error))
+        return dict(elapsed_s=float(data.time),displacement_m=hypot(*(data.xpos[root_id,:2]-start[:2])),peak_tilt_deg=peak_tilt,
+                    peak_joint_error_deg=peak_error,absolute_mechanical_work_J=work,cap_fraction=limited/(step+1),
+                    program_state=runner.state if mode=='program' else 'not used',message=runner.message if mode=='program' else 'Drive at 60% of configured speed for 2s, then hold; fixed bases hold throughout',trace=trace)

@@ -1,0 +1,196 @@
+"""Visual sequence editor; programs are data and run on simulation time."""
+from dataclasses import replace
+from math import degrees,radians
+import glfw
+from little_world.programming.program import Program,Block,Runner
+from .inspector import numbers
+
+
+class ProgramWorkspace:
+    def init_program(self):
+        self.program=Program();self.runner=Runner();self.program_selected=0;self.program_offset=0
+        self.program_past=[];self.program_future=[];self.program_drag=None;self.program_rows=[]
+        self.panel_mode='keys';self.program_keys=set();self.program_drive=None
+
+    @property
+    def program_path(self):return self.path.with_suffix('.program.json')
+
+    def show_program(self):
+        self.close_bench();self.control_panel=True;self.panel_mode='program'
+
+    def program_edit(self,program):
+        if self.runner.state in ('running','paused'):raise ValueError('Stop the program before editing')
+        self.program_past.append(self.program);self.program_future.clear();self.program=program
+        self.program_selected=min(self.program_selected,max(0,len(program.blocks)-1))
+
+    def program_undo(self):
+        if self.program_past:
+            self.program_future.append(self.program);self.program=self.program_past.pop()
+
+    def program_redo(self):
+        if self.program_future:
+            self.program_past.append(self.program);self.program=self.program_future.pop()
+
+    def save_program(self):
+        self.program_path.parent.mkdir(parents=True,exist_ok=True)
+        temporary=self.program_path.with_suffix('.json.tmp')
+        temporary.write_text(self.program.to_json());temporary.replace(self.program_path)
+        self.status='Program saved: '+self.program_path.name
+
+    def load_program(self):
+        self.program_edit(Program.from_json(self.program_path.read_text()))
+
+    def pickup_program(self):
+        specs=self.editor.blueprint.controllers
+        def action(key,duration):
+            spec=next((c for c in specs if c.kind=='keyboard_position' and key in (c.positive_key,c.negative_key)),None)
+            if spec is None:raise ValueError('Pickup template needs G/H gripper and R shoulder bindings')
+            return Block('action',spec.id,1 if key==spec.positive_key else -1,duration)
+        self.program_edit(Program((Block(duration=.5),action('G',.9),Block(duration=.2),action('R',.8),Block(duration=.6),action('H',1),Block(duration=.8))))
+
+    def program_options(self):
+        self.form('Program settings',[('Repeat count',str(self.program.repeat)),('Keyboard trigger: F6 / F7 / F8',self.program.trigger)],
+            lambda v:self.program_edit(replace(self.program,repeat=int(v[0]),trigger=v[1].upper().strip())),text_input=True)
+
+    def block_form(self,index=None):
+        old=self.program.blocks[index] if index is not None else None
+        def kind_selected(kind):
+            if kind in ('contact','distance','if_contact'):
+                self.sensor_block_form(kind,index);return
+            def target_selected(target=''):
+                if kind=='action':fields=[('Direction: 1 increase / -1 decrease',str(old.value if old else 1)),('Duration (seconds)',str(old.duration if old else 1))]
+                elif kind=='drive':fields=[('Left wheel target (rad/s)',str(old.value if old else 3)),('Right wheel target (rad/s)',str(old.secondary if old else 3)),('Duration (seconds)',str(old.duration if old else 1))]
+                elif kind=='move':fields=[('Target (degrees; Panda grip: % closed)',str(old.value if old else 20)),('Timeout (seconds)',str(old.duration if old else 5))]
+                else:fields=[('Duration (seconds)',str(old.duration if old else 1))]
+                def apply(values):
+                    nums=[numbers(v,1)[0] for v in values]
+                    b=Block(kind,target,nums[0] if kind!='wait' else 0,nums[-1],secondary=nums[1] if kind=='drive' else 0)
+                    blocks=list(self.program.blocks)
+                    if index is None:blocks.append(b)
+                    else:blocks[index]=b
+                    self.program_edit(replace(self.program,blocks=tuple(blocks)))
+                    self.program_selected=len(blocks)-1 if index is None else index
+                self.form('Block / '+kind,fields,apply,'Wheel targets: rad/s. Joints: degrees. Panda gripper: 0-100% closed.')
+            if kind in ('action','move'):
+                labels={c.label+' ['+c.id+']':c.id for c in self.editor.blueprint.controllers if c.kind=='keyboard_position'}
+                if not labels:raise ValueError('Bind a joint in Keyboard first')
+                self.choose('Choose joint action',tuple(labels),lambda label:target_selected(labels[label]))
+            else:target_selected()
+        if old:kind_selected(old.kind)
+        else:self.choose('Add program block',('action','drive','wait','move','contact','distance','if_contact'),kind_selected)
+
+    def sensor_block_form(self,kind,index=None):
+        names=tuple(self.observations.indices)
+        def first(a):
+            def second(b):
+                fields=[('Timeout (seconds)','5')]
+                if kind=='distance':fields.insert(0,('Body-centre distance threshold (metres)','0.1'))
+                def apply(values):
+                    threshold=numbers(values[0],1)[0] if kind=='distance' else 0
+                    block=Block(kind,a,threshold,numbers(values[-1],1)[0],b)
+                    blocks=list(self.program.blocks)
+                    if index is None:blocks.append(block)
+                    else:blocks[index]=block
+                    self.program_edit(replace(self.program,blocks=tuple(blocks)))
+                self.form('Sensor / '+kind,fields,apply,
+                    'Ideal observation. If contact: run next block; otherwise skip it.' if kind=='if_contact' else 'Wait until true; a timeout pauses with an explicit failure.')
+            self.choose('Second sensor body',tuple(n for n in names if n!=a),second)
+        self.choose('First sensor body',names,first)
+
+    def move_block(self,index,new):
+        blocks=list(self.program.blocks)
+        if 0<=index<len(blocks) and 0<=new<len(blocks):
+            blocks.insert(new,blocks.pop(index));self.program_edit(replace(self.program,blocks=tuple(blocks)));self.program_selected=new
+
+    def start_program(self,single=False):
+        if self.runner.state=='running':return
+        if self.runner.state=='paused':
+            self.runner.single=single;self.runner.state='running';self.runner.message='Running';self.paused=False;return
+        names=tuple(self.model.body(i).name for i in range(1,self.model.nbody))
+        self.program.validate(self.editor.blueprint,names)
+        if not self.program.blocks:raise ValueError('Add blocks or load the Pickup template')
+        self.close_bench()
+        if self.building:self.simulate()
+        self.clear_keys();self.paused=False;self.runner.start(self.program,single)
+
+    def stop_program(self):
+        self.runner.stop();self.program_keys.clear();self.program_drive=None;self.clear_keys();self.paused=False
+
+    def pause_program(self):
+        if self.runner.state=='running':self.runner.state='paused';self.runner.message='Paused';self.paused=True;self.clear_keys()
+        elif self.runner.state=='paused':self.start_program()
+
+    def tick_program(self):
+        self.program_keys.clear();self.program_drive=None
+        if self.runner.state!='running':return
+        angles={s.id:tuple(self.joint_control.display_position(a)[0] for a in s.actuators) for s in self.joint_control.specs}
+        contacts,distances=self.observations.program_inputs(self.program)
+        result=self.runner.tick(self.world.timestep,angles,contacts,distances)
+        self.program_drive=result['drive']
+        if result['action']:
+            name,direction=result['action'];spec=next(s for s in self.joint_control.specs if s.id==name)
+            self.program_keys.add(spec.positive_key if direction==1 else spec.negative_key)
+        if result['move']:
+            name,angle=result['move'];spec=next(s for s in self.joint_control.specs if s.id==name)
+            for a in spec.actuators:self.joint_control.set_position_target(a,angle)
+        if self.runner.state in ('paused','failed'):self.paused=True
+        if self.runner.state in ('paused','failed','completed'):self.status='Program: '+self.runner.message
+
+    def program_mouse(self,x,y,action):
+        if self.panel_mode!='program' or not self.control_panel or self.dialog is not None:return False
+        if action==glfw.RELEASE and self.program_drag is not None:
+            index=self.program_drag;self.program_drag=None
+            target=next((i for i,rx,ry,rw,rh in self.program_rows if rx<=x<=rx+rw and ry<=y<=ry+rh),None)
+            if target is not None and target!=index:self.events.append(lambda:self.move_block(index,target))
+            return True
+        if self.runner.state in ('running','paused'):return False
+        if action==glfw.PRESS:
+            for i,rx,ry,rw,rh in self.program_rows:
+                if rx<=x<=rx+rw and ry<=y<=ry+rh:self.program_selected=i;self.program_drag=i;return True
+        return False
+
+    def draw_program(self,ui,button,text,ww,wh):
+        x=ww-338;editing=self.runner.state not in ('running','paused')
+        text('PROGRAM',x+16,153,16)
+        button('Settings',x+224,149,86,self.program_options,editing,h=26)
+        text(f'{self.runner.message} / repeat {min(self.runner.cycle+1,self.program.repeat)} of {self.program.repeat} / {self.program.trigger}',x+16,183,11,(.6,.74,.77),294)
+        button('Run',x+16,207,110,self.start_program,self.runner.state!='running' and bool(self.program.blocks),h=36,tone='primary')
+        button('Pause',x+134,207,84,self.pause_program,self.runner.state in ('running','paused'),h=36)
+        button('Stop',x+226,207,84,self.stop_program,self.runner.state in ('running','paused'),h=36,tone='danger')
+        text('SEQUENCE  /  drag steps to reorder',x+16,258,11,(.6,.74,.77))
+        rows=max(2,int((wh-520)/43));self.program_rows=[]
+        if self.runner.state in ('running','paused') and not self.program_offset<=self.runner.index<self.program_offset+rows:
+            self.program_offset=self.runner.index
+        self.program_offset=min(self.program_offset,max(0,len(self.program.blocks)-rows))
+        labels={s.id:s.label for s in self.editor.blueprint.controllers}
+        for row,b in enumerate(self.program.blocks[self.program_offset:self.program_offset+rows]):
+            i=self.program_offset+row;y=282+row*43
+            names={'wait':'Wait','action':'Joint action','drive':'Drive','move':'Move to angle','contact':'Wait for contact','distance':'Wait for distance','if_contact':'If contact'}
+            label=f'{i+1}. '+names[b.kind]+(' / '+labels.get(b.target,b.target.split('/')[-1]) if b.target else '')
+            active=self.runner.index==i and self.runner.state in ('running','paused')
+            button(label,x+16,y,294,lambda i=i:setattr(self,'program_selected',i),active=active or (editing and self.program_selected==i),h=26)
+            detail=f'{b.duration:g}s'
+            if b.kind=='action':detail=('Increase / close' if b.value>0 else 'Decrease / open')+f' for {b.duration:g}s'
+            elif b.kind=='drive':detail=f'L {b.value:g} / R {b.secondary:g} rad/s for {b.duration:g}s'
+            elif b.kind=='move':detail=f'{b.value:g} degrees / timeout {b.duration:g}s'
+            elif b.kind=='distance':detail=f'Within {b.value:g} m / timeout {b.duration:g}s'
+            elif b.kind=='contact':detail=f'Touch {b.other.split(chr(47))[-1]} / {b.duration:g}s'
+            elif b.kind=='if_contact':detail='True: next block / false: skip next'
+            text(detail,x+24,y+28,10,(.6,.74,.77),276)
+            self.program_rows.append((i,x+16,y,294,38))
+        if not self.program.blocks:text('Add blocks or load an example.',x+16,286,12,(.6,.74,.77),294)
+        y=wh-220
+        button('<',x+16,y,35,lambda:setattr(self,'program_offset',max(0,self.program_offset-rows)),h=26)
+        button('>',x+56,y,35,lambda:setattr(self,'program_offset',self.program_offset+rows),h=26)
+        button('Undo',x+105,y,63,self.program_undo,editing and bool(self.program_past),h=26)
+        button('Redo',x+174,y,63,self.program_redo,editing and bool(self.program_future),h=26)
+        button('Load',x+243,y,67,self.load_program,editing and self.program_path.exists(),h=26)
+        y+=34
+        button('Add',x+16,y,63,self.block_form,editing,h=28,tone='primary')
+        button('Edit',x+85,y,63,lambda:self.block_form(self.program_selected),editing and bool(self.program.blocks),h=28)
+        button('Delete',x+154,y,70,lambda:self.program_edit(replace(self.program,blocks=tuple(b for i,b in enumerate(self.program.blocks) if i!=self.program_selected))),editing and bool(self.program.blocks),h=28)
+        button('Save',x+230,y,80,self.save_program,h=28)
+        y+=36
+        button('Joint motion example' if getattr(self,'factory_mode',False) else 'Pickup template',x+16,y,294,self.joint_example if getattr(self,'factory_mode',False) else self.pickup_program,editing,h=28)
+        button('Step',x+16,wh-110,294,lambda:self.start_program(True),self.runner.state!='running' and bool(self.program.blocks),h=28)
+        text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)

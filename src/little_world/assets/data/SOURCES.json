@@ -1,0 +1,26 @@
+[
+  {
+    "id": "wood_floor",
+    "source": "https://polyhaven.com/a/wood_floor",
+    "author": "Dimitrios Savva",
+    "license": "CC0-1.0",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_floor/wood_floor_diff_1k.jpg",
+    "upstream_md5": "b7e927d2bf2f8f103820ff3890c8407c",
+    "file": "src/little_world/assets/data/wood_floor.rgb.gz",
+    "sha256": "deb80749bf9e86800fb7acd9ddf7bd9ffde9fa5a0323f493465d17c04ef3b7ce",
+    "transformation": "Decoded original 1K JPG; resized to 512x512 RGB with Lanczos; gzip compressed raw RGB bytes.",
+    "retrieved": "2026-09-12"
+  },
+  {
+    "id": "wood_grain",
+    "source": "https://polyhaven.com/a/fine_grained_wood",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/fine_grained_wood/fine_grained_wood_col_1k.jpg",
+    "upstream_md5": "3db9decdde678e087e67ff99d30c0a73",
+    "file": "src/little_world/assets/data/wood_grain.rgb.gz",
+    "sha256": "8a75c602c0ab7d6df19b2a7fbb62f47e1b3c71b0b3293b6ceed149004687f3e0",
+    "transformation": "Decoded original 1K JPG; resized to 512x512 RGB with Lanczos; gzip compressed raw RGB bytes.",
+    "retrieved": "2026-09-12"
+  }
+]

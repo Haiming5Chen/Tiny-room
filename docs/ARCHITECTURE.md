@@ -1,0 +1,339 @@
+# Architecture
+
+Python / future editor / future AI → Blueprint → World → PhysicsBackend → MuJoCo.
+The core uses only the Python standard library. Native solver handles and indices
+never appear in Blueprint or State. The optional MuJoCo adapter owns compilation,
+contact mechanics, integration, rendering resources, and names-to-native-ID maps.
+
+## Representation
+
+- Entity: identified assembly instance with a Blueprint and world transform. No Robot base class.
+- Component: identified declarative part (body, hinge, motor, camera). Relationships use stable IDs.
+- Geometry: shape and dimensions in metres, independent of Material.
+- Material: density (kg/m³), sliding friction coefficient, display RGBA. Future
+  properties need explicit units and a solver/interaction consumer before activation.
+- Blueprint: versioned JSON design containing parts, parents, attachment frames,
+  material references, and controller descriptors. Immutable value objects allow
+  editor commands to replace a design without mutating a running model.
+- State: detached observation of body poses and world-frame velocities at simulation
+  time. Not a Blueprint and not a complete solver checkpoint.
+- Interaction: future rule protocol over shared state; no physical rules are
+  scheduled in this milestone. Future coupling must declare reads, writes, units,
+  ownership, ordering, and conservation tests before it enters World.step.
+- Scene: environment entity collection; no task or robot assumptions.
+- Embodiment: entity/control/sensor selection, not a physical subclass.
+- Task: observation/evaluation protocol independent of scene creation.
+- Controller: observation-to-named-actuator command protocol; serialized configuration
+  is data, never executable code imported from a Blueprint.
+
+## Coordinates and composition
+
+SI units; right-handed Z-up; scalar-first quaternion (w,x,y,z). Body transforms
+are relative to parent body; root is relative to entity transform. Geometry is
+centred on its body. Box sizes are full lengths, cylinder is radius/full length,
+sphere is radius. Cylinder local Z is its axle. Hinge axis is in child body frame.
+Fixed children weld through the body tree; a hinge gives its child one rotational
+DOF. Dynamic roots receive free joints. Disconnected roots are allowed. Attachment
+points are named local frames used by builder snapping; explicit resolved
+body transforms/joints remain authoritative. Cross-entity constraints and closed
+kinematic loops are unsupported and must not be silently approximated.
+
+## Lifecycle and ownership
+
+World starts in BUILD. Set/replace scene only in BUILD. start compiles and transfers
+mechanical authority to the backend. step advances a fixed timestep, takes named
+torque commands, and returns a detached State. An omitted command means zero torque
+for that step. reset restores the compiled initial state and returns to BUILD;
+start recompiles the current design. The Blueprint never absorbs simulated poses.
+close releases backend resources. UI uses this lifecycle rather than a second world.
+Compilation rejects unsupported component types and unresolved references.
+
+The backend exposes compile, step, snapshot, reset, close. Camera capture is an
+optional adapter capability, so headless mechanics does not require a GL context.
+The MuJoCo viewer sits in a separate presentation module and may access native
+handles; core/controller/task code may not. Backend implementations must translate
+body-local solver velocities to the documented world frame.
+
+## Material limits
+
+MuJoCo uses sliding/torsional/rolling contact friction and soft contact parameters.
+The initial material sliding coefficient maps to geom friction[0]; small fixed
+rolling/torsional coefficients are adapter defaults. This is not separate static
+and dynamic friction, nor a restitution/stiffness calibration. Density drives
+inferred mass/inertia. Illustrative material values are not measured datasets.
+Camera is optical RGB rendering, not radiative heat transport.
+
+At equal geom priority, MuJoCo combines friction using the larger pair coefficient.
+Consequently a low-friction part alone does not impose a low-friction contact against
+a higher-friction floor. The first prototype accepts this solver behavior; alternative
+pair-mixing/calibration belongs in an explicitly tested future adapter policy.
+
+The inspection UI uses GLFW input and MuJoCo's renderer directly. It deliberately
+does not install the simulate application's shortcut handler: otherwise drive keys
+also toggle rendering options. This reuses solver/rendering capabilities without
+building a graphical construction editor. The UI's wheel-speed feedback generates
+bounded named motor torques; it never assigns body poses or velocities. The core
+and headless direct-torque API are unchanged.
+
+## Interactive construction
+
+`construction.AssemblyEditor` owns immutable Blueprint revisions, selection and
+undo/redo. It imports no solver/UI packages and can be used programmatically.
+`World.preview()` compiles the design for inspection while preserving BUILD mode;
+`step()` remains forbidden there. The workshop applies edits only in BUILD,
+recompiles the preview, and rolls back on invalid edits. Starting simulation uses
+World.start and stopping uses World.reset, with no design mutation.
+
+The panel and picking code live in `ui/workshop.py`; the furnished room lives in
+`scenes/workshop.py`. Motor controllers are named Blueprint descriptors. The initial
+workshop recognizes exactly a two-channel differential_torque descriptor and sends
+bounded physical torques. It does not execute imported code from a saved design.
+
+### Responsive presentation and prepared scenes
+
+World remembers the last successfully prepared immutable Scene. Repeated preview,
+start and stop reuse it; a changed design recompiles before use. MuJoCoBackend
+caches immutable observations only for bodies whose weld ID is world (zero),
+invalidating that cache on compilation/close. Dynamic assemblies remain fresh.
+
+The workshop retains its MjrContext/MjvScene because the current adapter supports
+primitive shapes and a fixed texture registry for kit models. Registered mesh assemblies
+use model-specific context invalidation and separate preview contexts (see below).
+`ui/canvas.py` rasterizes a font atlas once with Pillow and batches rectangles/text
+through OpenGL. Graphics calls and edits stay on the window thread. UI activity
+wakes a capped idle loop; physics uses the original fixed timestep independently
+of the rendering target rate. No physics parameters were changed for responsiveness.
+
+## Built-in asset registry
+
+The component catalog produces namespaced, editable Blueprints, not opaque native
+objects. Material adds optional texture ID and roughness appearance parameters.
+The MuJoCo adapter registers five deterministic RGB textures in the same order for
+every model, allowing the retained graphics context to be shared with cached catalog
+previews. Selection uses decorative edge geometry instead of replacing surface color.
+All texture files come from the packaged registry; Blueprint data cannot load
+arbitrary paths or URLs. Physical contact geometry stays independent of appearance.
+See CATALOG.md and the asset SOURCES.json for boundaries and provenance.
+
+
+## Precise connections and hinges
+
+The construction layer resolves source/target attachment frames into a child-local
+pose and parent reference. Generated primitive frames provide six face/tangent
+centres; explicit Attachment frames override names. Opposing local Z normals define
+the mating rotation. No persistent relationship is inferred after a snap.
+
+Hinge adds optional child-local `position` (metres) and `limits` (lower/upper degrees).
+Defaults preserve legacy origin pivots and unrestricted rotation. The backend uses
+MuJoCo's native pivot, damping and joint limits; no additional constraint solver.
+The catalog arm now pivots at its mounting end. Fixed conversion removes dependent
+motors/controllers atomically. UI forms isolate keyboard input and apply one undo
+revision; construction APIs stay independent of graphics and solver packages.
+
+
+## Detailed hardware observation and rendering
+
+Detailed assemblies expose hundreds of editable subparts. Backend snapshots detach
+all poses and velocities in batches; core `DeferredBodyStates` owns immutable Python
+tuples and constructs a BodyState on access. No retained snapshot reads changing
+native arrays. World-frame body-inertial velocities use the same subtree-COM
+translation as MuJoCo's objectVelocity, with zero velocity for world-welded bodies.
+
+After integration, the adapter refreshes kinematics, COM positions, cameras/lights
+and COM velocities. It does not perform a redundant second collision/constraint
+solve. The next native step performs its usual complete dynamics computation.
+Pose/velocity/camera output is checked against a full forward refresh. Native force
+and contact work arrays are solver internals, not part of the public State contract.
+
+The focused workbench renders only the assembly and selected component, with no
+hidden room render. It reuses the compiled world model and separates the room using
+visual geom groups; the normal room view still includes both groups. Its floorless previews omit shadows. Room shadows use a 1024px
+map. See ADR 0004 for ownership and the explicit hardware capability boundaries.
+
+
+## Assembly management
+
+The workbench's collapsible tree is a view of Body.parent; expansion, camera focus
+and component/detail picking do not alter Blueprint data. Component picking uses
+catalog root names/attachment markers and falls back to detailed body selection
+for ungrouped older designs. The editor's shared subtree closure includes bodies,
+hinges, cameras and dependent motors. Duplicate remaps every internal ID/reference,
+keeps the copied root's original parent, applies a parent-frame offset, and copies
+only fully contained controller descriptors. Duplicate and delete are atomic undo
+revisions. No native solver types enter these construction operations.
+
+## Interactive socket docking
+
+MuJoCo continues to own collision, contact and motion. The builder adds a pure
+Python docking policy over existing catalog parts and attachment frames; it does
+not add a physics solver. Compatible slots, occupied slots and refusal reasons are
+computed before committing. Drag previews only add presentation geometry; release
+makes one immutable editor revision. Named tool/output frames use existing mating
+math. These are simulator kit compatibility rules, not verified vendor mounting
+specifications. Low-level precision connections remain available for custom parts.
+Wheel insertion releases the selected assembly root and raises it if necessary to
+clear the floor. Explicit base preparation can also ground or anchor an assembly.
+These edits affect initial design poses only; runtime poses remain solver-owned.
+
+The immersive build stage reuses the same MuJoCo scene and editor. Its floor/grid
+are decorative render geometry only, excluded from physics and serialization.
+Parts/details panels and camera presets change presentation state only. Socket
+labels are contextual during dragging, or can be explicitly pinned with Sockets.
+
+## Component replacement and removal
+
+The existing immutable editor and MuJoCo backend remain responsible for design
+transactions and physical behavior. Component lifecycle adds a construction policy,
+not a new simulator. Optional Body.catalog_part records catalog provenance on module
+roots while retaining old JSON defaults. Compatible replacements preserve IDs and
+controller references; external children are retained on matching named sockets or
+shifted with the changed structural face. Unsupported topology changes are refused.
+Single-component removal refuses to orphan attached modules. An explicitly reviewed
+branch removal deletes descendants and dependent controls as one undo revision.
+
+## Mechanical kit usability
+
+Manufacturer assembly guides motivate distinct complete assemblies and individual
+components, discoverable rotating outputs, and multiple chassis mounting positions.
+These remain original procedural kit models; vendor mounting fits are not claimed.
+No new physics solver is needed: shaft loads weld to the motor's existing output
+body, and multiple differential wheel pairs use existing MuJoCo hinges and motors.
+Builder-side wheel spacing checks prevent overlapping adjacent wheels. Outward
+wheel frames and their hinge axes are resolved together so both sides retain the
+same forward-drive convention. The UI explains purpose, attachment and limitations.
+
+## Assisted construction and Python authoring
+
+Use existing MuJoCo joint/contact dynamics. Continuous side mounting is a builder
+policy: named sockets remain presets, while a wheel's longitudinal coordinate can
+be specified in metres with spacing validation. There is no hard-coded wheel count.
+Defaults create editable keyboard actions for articulated modules. Drive assistance
+maps side commands to all registered motors with per-wheel speed feedback, torque
+caps and acceleration limits; it is not a vehicle stability or automotive ECU model.
+
+The Python window uses the same AssemblyEditor/Blueprint APIs as direct manipulation.
+A worker process runs user-authored Python, returns serialized Blueprint data, and
+is terminated on timeout. This isolation keeps the UI responsive and makes failed
+builds atomic; it is not a security sandbox for untrusted Python. Successful designs
+are applied as one undoable editor revision. Scripts are saved separately from JSON
+and are never executed merely by loading a design.
+
+Drive descriptors retain legacy two-motor compatibility. Explicit `drive_sides`
+allows an unmatched additional motor to join the same side command; pairing is
+recomputed when more wheels arrive. `DriveSettings` is saved with the design.
+The native adapter observes each wheel and the base's local velocity, converts
+side intent to a linear target, ramps that target, compensates for wheel radius,
+and clamps each feedback torque to its individual configured fraction. A simple
+excess-wheel-speed limiter reduces accelerating torque; it is not a calibrated
+slip estimator and has no battery/power-bus model. Benchmarks use the same adapter.
+
+Default keyboard bindings are assigned only to newly inserted articulated modules,
+so deleting or changing a binding is not undone by an unrelated subsequent edit.
+Preferred semantic keys are used first; additional modules receive unused pairs.
+
+## Ready-to-build catalog
+
+The default catalog presents complete mechanical assemblies and useful structural
+parts. Raw actuators, shaft loads and small hardware remain in Advanced for older
+designs and expert authoring. Ready bases and arm/gripper kits compose the existing
+Blueprints; new attachments use native hinges, motors and cameras. There is no new
+solver or opaque asset format. Assembly insertion includes default controls in the
+same undo transaction and all internal parts remain inspectable.
+
+## Registered real robot assemblies
+
+MuJoCo Menagerie already supplies meshes, inertias, joint limits, contact geometry,
+actuators and gripper constraints. Preserve these via MuJoCo's MjSpec attachment;
+do not rebuild them with primitive geometry or implement another solver. The builder's
+contribution is mounting, saved assembly references and explicit keyboard actions.
+Body.robot_asset identifies a bundled, version-pinned model; no arbitrary XML paths
+or code are accepted from designs. Its box is a selection/bounds proxy only, not
+physical geometry. RobotServo names a registered position actuator on that body.
+Blueprint remains stdlib-only and serializable. Native joints and meshes stay in the
+adapter. Model internals and size are fixed in this first asset integration; whole
+assemblies can be mounted, moved, duplicated, deleted and saved.
+
+Position servo commands use the upstream actuator's native target units, unlike
+Motor torque commands. Omitted servo commands retain their target; reset restores
+both home pose and targets. Existing torque behavior is unchanged. Keyboard/Program
+controls increment position targets and preserve upstream force caps. Gripper keys
+control the original tendon actuator and finger equality constraint.
+
+Resource-bearing models require model-specific render contexts. Rebuild the main
+context after mesh model changes, and give mesh previews their own context. Never
+reuse primitive preview mesh indices against another model's GPU resources.
+
+## Spatial drag preview and library styles
+
+Real robots and Anime / kit are catalog views over one shared Blueprint format;
+switching tabs never converts or replaces the current design. Both styles can be
+combined in a build. Real models preserve their source mechanics and remain clearly
+identified; Anime / kit contains the original stylized editable assemblies.
+
+Dragging uses a temporary MuJoCo model containing the current assembly and a ghost
+module, with its own mesh upload context. Compile once per drag; mouse movement only
+updates the ghost's root pose and forward kinematics. This is presentation state,
+never a running physics edit. Unproject the cursor onto the ground for free placement,
+or use the same socket transform for preview and commit. Drop is one editor revision;
+cancel frees temporary resources and leaves Blueprint unchanged.
+
+## Laboratory and industrial equipment
+
+Lab equipment composes existing Blueprint bodies, native hinges, motors and cameras.
+No new solver or electrical/industrial automation model is introduced. Mobile bases
+reuse radius-aware differential drive; stationary tables/pedestals are anchored by
+default. Passive conveyors contain individual freely rotating rollers. The indexing
+table uses a bounded rotary hinge. Generic engineering layouts are distinct from
+sourced robot assets; neither appearance nor assembly status establishes payload or
+manufacturer compatibility. Complete workcells compose the same separately available
+platform/table and Panda module; insertion and default controls remain atomic.
+
+The second equipment collection reuses those same interfaces: a bounded horizontal
+hinge powers a tilting table; inspection and sourced-arm workcells compose existing
+modules. No prismatic joints or lift mechanics are implied. Storage fixtures and
+test objects are ordinary rigid bodies with explicit anchored/free placement.
+
+## Click-to-jog operation
+
+The operation panel shares the existing native joint controller. Button presses
+increment held targets in degrees (or percentage gripper closure), using actuator
+ranges and existing sourced servos. No teleportation, inverse kinematics or saved
+Blueprint edits are introduced. The first click starts physics; manual actions
+stop a running program and clear its key state. The gripper remains visible across
+joint pages. Pause freezes the world; stopping simulation restores the saved design.
+
+## First automated factory cell
+
+MuJoCo already supplies rigid contact, native actuators, forward kinematics and
+Jacobians. The factory prototype wraps these rather than adding another solver:
+a Panda-specific damped least-squares IK adapter plans top-down waypoints using
+scratch native data, then commands the existing force-limited servos. Workcell
+geometry and products remain ordinary Entity/Blueprint data. The unique work is
+connecting a product/destination recipe to observable, failure-aware task stages.
+Known-object sensing reads simulator state and is explicitly not image detection.
+Grasps use physical finger contact, never welds or object teleportation. A fixed
+workcell demo launches separately so the builder's unsaved design is preserved.
+It is not yet a general collision-avoiding planner, editable line, or conveyor system.
+
+## Guided factory authoring
+
+Create's Ponder inspires contextual explanations and visible cause/effect, not a
+Minecraft dependency or copied assets. The factory gains a portable cell recipe
+(tray positions, source, destination, product), authored directly in the scene.
+Placement validates table bounds, tray overlap and fixed obstructions separately
+from IK reachability. Drag ghosts are presentation-only; release commits one
+undoable recipe change and rebuilds ordinary Blueprint geometry. Recipes persist
+separately from robot designs. Guided explanations pause the real task controller
+at stage boundaries, so a failed grasp remains a failure rather than an animation
+that implies successful physics. Existing MuJoCo IK/contact remains the executor.
+
+## One window, two workflows
+
+Real and Anime are application workspaces, not catalog appearance filters. A single
+GLFW window/event loop hosts two lazily created workspace controllers, each with
+its own Blueprint/recipe, native world, camera, program and graphics resources.
+Switching pauses the outgoing simulation, clears transient input and retains its
+unsaved data and runtime state. Callbacks route to the active workspace; shutdown
+releases both worlds before destroying the one window. No subprocess is launched.
+Real exposes experiments and programming for registered arms; Anime exposes kit
+construction. Panda pick-and-place is separate from the general joint/program lab.
