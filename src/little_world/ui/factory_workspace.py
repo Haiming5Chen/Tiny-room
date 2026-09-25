@@ -23,8 +23,10 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         self.initial_camera=((.3,0,.9),2.6)
         self.library_open=False
 
+    RUN=6   # parts in a production run: the input tray's and the five on the stock shelf
+
     def _scene(self):
-        return factory_scene(Entity('machine',self.editor.blueprint),recipe=self.recipe)
+        return factory_scene(Entity('machine',self.editor.blueprint),recipe=self.recipe,stock=self.RUN-1)
 
     def bind_runtime(self):
         super().bind_runtime();self.cycle=None if self.joint_lab else FactoryCycle(self.backend,source=self.recipe.source);self.factory_commands={}
@@ -54,6 +56,16 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         if self.cycle.state!='planned':raise ValueError('Reset the cell to run another product.')
         if self.building:self.state=self.world.start()
         self.cycle.start();self.single_stage=single;self.paused=False
+
+    def start_run(self):
+        """Place every part in turn: the input tray's first, then the stock shelf's, each
+        fed to the input tray when the one before is placed (ADR 0019)."""
+        from little_world.factory.scene import stock_name
+        if self.cycle.state=='running':raise ValueError('A cycle is running: pause or reset first.')
+        if self.cycle.state!='idle':raise ValueError('Reset the cell to start a production run.')
+        if self.building:self.state=self.world.start()
+        self.cycle.production(['objects/'+stock_name(i) for i in range(self.RUN)],self.destination)
+        self.single_stage=False;self.paused=False
 
     def tick_program(self):
         if self.joint_lab:return super().tick_program()
@@ -109,7 +121,8 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         for i,name in enumerate(PRODUCTS):button(name,18+i*138,214,130,lambda n=name:self.select_product(n),editable,active=self.product==name)
         text('From: '+tray_label(self.pending_source or self.recipe.source),18,266,13)
         text('To: '+tray_label(self.destination),18,290,13)
-        button('Preview path',18,321,268,self.preview_cycle,self.building,h=34)
+        button('Preview path',18,321,130,self.preview_cycle,self.building,h=34)
+        button(f'Run {self.RUN} parts',156,321,130,self.start_run,self.cycle.state=='idle',h=34,tone='primary')
         text('TASK SEQUENCE',18,374,12)
         labels=['Locate known product','Approach','Lower to grasp','Close gripper','Lift + verify','Transfer to '+tray_label(self.destination),'Lower into tray','Release','Retract + verify']
         step=min(26,(wh-160-398)/9)
@@ -127,8 +140,18 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         button('Path: on' if self.show_path else 'Path: off',self.PANEL+156,72,110,lambda:setattr(self,'show_path',not self.show_path),h=30)
         button('Try it yourself' if self.guided else 'How picking works',self.PANEL+274,72,164,self.try_yourself if self.guided else self.enter_guide,h=30,tone='primary')
         state='PAUSED' if self.paused and self.cycle.state=='running' else self.cycle.state.upper()
-        text(f'{state} / {self.cycle.total:.1f}s simulation time',self.PANEL+18,116,13,(.4,.85,.72),ww-self.PANEL-40)
+        run=self.cycle.run
+        clock=(f'part {min(run["done"]+1,self.RUN)} of {self.RUN} / {float(self.data.time)-run["started"]:.1f}s run time' if run is not None
+               else f'{self.cycle.total:.1f}s simulation time')
+        text(f'{state} / {clock}',self.PANEL+18,116,13,(.4,.85,.72),ww-self.PANEL-40)
         text(self.status if self.status.startswith('Could not') else self.cycle.message,self.PANEL+18,140,12,(.8,.87,.9),ww-self.PANEL-40)
+        summary=self.cycle.run_summary()
+        if summary is not None:
+            placed,failed,per,rate=summary
+            line=f'PRODUCTION RUN  {placed} of {self.RUN} placed  /  {failed} failed'
+            if per is not None:line+=f'  /  {per:.1f} s per part'
+            if rate is not None:line+=f'  /  {rate:.1f} parts per minute'
+            text(line,self.PANEL+18,162,12,(.96,.72,.38) if failed else (.4,.85,.72),ww-self.PANEL-40)
         if self.guided:
             title,caption=self.guide_caption();width=min(540,ww-self.PANEL-36);top=wh-162
             ui.rect(self.PANEL+18,top,width,114,(.07,.14,.17))

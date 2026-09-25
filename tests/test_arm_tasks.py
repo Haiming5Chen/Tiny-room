@@ -269,3 +269,22 @@ def test_tool_mode_teach_and_the_pick_and_place_template_in_the_window(monkeypat
     monkeypatch.setattr(app, 'draw', exercise)
     app.run(seconds=90)
     assert step['n'] == 10
+
+
+@pytest.mark.parametrize('asset', ['franka_panda', 'ur5e'])
+def test_registered_robots_move_their_tool_too(asset):
+    """A Menagerie arm has no kit tool module: its tool point is given (the Panda's between
+    its fingertips) or is its flange, and its joints are its own position servos."""
+    from little_world.factory.scene import factory_scene, robot_blueprint
+    bp = robot_blueprint(asset)
+    backend = MujocoBackend()
+    with World(backend, factory_scene(Entity('machine', bp))) as world:
+        world.start()
+        control = MujocoKeyboardControl(backend, bp)
+        motion = ToolMotion(backend, bp, control)
+        assert len(motion.joints) == (7 if asset == 'franka_panda' else 6)
+        assert motion.jaws == (('servo_8',) if asset == 'franka_panda' else ())
+        start = motion.tool(angles=motion.targets())[0]
+        assert motion.jog(up=-.05) <= .002
+        settle(world, control, 3.)
+        assert motion.tool()[0] == pytest.approx(start - (0., 0., .05), abs=.012)

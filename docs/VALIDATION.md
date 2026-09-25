@@ -698,3 +698,22 @@ suite: **576 passed**; headless 541 (35 need a display).
 
 Not claimed: ideal positions (no odometry drift or localisation), no path planning or
 obstacle avoidance, plans made once from the state they are made in.
+
+## Factory production run — 2026-09-25
+
+See ADR 0019. Running six small blocks from the input tray and the stock shelf into the
+Blue tray: all six placed, in a 3 by 2 grid of slots, none failed, 12.3 s per part and
+4.9 parts per minute of simulated time; six tall blocks the same. The first part of a
+run takes 13.9 s from the robot's home pose, the rest about 12.3 s from the retract pose.
+
+Checks in `tests/test_factory.py` (4 new): a stocked cell is portable data with a sky
+backdrop and its parts come to rest on the shelf; a run of three into the Amber tray puts
+each within 2 cm of its slot and on the tray's floor, counts 3 placed and 0 failed at
+10-15 s a part, and refuses to start without the input tray's part or while running; a
+part taken off the input tray stops the run with "Grasp failed", counted; and a window
+test starts a run with its button, sees the first part counted and the second under way,
+and resets. Tool moves on registered robots (`tests/test_arm_tasks.py`, 2 new): the
+Panda's and UR5e's tool points move 5 cm down in one step and their servos follow within
+1.2 cm. Full display-enabled suite: **582 passed**; headless 546 (36 need a display).
+
+Not claimed: the feeder is a teleport; one product type per run; six slots per tray.

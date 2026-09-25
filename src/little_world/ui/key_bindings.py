@@ -181,8 +181,8 @@ class KeyBindings:
 
     def jaws_action(self):
         """The keyboard action that drives the arm's tool, such as a gripper's jaws."""
-        if self.tool_motion is None:return None
-        own=set(self.tool_motion.tool_module.actuators)
+        if self.tool_motion is None or not self.tool_motion.jaws:return None
+        own=set(self.tool_motion.jaws)
         return next((s for s in self.joint_control.specs if s.actuators and set(s.actuators)<=own),None)
 
     def set_jaws(self,closed):
@@ -194,6 +194,9 @@ class KeyBindings:
         if self.building:self.simulate()
         self.runner.stop();self.program_keys.clear();self.clear_keys();self.paused=False
         for name in spec.actuators:
+            if name in self.joint_control.servos:   # a model's gripper servo: percent closed
+                self.joint_control.set_position_target(name,100. if closed else 0.)
+                continue
             q,_,lo,hi,_=self.joint_control.channels[name]
             self.joint_control.set_position_target(name,degrees(hi if closed else lo))
         self.status='Gripper closing: the jaws stop where they meet something.' if closed else 'Gripper opening.'
@@ -238,4 +241,4 @@ class KeyBindings:
             self.close_bench()
             self.simulate()
         button('Start simulation' if self.building else 'Stop simulation',x+16,wh-116,294,simulate,active=True)
-        text('WASD: drive / Space: release keys / P: pause',x+16,wh-70,10,(.6,.74,.77),294)
+        text(('WASD: drive / ' if getattr(self,'channels',None) else '')+'Space: release keys / P: pause',x+16,wh-70,10,(.6,.74,.77),294)

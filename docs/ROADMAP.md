@@ -73,6 +73,8 @@ and measured during it (ADR 0015). Arms now move their tool rather than single j
 programs hold taught poses and grasp checks, and a pick-and-place program solved for the
 built arm meets the Pick and place field's goals (ADR 0016). Programs drive a base to a
 point, and the mobile manipulator fetches a cube from a table into a bin by itself in the
-Fetch field (ADR 0018) - which exposed and fixed grasp creep (ADR 0017). Next for the
-builder: the factory cell's rough edges, and fields that need a path (a doorway, a
-corridor) rather than a straight drive.
+Fetch field (ADR 0018) - which exposed and fixed grasp creep (ADR 0017). The factory
+cell runs production: part after part into slots, with throughput counted, and robots in
+the joint lab move their hand in straight steps (ADR 0019). Next: fields that need a
+path (a doorway, a corridor) rather than a straight drive, a simulated feeder or
+conveyor, and grasping from the cell's camera instead of known positions.

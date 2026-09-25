@@ -12,6 +12,12 @@ MODELS={
 }
 
 
+# Where a registered model's tool point is: a body and an offset in its frame. The Panda's
+# is between its fingertips (as the factory cell grasps); an arm-only model's is the
+# origin of the link its last joint turns, its flange.
+TOOLS={'franka_panda':('hand',(0.,0.,.103))}
+
+
 def asset_root(asset):
     if asset not in MODELS:raise ValueError('Unknown registered robot asset')
     return ROOT.parent/MODELS[asset][0]

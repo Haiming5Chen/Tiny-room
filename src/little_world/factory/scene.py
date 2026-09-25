@@ -15,7 +15,15 @@ def robot_blueprint(asset='franka_panda'):
     bp=blueprint(asset)
     return replace(bp,components=tuple(replace(c,transform=replace(c.transform,position=tuple(v+(TABLE if i==2 else 0) for i,v in enumerate(c.transform.position)))) if isinstance(c,Body) and c.parent is None else c for c in bp.components))
 
-def factory_scene(machine=None,product='Small block',recipe=None):
+STOCK_SHELF=(.25,.80)   # a shelf beside the table holding the parts a production run feeds in
+
+
+def stock_name(i):
+    """The i-th part of a run: 'product' is the one on the input tray, then 'product_2'..."""
+    return 'product' if i==0 else 'product_'+str(i+1)
+
+
+def factory_scene(machine=None,product='Small block',recipe=None,stock=0):
     from .recipe import CellRecipe,TRAYS
     recipe=recipe or CellRecipe(product=product)
     product=recipe.product
@@ -45,4 +53,14 @@ def factory_scene(machine=None,product='Small block',recipe=None):
     parts.append(Camera('overhead','camera_housing',Transform((0,0,-.03)),60))
     size=PRODUCTS[product]
     payload=Body('product',Geometry('box',size),'product',Transform((*recipe.point(recipe.source),TABLE+.008+size[2]/2+.001)),dynamic=True)
-    return Scene((Entity('factory',Blueprint(tuple(parts),palette)),Entity('objects',Blueprint((payload,),palette)),machine or Entity('machine',robot_blueprint())))
+    payloads=[payload]
+    if stock:
+        # The parts waiting for a production run (ADR 0019). The feeder that would bring
+        # each to the input tray is not simulated: the run moves the next one there.
+        sx,sy=STOCK_SHELF
+        box('stock_shelf',(.07*stock+.05,.12,.03),(sx,sy,TABLE-.015),'dark')
+        for i,x in enumerate((sx-.07*(stock-1)/2+.07*k for k in range(stock))):
+            if i in (0,stock-1):box('stock_leg'+str(i),(.03,.03,TABLE-.03),(x,sy,(TABLE-.03)/2),'dark')
+            payloads.append(Body(stock_name(i+1),Geometry('box',size),'product',Transform((x,sy,TABLE+size[2]/2+.001)),dynamic=True))
+    # A sky backdrop instead of the black void round the floor, as the test fields have.
+    return Scene((Entity('factory',Blueprint(tuple(parts),palette)),Entity('objects',Blueprint(tuple(payloads),palette)),machine or Entity('machine',robot_blueprint())),backdrop='sky')

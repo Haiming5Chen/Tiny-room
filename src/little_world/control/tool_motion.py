@@ -22,29 +22,56 @@ class ToolMotion:
     """The tool point of a kit arm, and joint targets that put it somewhere else."""
 
     def __init__(self, backend, blueprint, control, entity='machine'):
+        from little_world.core.component import Body
         self.backend, self.control = backend, control
         self.model, self.data = m, d = backend.model, backend.data
         self.prefix = entity + '/'
         found = modules(blueprint)
         tool = next((x for x in found if x.role == 'tool'), None)
-        if tool is None:
+        robot = next((b for b in blueprint.components if isinstance(b, Body) and b.robot_asset), None)
+        servos = getattr(control, 'servos', {})
+        if tool is not None:
+            self.tool_module = tool
+            self.body = m.body(self.prefix + tool.root).id
+            self.jaws = tuple(tool.actuators)
+        elif robot is not None:
+            # A registered robot model: its tool point is given, its jaws are its gripper servo.
+            from little_world.assets.robot_models import TOOLS, metadata
+            native = self.prefix + robot.id + '__robot_'
+            meta = metadata(robot.robot_asset)
+            name, _ = TOOLS.get(robot.robot_asset, (None, None))
+            if name is None:
+                last = meta.get('servo_joints', meta['joints'])[min(6, len(meta['joints']) - 1)]
+                self.body = int(m.jnt_bodyid[m.joint(native + last).id])
+            else:
+                self.body = m.body(native + name).id
+            self.tool_module = next(x for x in found if x.root == robot.id)
+            self.jaws = tuple(n for n, (_, channel) in servos.items() if channel == 7)
+        else:
             raise ValueError('Tool moves need an arm with a tool module, such as a gripper')
-        self.tool_module = tool
-        self.body = m.body(self.prefix + tool.root).id
         chain, body = set(), self.body
         while body > 0:
             chain.add(body)
             body = int(m.body_parentid[body])
-        # The arm's joints: every position-controlled actuator whose joint moves the tool.
+        # The arm's joints: every position-controlled actuator whose joint moves the tool
+        # (a registered model's gripper servo drives its fingers, not the tool point).
         self.joints = []   # (action id, actuator, qpos address, dof address, lower, upper)
+        joint_ids = []
         for spec in control.specs:
             for name in spec.actuators:
-                if name not in control.channels or name in getattr(control, 'servos', {}):
+                if name not in control.channels:
                     continue
-                joint = int(m.actuator(self.prefix + name).trnid[0])
+                if name in servos:
+                    if servos[name][1] == 7:
+                        continue
+                    joint = m.joint(backend.servo_joint_names[self.prefix + name]).id
+                else:
+                    joint = int(m.actuator(self.prefix + name).trnid[0])
                 if int(m.jnt_bodyid[joint]) in chain:
-                    q, v, lo, hi, _ = control.channels[name]
-                    self.joints.append((spec.id, name, q, v, lo, hi))
+                    low, high = (m.jnt_range[joint] if m.jnt_limited[joint] else (-np.pi, np.pi))
+                    self.joints.append((spec.id, name, int(m.jnt_qposadr[joint]), int(m.jnt_dofadr[joint]),
+                                        float(low), float(high)))
+                    joint_ids.append(joint)
         if not self.joints:
             raise ValueError('No keyboard-bound joint moves the tool: bind the arm first')
         self.qpos = np.array([j[2] for j in self.joints])
@@ -52,21 +79,28 @@ class ToolMotion:
         self.lower = np.array([j[4] for j in self.joints]) + 1e-3
         self.upper = np.array([j[5] for j in self.joints]) - 1e-3
         self.actions = tuple(dict.fromkeys(j[0] for j in self.joints))
-        # The tool point: midway between a gripper's pads, fixed in the tool's own frame.
-        pads = [m.body(self.prefix + b).id for b in tool.bodies if b.endswith('_pad')]
         rotation = d.xmat[self.body].reshape(3, 3)
-        centre = np.mean([d.xpos[p] for p in pads], axis=0) if pads else d.xpos[self.body]
-        self.offset = rotation.T @ (centre - d.xpos[self.body])
+        if tool is not None:
+            # The tool point: midway between a gripper's pads, fixed in the tool's own frame.
+            pads = [m.body(self.prefix + b).id for b in tool.bodies if b.endswith('_pad')]
+            centre = np.mean([d.xpos[p] for p in pads], axis=0) if pads else d.xpos[self.body]
+            self.offset = rotation.T @ (centre - d.xpos[self.body])
+            arm = next((x for x in found if x.role == 'arm' and x.root in set(blueprint_ancestors(found, tool))), None)
+            base = arm.root if arm else found[0].root
+        else:
+            from little_world.assets.robot_models import TOOLS
+            self.offset = np.array(TOOLS.get(robot.robot_asset, (None, (0., 0., 0.)))[1])
+            base = robot.id
         length = np.linalg.norm(self.offset)
-        self.pointing = self.offset / length if length > 1e-3 else np.array((1., 0., 0.))
+        self.pointing = self.offset / length if length > 1e-3 else np.array((0., 0., 1.))
         # The arm's own base frame gives forward and left; up is always up.
-        arm = next((x for x in found if x.role == 'arm' and x.root in {b for b in blueprint_ancestors(found, tool)}), None)
-        self.base = m.body(self.prefix + (arm.root if arm else found[0].root)).id
+        self.base = m.body(self.prefix + base).id
         self.scratch = mj.MjData(m)
         self.jp = np.zeros((3, m.nv))
         self.jr = np.zeros((3, m.nv))
         # The moving part of the arm: everything below its first joint's body.
-        first = int(m.jnt_bodyid[int(m.actuator(self.prefix + self.joints[0][1]).trnid[0])])
+        first = int(m.jnt_bodyid[joint_ids[0]])
+        self.first_joint = joint_ids[0]
         self.moving = {b for b in range(m.nbody) if _below(m, b, first)}
         self.machine = {b for b in range(m.nbody) if m.body(b).name.startswith(self.prefix)}
 
@@ -146,7 +180,7 @@ class ToolMotion:
         singular and a solver started there cannot find which way to fold."""
         first = [seed]
         d = self._pose(seed)
-        joint = int(self.model.actuator(self.prefix + self.joints[0][1]).trnid[0])
+        joint = self.first_joint
         axis = d.xaxis[joint]
         if abs(axis[2]) > .99:
             point, _ = self.tool(d)

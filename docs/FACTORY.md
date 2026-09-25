@@ -41,6 +41,22 @@ actual product lift and final placement. Failure pauses with a reason.
 **Reset cell** restores the product and robot to their initial poses.
 Reset before editing a running or completed cell.
 
+## Production run
+
+**Run 6 parts** places the part on the input tray and then the five waiting on the
+stock shelf beside the table, one after another, each into the next of six slots in the
+destination tray. The feeder that brings each part from the shelf to the input tray is
+not simulated: the run moves the next part onto the tray once the one before has been
+placed and the hand has retracted. Every cycle is otherwise the full physics - grasp by
+finger contact, verified lift, verified placement - and a failure stops the run with its
+reason. Above the scene: parts placed and failed, seconds per part and parts per minute
+of simulated time (about 12.3 s and 4.9 a minute for small blocks). **Reset cell** puts
+every part back ([ADR 0019](adr/0019-factory-production-run.md)).
+
+In the **Joint lab**, the robot controls' **Tool** mode moves the hand in straight steps
+(the Panda's point is between its fingertips; an arm-only model's is its flange), and
+**Teach pose** adds the arm's targets to the program ([ADR 0016](adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md)).
+
 ## How picking works
 
 **How picking works** resets the current cell and opens a contextual explanation.

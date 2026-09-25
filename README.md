@@ -25,7 +25,9 @@ change the design, try again.** A desktop robotics sandbox on
   goals the physics decides: a sprint, a slalom, ramps, curbs, a crate to push, a
   pick-and-place table and a fetch-and-return ([ADR 0013](docs/adr/0013-test-fields.md)).
 - **A pick-and-place cell** where the Panda plans with damped-least-squares IK and
-  lifts by real finger contact - a missed grasp is a failure, not an animation.
+  lifts by real finger contact - a missed grasp is a failure, not an animation. A
+  production run places six parts one after another into slots, counting parts placed,
+  failures and throughput ([ADR 0019](docs/adr/0019-factory-production-run.md)).
 - **Friction from the literature, not from max().** Contact friction is a property
   of a *pair* of surfaces: 26 pairs (rubber on concrete, PTFE on wood, aluminium on
   steel...) with cited kinetic and static coefficients, confidence labels and a
@@ -58,7 +60,7 @@ change the design, try again.** A desktop robotics sandbox on
   iterations stop that without touching real sliding, which also corrected a curb result
   and freed a Menagerie arm grinding against its own base
   ([ADR 0017](docs/adr/0017-friction-that-holds.md)).
-- **576 automated tests**, including OpenGL window tests that drive the interface
+- **582 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -842,9 +844,14 @@ The Panda computes joint targets automatically and grasps through physical finge
 contact. An overhead camera view is available. This first cell uses explicitly
 labeled **known-object sensing**, not image recognition. Drag trays in **Arrange**, then click source and destination in **Set task**.
 **How picking works** explains a real cycle one stage at a time. Save cell and Undo
-preserve your layout and recipe. Robot and camera remain fixed; conveyors and
-arbitrary production lines are future work. The experiment shares the app window with Anime and retains the separate robot
-build when you switch modes. See [Factory](docs/FACTORY.md).
+preserve your layout and recipe. **Run 6 parts** runs the cell as a production run:
+the input tray's part, then five from a stock shelf fed onto the input tray one by one,
+each into its own slot of the destination tray, with parts placed, failures, seconds
+per part and parts per minute counted (the feeder is a teleport, not a mechanism). In the
+**Joint lab**, **Tool** mode moves a robot's hand in straight steps. Robot and camera
+remain fixed; conveyors and arbitrary production lines are future work. The experiment
+shares the app window with Anime and retains the separate robot build when you switch
+modes. See [Factory](docs/FACTORY.md).
 
 
 ## License

@@ -17,6 +17,11 @@ class Stage:
     duration:float
     point:np.ndarray
 
+# Where successive parts go in the destination tray: two rows along the fingers' closing
+# direction, so an open hand lowering a part clears the parts already there (ADR 0019).
+SLOTS=((0.,-.035),(0.,.035),(-.045,-.035),(-.045,.035),(.045,-.035),(.045,.035))
+
+
 class FactoryCycle:
     def __init__(self,backend,source='input'):
         from .recipe import TRAYS
@@ -28,10 +33,13 @@ class FactoryCycle:
         self.qids=np.array([self.model.jnt_qposadr[self.model.joint(self.prefix+'joint'+str(i)).id] for i in range(1,8)])
         self.dofs=np.array([self.model.jnt_dofadr[self.model.joint(self.prefix+'joint'+str(i)).id] for i in range(1,8)])
         self.limits=np.array([self.model.jnt_range[self.model.joint(self.prefix+'joint'+str(i)).id] for i in range(1,8)])
-        self.object_id=self.model.body('objects/product').id
+        self.product='objects/product'
+        self.object_id=self.model.body(self.product).id
+        self.slot=(0.,0.)
+        self.run=None   # a production run in progress, or None
         self.trays={name:self.data.xpos[self.model.body('factory/'+name+'_base').id][:2].copy() for name in TRAYS}
         self.scratch=mj.MjData(self.model)
-        self.state='idle';self.message='Select a product and output bin, then Preview path.'
+        self.state='idle';self.message='Select a product and output tray, then Preview path.'
         self.stages=[];self.index=0;self.elapsed=0.;self.total=0.;self.lift_verified=False
         self.observations=Observations(self.model,self.data)
         self.local_tool=np.array((0.,0.,.103))
@@ -57,13 +65,13 @@ class FactoryCycle:
 
     def plan(self,destination):
         if self.state=='running':raise ValueError('Pause or reset before planning')
-        if destination not in self.trays:raise ValueError('Unknown output bin')
+        if destination not in self.trays:raise ValueError('Unknown output tray')
         if destination==self.source:raise ValueError('Source and destination must differ')
         self.destination=destination
         pick=self.data.xpos[self.object_id].copy();self.initial_height=float(pick[2])
         if np.linalg.norm(pick[:2]-self.trays[self.source])>.07:raise ValueError('Reset the product to the input tray before planning.')
         pick[2]+=.001
-        drop=np.array((*self.trays[destination],pick[2]+.009))
+        drop=np.array((*(self.trays[destination]+np.array(self.slot)),pick[2]+.009))
         above=pick+np.array((0,0,.16));over_bin=drop+np.array((0,0,.16))
         points=(('Approach product',above,255),('Lower to grasp',pick,255),('Close gripper',pick,0),
                 ('Lift and check grasp',above,0),('Transfer to '+destination,over_bin,0),
@@ -92,6 +100,54 @@ class FactoryCycle:
 
     def fail(self,message):
         self.state='failed';self.message=message
+        if self.run is not None and message!=self.run.get('failure'):
+            self.run['failure']=message
+
+    # -- a production run: part after part (ADR 0019) --------------------------------
+
+    def production(self,parts,destination):
+        """Run the cell for each of `parts` (body names) in turn: the first must be on the
+        source tray; each next one is moved there by the feeder, which is not simulated,
+        once the one before has been placed and the hand has retracted. Each part goes to
+        the next slot of the destination bin."""
+        if self.state=='running':raise ValueError('Pause or reset before starting a run')
+        parts=tuple(parts)
+        if not parts or parts[0]!=self.product:raise ValueError('A run starts with the part on the input tray')
+        self.run=dict(parts=parts,done=0,failed=0,times=[],destination=destination,failure=None,started=float(self.data.time))
+        self.slot=SLOTS[0]
+        self.plan(destination);self.start()
+
+    def next_part(self):
+        """The part just placed is counted; the next is fed onto the source tray, planned
+        for the next slot and started."""
+        run=self.run
+        run['done']+=1;run['times'].append(self.total)
+        if run['done']>=len(run['parts']):
+            self.message=f"Run complete: {run['done']} parts placed in the {run['destination']} tray."
+            return
+        if run['done']>=len(SLOTS):
+            self.message=f"The {run['destination']} tray is full after {run['done']} parts.";return
+        self.product='objects/'+run['parts'][run['done']].split('/')[-1]
+        self.object_id=self.model.body(self.product).id
+        joint=self.model.body_jntadr[self.object_id];adr=self.model.jnt_qposadr[joint];dof=self.model.jnt_dofadr[joint]
+        size=self.model.geom_size[next(g for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==self.object_id)]
+        x,y=self.trays[self.source]
+        self.data.qpos[adr:adr+7]=(x,y,TABLE+.008+size[2]+.001,1.,0.,0.,0.)
+        self.data.qvel[dof:dof+6]=0.
+        mj.mj_forward(self.model,self.data)
+        self.slot=SLOTS[run['done']]
+        self.state='idle'
+        self.plan(run['destination']);self.start()
+        self.message=f"Part {run['done']+1} of {len(run['parts'])}: "+self.stages[0].label
+
+    def run_summary(self):
+        """(placed, failed, seconds per part, parts per minute) of the run so far, or None."""
+        run=self.run
+        if run is None:return None
+        per=sum(run['times'])/len(run['times']) if run['times'] else None
+        elapsed=float(self.data.time)-run['started']
+        rate=60*run['done']/elapsed if elapsed>0 and run['done'] else None
+        return run['done'],run['failed'],per,rate
 
     def commands(self,dt):
         if self.state!='running':return {}
@@ -106,7 +162,7 @@ class FactoryCycle:
                 if self.elapsed>stage.duration+2:self.fail('Motion did not reach its target. Reset and inspect the cell.')
                 return result
             pos=self.data.xpos[self.object_id]
-            if self.index==2 and 'objects/product' not in self.observations.grasped():
+            if self.index==2 and self.product not in self.observations.grasped():
                 self.fail('Grasp failed: both fingers did not contact the product.');return result
             if self.index==3:
                 self.lift_verified=bool(pos[2]>self.initial_height+.09)
@@ -114,8 +170,11 @@ class FactoryCycle:
             if self.index==7:
                 x,y=self.trays[self.destination]
                 if abs(pos[0]-x)<.08 and abs(pos[1]-y)<.07 and TABLE<pos[2]<TABLE+.12:
-                    self.state='completed';self.message='Placed in '+self.destination+' bin. Physical lift and placement verified.'
-                else:self.fail('Placement failed: product is outside the selected bin.')
+                    self.state='completed';self.message='Placed in the '+self.destination+' tray. Physical lift and placement verified.'
+                    if self.run is not None:self.next_part()
+                else:
+                    self.fail('Placement failed: product is outside the selected tray.')
+                    if self.run is not None:self.run['failed']+=1
                 return result
             self.index+=1;self.elapsed=0.;self.start_q=stage.target.copy();self.message=self.stages[self.index].label
         return result
