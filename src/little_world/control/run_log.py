@@ -35,6 +35,7 @@ class DriveSample:
     speed: float                # along the machine's forward axis, m/s, signed
     tilt: float                 # degrees from upright
     motors: tuple = ()
+    margin: float | None = None # static tip margin: centre of mass inside the support polygon, m
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ class RunSummary:
     saturated_share: float = 0. # share of the run with any motor at its limit
     slip_share: float = 0.      # share of the run with any driven wheel slipping
     touched: tuple = ()
+    min_margin: float | None = None  # the smallest static tip margin seen, m; None if never standing
 
     @property
     def tipped(self):
@@ -69,6 +71,7 @@ class RunLog:
         self._anchor = None
         self._distance = self._top = self._tilt = self._saturated = self._slipping = 0.
         self._touched = set()
+        self._margin = None
 
     def add(self, sample, touched=()):
         """One displayed frame. A frame at the same simulated time (paused) adds nothing."""
@@ -94,6 +97,8 @@ class RunLog:
         self.samples += 1
         self._top = max(self._top, abs(sample.speed))
         self._tilt = max(self._tilt, sample.tilt)
+        if sample.margin is not None:
+            self._margin = sample.margin if self._margin is None else min(self._margin, sample.margin)
 
     def summary(self):
         if self._last is None:
@@ -107,4 +112,5 @@ class RunLog:
             max_tilt=self._tilt,
             saturated_share=self._saturated / duration if duration > 0 else 0.,
             slip_share=self._slipping / duration if duration > 0 else 0.,
-            touched=tuple(sorted(self._touched)))
+            touched=tuple(sorted(self._touched)),
+            min_margin=self._margin)

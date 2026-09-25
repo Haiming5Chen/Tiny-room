@@ -36,7 +36,15 @@ change the design, try again.** A desktop robotics sandbox on
   its no-load current - and wheels carry rolling resistance from the load they bear
   ([ADR 0011](docs/adr/0011-drivetrain-and-axle-losses.md)). A bare gearmotor
   runs at the rated 330 rpm; a test cart coasts down within 1 % of the closed form.
-- **524 automated tests**, including OpenGL window tests that drive the interface
+- **Arms that hold still on a moving base.** A servo's damping is integrated by the
+  solver instead of applied a step late: the mobile manipulator used to chatter at its
+  torque limits and creep 12 cm while "standing"
+  ([ADR 0014](docs/adr/0014-servo-damping-integrated-implicitly.md)). The build stage
+  reads a machine as modules - base, drives, wheels, supports, arm, tool - and predicts
+  how it stands before it runs: which parts carry it, its tilt and its stance margin,
+  within 0.1 degrees and 1 mm of where the simulator settles
+  ([ADR 0015](docs/adr/0015-machine-structure-and-stance.md)).
+- **546 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -444,7 +452,10 @@ are rejected. The catalog also includes a separate arm link and powered wrist.
 saved controller: `press(key)`, step the world with `step_commands(dt)`, then
 `release(key)`. There is no in-app code editor or sequence editor yet. Portable
 `KeyboardPositionControl` accepts scalar joint observations; the MuJoCo adapter
-adds model bias compensation before clamping commanded motor torque.
+adds model bias compensation before clamping commanded motor torque. Each command is
+a `Torque` that also carries its damping slope (-kd), which the MuJoCo adapter
+integrates implicitly so the damping acts on the speed within the step
+([ADR 0014](docs/adr/0014-servo-damping-integrated-implicitly.md)).
 
 
 ## Gripper options and mobile arms
@@ -455,8 +466,9 @@ then rubber, metal, plastic or wood. The final form sets sliding friction, torqu
 limit per jaw in Nm, and pad length (20–90 mm). Material presets affect contact
 friction, density and appearance. Custom friction belongs to this gripper and does
 not change other rubber wheels or pads. The operation is saved and undoable.
-MuJoCo uses the higher friction coefficient of each contacting material pair.
-Torque is motor strength, not electrical power or a guaranteed grasp force.
+Where both touching surfaces have a sourced pair, that pair's coefficient is used
+([ADR 0010](docs/adr/0010-sourced-contact-pairs.md)); otherwise MuJoCo's larger-of-two
+rule applies. Torque is motor strength, not electrical power or a guaranteed grasp force.
 
 The library includes compact (~244 mm), standard (375 mm) and long (525 mm) arms,
 measured from yaw axis to tool mount at full extension. Geometry, pivots, attachment
@@ -474,6 +486,19 @@ Q/E rotates the base, R/V raises/lowers the shoulder, T/B controls the elbow, Y/
 controls the wrist and G/H closes/opens the gripper. The arm and cart form one
 dynamic assembly: payload and extended reach affect balance. These remain
 illustrative modules, with no calibrated payload rating.
+
+The workbench's **Assembly** tab opens on **Modules**: the cart reads as a base, two
+37 mm drives each carrying a tread wheel, two casters, the arm (keys Q/E R/V T/B Y/N)
+and its gripper (G/H), each with its mass; click one to select it, or switch to
+**Parts** for every body. The Build stage header says how the design will stand -
+"Rests on 2 wheels and 1 support, tilted 2.8 deg; centre of mass 3.4 cm inside" for
+this cart, whose casters sit 6.5 mm above the tread wheels - and the Drive tab shows
+the live stance margin next to the arm's joint angles while it runs
+([ADR 0015](docs/adr/0015-machine-structure-and-stance.md)).
+
+<p align="center">
+  <img src="docs/media/mobile-arm-modules.png" width="80%" alt="The mobile manipulator in the build stage, listed as modules with roles, masses and keys">
+</p>
 
 ## Sourced motor study (not hardware validated)
 

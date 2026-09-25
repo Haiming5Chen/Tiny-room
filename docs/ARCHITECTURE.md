@@ -86,6 +86,14 @@ speed-torque line's slope to the actuator's affine bias wherever the line limits
 command, so MuJoCo's implicitfast integrator follows the line at any inertia. Ideal
 drive modules, swivels and user-made hinges keep the 0.01 N m s damping.
 
+Controllers use the same mechanism for their own damping (ADR 0014). A command may be
+a `core.command.Torque`: a float that also carries its slope with respect to joint
+speed. The position controller returns `Torque(command, -kd)` below its limit and the
+plain limit at it; every kit motor has an affine bias that is zero unless a step gives
+it a slope, so the force is the command at the speed it was computed for and follows
+the speed implicitly within the step. Backends that cannot integrate implicitly treat
+a Torque as the float it is.
+
 The inspection UI uses GLFW input and MuJoCo's renderer directly. It deliberately
 does not install the simulate application's shortcut handler: otherwise drive keys
 also toggle rendering options. This reuses solver/rendering capabilities without
@@ -111,6 +119,13 @@ plus goals judged from the core `State` alone (`fields/goals.py`, standard libra
 lines crossed in order, zones reached or objects delivered at rest, staying upright,
 leaving obstacles undisturbed. `Scene.backdrop` is an appearance hint ('sky') that the
 MuJoCo adapter turns into a gradient skybox and a directional sun.
+
+What the machine is made of is read from the Blueprint alone (ADR 0015,
+`construction/structure.py`, standard library): modules are catalog parts as inserted,
+with roles from the catalog, masses from geometry and density, and the keys bound to
+their motors. The same module computes how the rigid design settles on a level floor -
+which parts carry it, its tilt and its stance margin - and the drive telemetry measures
+that margin from the simulator's supporting contacts during the run.
 
 ## Interactive construction
 

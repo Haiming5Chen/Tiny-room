@@ -65,5 +65,10 @@ where phase 4's first causal chain (surface wetness -> pair friction) enters.
 The builder's test step is now a test drive (ADR 0012): a chase view, live telemetry
 with the motors' sourced limits, the path on the floor, the machine's own camera, and
 a run report compared with the previous run. Seven test fields with goals judged
-from the simulator state followed (ADR 0013). Next for the builder: a clearer structure
-for arms on wheeled platforms, more arm tasks, and the factory cell's rough edges.
+from the simulator state followed (ADR 0013). Checking whether an arm on a wheeled
+base stands found that it could not stand still: servo damping applied a step late
+made every kit arm chatter once disturbed, now integrated by the solver (ADR 0014).
+Machines now read as modules with roles, and their stance is predicted before a run
+and measured during it (ADR 0015). Next for the builder: more arm tasks (moving the
+tool rather than single joints, taught poses, a pick-and-place program that meets the
+field's goals) and the factory cell's rough edges.

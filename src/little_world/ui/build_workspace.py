@@ -22,6 +22,9 @@ class BuildWorkspace(DragDocking):
         self.bench_tree_offset=0
         self.bench_expanded={b.id for b in self.editor.bodies if b.parent is None}
         self.bench_module_pick=True
+        self.assembly_view='Modules'   # the Assembly tab: modules and their roles, or every part
+        self.module_offset=0
+        self._structure=None
         self.bench_offset=0
         self.parts_scroll=0.;self.parts_synced_offset=0
         self.parts_query="";self.parts_focus=False;self.parts_select_all=False
@@ -343,8 +346,12 @@ class BuildWorkspace(DragDocking):
         if not self.part_drag and not self.bench_sockets:
             text('BUILD STAGE / '+state,left+16,122,11,(.68,.82,.84),width-32)
             text('Selected: '+(self.editor.selection or 'none')+' / Replace or Delete above',left+16,143,11,(.52,.67,.72),width-32)
+            text(self.structure_line(),left+16,164,11,(.52,.67,.72),width-32)
+            found,stance,_=self.machine_modules()
+            line=self.stance_words(found,stance)
+            text(line[0].upper()+line[1:],left+16,185,11,(.96,.72,.38) if 'tips over' in line or 'rocks' in line else (.52,.67,.72),width-32)
             last=self.last_run_line()
-            if last:text(last,left+16,164,11,(.96,.72,.38) if self.last_run_troubled() else (.52,.67,.72),width-32)
+            if last:text(last,left+16,206,11,(.96,.72,.38) if self.last_run_troubled() else (.52,.67,.72),width-32)
         text('10 cm grid',ww-106,wh-176,10,(.49,.64,.69))
         self.draw_docking(ui,text,ww,wh)
 
@@ -515,6 +522,7 @@ class BuildWorkspace(DragDocking):
             self.bench_expanded.add(parent)
             parent=bodies[parent].parent
         self.bench_tab='Assembly'
+        self.assembly_view='Parts'
         rows=self.tree_rows()
         self.bench_tree_offset=next(i for i,(b,_,_) in enumerate(rows) if b.id==name)
 
@@ -528,22 +536,66 @@ class BuildWorkspace(DragDocking):
         self.select(name)
         self.bench_target=name
 
+    def machine_modules(self):
+        """Modules and stance of the current design, computed once per revision."""
+        bp=self.editor.blueprint
+        if self._structure is None or self._structure[0] is not bp:
+            from little_world.construction.structure import modules,standing,centre_of_mass
+            self._structure=(bp,modules(bp),standing(bp),centre_of_mass(bp)[0])
+        return self._structure[1:]
+
+    def structure_line(self):
+        """One line on the Build stage: what the machine is made of and how it stands."""
+        found,_,mass=self.machine_modules()
+        from collections import Counter
+        counts=Counter(m.role for m in found if m.role in ('drive','support','arm','tool','sensor'))
+        words={'drive':('drive','drives'),'support':('support','supports'),'arm':('arm','arms'),
+               'tool':('tool','tools'),'sensor':('sensor','sensors')}
+        parts=['base']+[f'{n} {words[r][n>1]}' if n>1 else words[r][0] for r,n in counts.items()]
+        return ' + '.join(parts)+f' / {mass:.2f} kg'
+
+    def stance_words(self,found,stance):
+        """How the design settles on a level floor, in words (ADR 0015)."""
+        if not any(b.dynamic for b in self.editor.bodies if b.parent is None):return 'anchored'
+        if stance is None:return 'nothing to stand on'
+        if stance.tips_over:return 'tips over: its centre of mass is outside anything it can stand on'
+        from collections import Counter
+        from little_world.construction.structure import module_roots
+        owner=module_roots(self.editor.blueprint)
+        roles={m.root:m for m in found}
+        on=Counter()
+        for root in {owner[b] for b in stance.touching}:
+            m=roles.get(root)
+            on[m.role if m and m.role in ('wheel','support','drive','base') else 'other']+=1
+        names={'wheel':('wheel','wheels'),'support':('support','supports'),'drive':('drive','drives'),
+               'base':('base','base'),'other':('other part','other parts')}
+        order=('wheel','drive','support','base','other')
+        feet=' and '.join(f'{on[r]} {names[r][on[r]>1]}' if r!='base' else 'its base' for r in order if on[r])
+        tilt=f', tilted {stance.tilt:.1f} deg' if stance.tilt>=.1 else ''
+        rock='  (rocks easily)' if stance.margin<.01 else ''
+        return f'rests on {feet}{tilt}; centre of mass {100*stance.margin:.1f} cm inside{rock}'
+
     def draw_assembly_tree(self,ui,button,text,left,width,wh):
+        button('Modules',left,140,125,lambda:setattr(self,'assembly_view','Modules'),active=self.assembly_view=='Modules',h=30)
+        button('Parts',left+133,140,125,lambda:setattr(self,'assembly_view','Parts'),active=self.assembly_view=='Parts',h=30)
+        if self.assembly_view=='Modules':
+            self.draw_module_list(ui,button,text,left,width,wh)
+            return
         def search():
             def found(name):
                 self.tree_select(name)
                 self.reveal_in_tree(name)
             self.choose('Find part in assembly',tuple(b.id for b in self.editor.bodies),found)
-        button('Find in assembly',left,140,width,search)
-        button('Collapse all',left,183,125,lambda:self.bench_expanded.clear(),h=26)
-        button('Select parent',left+133,183,125,
+        button('Find in assembly',left,180,width,search,h=28)
+        button('Collapse all',left,214,125,lambda:self.bench_expanded.clear(),h=26)
+        button('Select parent',left+133,214,125,
                lambda:self.tree_select(self.editor.selected.parent),
                self.editor.selected is not None and self.editor.selected.parent is not None,h=26)
         rows=self.tree_rows()
-        visible=max(1,int((wh-350)/32))
+        visible=max(1,int((wh-380)/32))
         self.bench_tree_offset=min(self.bench_tree_offset,max(0,len(rows)-visible))
         for i,(body,depth,has_children) in enumerate(rows[self.bench_tree_offset:self.bench_tree_offset+visible]):
-            y=230+i*32
+            y=250+i*32
             indent=min(depth,5)*10
             if has_children:
                 button('-' if body.id in self.bench_expanded else '+',left+indent,y,24,
@@ -553,6 +605,31 @@ class BuildWorkspace(DragDocking):
         button('<',left,wh-100,48,lambda:setattr(self,'bench_tree_offset',max(0,self.bench_tree_offset-visible)),self.bench_tree_offset>0)
         button('>',left+width-48,wh-100,48,lambda:setattr(self,'bench_tree_offset',min(max(0,len(rows)-visible),self.bench_tree_offset+visible)),self.bench_tree_offset+visible<len(rows))
         text(f'{len(self.editor.bodies)} parts',left+63,wh-91,12,(.6,.73,.76))
+
+    def draw_module_list(self,ui,button,text,left,width,wh):
+        """The machine as modules - base, drives, wheels, supports, arm, tool - with their
+        roles, keys and masses. Clicking one selects its root, as Pick: component does."""
+        found,_,mass=self.machine_modules()
+        text('WHAT THIS MACHINE IS MADE OF',left+4,182,11,(.6,.74,.77),width)
+        row=46;top=202
+        visible=max(1,int((wh-top-110)/row))
+        self.module_offset=min(self.module_offset,max(0,len(found)-visible))
+        owner=self.bench_module(self.editor.selection) if self.editor.selection else None
+        for i,m in enumerate(found[self.module_offset:self.module_offset+visible]):
+            y=top+i*row
+            indent=min(m.depth,4)*12
+            button('',left+indent,y,width-indent,lambda r=m.root:self.tree_select(r),
+                   active=m.root in (self.editor.selection,owner),h=row-4)
+            self.buttons[-1].label=m.title
+            text(m.role.upper(),left+indent+8,y+5,10,(.37,.83,.69))
+            text(m.title,left+indent+8+ui.width(m.role.upper(),10)+8,y+3,12,max_width=width-indent-24-ui.width(m.role.upper(),10))
+            keys='  '.join(f'{p}/{n}' for _,p,n in m.keys)
+            weight='mass in its model file' if m.mass is None else f'{m.mass:.2f} kg'
+            detail=weight+(f'  /  keys {keys}' if keys else '')+(f'  /  {len(m.actuators)} motor'+('s' if len(m.actuators)>1 else '') if m.actuators and not keys else '')
+            text(detail,left+indent+8,y+22,10,(.6,.73,.76),width-indent-16)
+        button('<',left,wh-100,48,lambda:setattr(self,'module_offset',max(0,self.module_offset-visible)),self.module_offset>0)
+        button('>',left+width-48,wh-100,48,lambda:setattr(self,'module_offset',min(max(0,len(found)-visible),self.module_offset+visible)),self.module_offset+visible<len(found))
+        text(f'{len(found)} modules / {mass:.2f} kg',left+60,wh-91,12,(.6,.73,.76))
 
     def bench_filter(self,hardware):
         self.bench_hardware=hardware

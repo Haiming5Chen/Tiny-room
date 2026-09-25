@@ -11,6 +11,7 @@ from little_world.core.component import Body, Motor
 from .run_log import DriveSample, MotorSample
 
 SATURATED = .98   # delivering at least this share of what is available counts as at the limit
+UPWARD = .7       # a contact whose normal is within 45 degrees of vertical holds the machine up
 
 
 def display_name(body_name):
@@ -43,6 +44,10 @@ class DriveTelemetry:
             self.channels.append((label, m.actuator(name).id, dof, limit, radius, profile, lateral))
         self.assist = min((settings.max_speed for settings in drive.groups), default=None)
         self._machine = np.array([m.body(i).name.startswith(prefix) for i in range(m.nbody)])
+        # Only a free machine can tip; a base bolted to the world has no tip margin.
+        self._free = self.root >= 0 and any(
+            m.jnt_type[m.body_jntadr[self.root] + k] == mj.mjtJoint.mjJNT_FREE
+            for k in range(m.body_jntnum[self.root]))
         self._names = [display_name(m.body(i).name) for i in range(m.nbody)]
 
     def sample(self):
@@ -76,7 +81,36 @@ class DriveTelemetry:
                                       None if profile is None else profile.no_load_rpm,
                                       torque, available, saturated,
                                       abs(speed * radius) - abs(ground)))
-        return DriveSample(float(d.time), tuple(float(v) for v in centre), forward, tilt, tuple(motors))
+        return DriveSample(float(d.time), tuple(float(v) for v in centre), forward, tilt, tuple(motors),
+                           self.margin(centre))
+
+    def support(self):
+        """Contact points, over the floor plane, where the machine is held up from below."""
+        m, d = self.backend.model, self.backend.data
+        points = []
+        for i in range(d.ncon):
+            contact = d.contact[i]
+            if contact.dist > 0 or abs(float(contact.frame[2])) < UPWARD:
+                continue
+            a, b = int(m.geom_bodyid[contact.geom1]), int(m.geom_bodyid[contact.geom2])
+            if self._machine[a] != self._machine[b]:
+                points.append((float(contact.pos[0]), float(contact.pos[1])))
+        return points
+
+    def margin(self, centre):
+        """Static tip margin: how far the centre of mass is inside the polygon of the
+        machine's supporting contacts, in metres; negative outside; None off the ground.
+        It ignores acceleration, so hard braking can tip a machine with margin left."""
+        if self.root < 0 or not self._free:
+            return None
+        points = self.support()
+        if not points:
+            return None
+        from little_world.construction.structure import area, hull, margin
+        polygon = hull([(round(x, 5), round(y, 5)) for x, y in points])
+        if len(polygon) < 3 or area(polygon) < 1e-4:
+            return None     # on one wheel or an edge: no stance to measure
+        return margin(polygon, (float(centre[0]), float(centre[1])))
 
     def centre(self):
         """The machine's centre of mass, where the chase view looks."""

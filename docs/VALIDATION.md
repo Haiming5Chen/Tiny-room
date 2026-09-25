@@ -546,3 +546,64 @@ in the report. Full display-enabled suite: **524 passed**.
 Not claimed: the props are test props, not standard courses; goals judge body
 positions (a line is crossed when any body is past it within the gate), not contact
 patches; fields are not randomised; inventory trials still run in the workshop room.
+
+## Servo damping integrated implicitly — 2026-09-25
+
+See ADR 0014. Found while checking whether the mobile manipulator stands: with its
+drive holding zero and every arm target unchanged it could not stand still. Measured
+over the last 1.5 s of 3 s on the sprint field's concrete, same gains and designs:
+
+| Case | Explicit damping (before) | Implicit (after) |
+| --- | --- | --- |
+| Mobile manipulator standing, arm held | arm at its torque limits 70 % of steps, elbow 17 deg off, base rocking 5.4 deg, crept 12 cm | 0 %, 0.0 deg, 0.00 deg, no creep |
+| Compact arm kit, 0.2 rad/s nudge on every joint | 75 % at limits, 21 deg off | 0 %, 0.0 deg |
+| Standard arm (arm lab), same nudge | 21 %, 7.0 deg off | 0 %, 0.0 deg |
+| Long-reach arm kit, same nudge | 0 %, 0.23 deg | 0 %, 0.23 deg |
+| Arm lab keyboard pickup (G, R, hold) | cube lifted 12.1 cm | 14.4 cm |
+
+The spectral radius of the step-to-step damping map (1 - dt M^-1 Kd) predicts which
+arms chatter: 44 compact kit, 25 mobile manipulator, 5.0 standard arm, 1.00 long reach;
+the implicit map's is below 1 for all of them. MuJoCo was also checked to keep an
+actuator's velocity derivative when a force range clamps the force (a pendulum with a
+-1000 N m s/rad bias clamped at 0.01 N m fell 5 degrees in 0.5 s instead of 178), which
+is why a saturated command carries no slope instead of relying on a force range.
+
+Checks in `tests/test_servo_damping.py` (10): a Torque is a float whose slope survives
+only a clamp that does not bind; positive or non-finite slopes are refused; the
+controller reports -kd below its limit and nothing at it; the actuator delivers exactly
+the command at the speed it was computed for and leaves no slope behind; a nudged arm
+settles back; the mobile manipulator stands within 0.1 degrees and 2 mm; a saturated
+servo carries no slope; a sourced motor's line takes precedence. Cost: arm lab step
+164 -> 170 us, mobile manipulator 1215 -> 1156 us (it no longer chatters).
+
+Not claimed: the controller's stiffness and gravity feed-forward are still sampled once
+per step, and servo rotor inertia is still not modelled.
+
+## Machine structure and stance — 2026-09-25
+
+See ADR 0015. Module masses sum to MuJoCo's compiled subtree masses to 1e-9 and the
+design-pose centre of mass matches MuJoCo's for the arm lab, the mobile platform and
+the mobile manipulator. The stance computed from the design before a run against the
+simulator after 1.5 s:
+
+| Machine | Predicted rest | Simulated rest |
+| --- | --- | --- |
+| Mobile manipulator (arm at design pose) | wheels + front caster, 2.84 deg, margin 3.37 cm | 2.8 deg, 3.4 cm |
+| Mobile platform | two tread patches, 0.0 deg, margin 0.33 cm ("rocks easily") | rocked onto its front caster, 2.6 deg, 0.7 cm |
+| Arm lab | its pedestal, margin 4.9 cm, but anchored | anchored |
+
+During a run the Drive tab's margin follows the arm: raising the manipulator's shoulder
+27 degrees and driving took it from 3.4 to 2.1 cm. Checks in `tests/test_structure.py`
+(12): hull and signed margin geometry; a cube stands flat and one leaning past its edge
+tips over; a rocker settles onto the side its centre of mass is on, at the exact angle
+and margin; module roles, parents, keys and full body coverage for the mobile
+manipulator, the arm lab and the bare cart; masses and centre of mass against MuJoCo;
+the predicted stance against the settled simulation; and a window test opens the
+Assembly tab on Modules, reads the header lines, selects the arm module by clicking it
+and switches to Parts. Two window tests that waited on the wall clock (1.5 s and 4 s of
+driving) now wait on simulated progress: at full frame rate 1.5 s of window time had
+become enough for the platform to reach the room's pickup stand. Full display-enabled
+suite: **546 passed**.
+
+Not claimed: the stance is static and rigid (no acceleration, joints locked at the
+design pose, level rigid floor); roles come from the catalog.

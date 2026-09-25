@@ -315,9 +315,13 @@ class TestDrive:
     # -- drawing ----------------------------------------------------------------------
 
     def draw_test_drive_panel(self, ui, button, text, section, ww, wh):
-        """The Drive tab while physics runs, below the tab row."""
+        """The Drive tab while physics runs, below the tab row. Sections are laid out
+        top to bottom and a section that would not fit is left out, so a mobile
+        manipulator in a field with goals still shows its goals and its arm."""
         s = self.drive_sample
         drive = bool(self.telemetry and self.telemetry.channels)
+        arm = tuple(self.joint_control.specs) if hasattr(self.joint_control, 'specs') else ()
+        bottom = wh - 92
         top = 120
         section('TEST DRIVE' if drive else 'RUNNING', top)
         elapsed = 0. if s is None else s.time
@@ -328,20 +332,30 @@ class TestDrive:
         text('m/s', 22 + ui.width(number, 30), top + 50, 14, MUTED)
         summary = self.run_log.summary() if self.run_log is not None else None
         heading = 'forward' if speed > .05 else 'reverse' if speed < -.05 else 'standing'
+        y = top + 78
         if summary is not None:
-            text(f'{heading}  /  top {summary.top_speed:.2f} m/s', 16, top + 78, 12)
             tilt = 0. if s is None else s.tilt
-            text(f'{summary.distance:.2f} m driven  /  tilt {tilt:.0f} deg', 16, top + 98, 12,
-                 WARN if tilt > 20 else (.86, .90, .93))
+            text(f'{heading}  /  top {summary.top_speed:.2f} m/s  /  tilt {tilt:.0f} deg', 16, y, 12,
+                 WARN if tilt > 20 else (.86, .90, .93), 256)
+            stance = None if s is None else s.margin
+            stance_text = ('stance: rocking on one line of support' if stance is None else
+                           f'stance margin {100 * stance:.1f} cm' + ('  (tipping)' if stance < 0 else ''))
+            text(f'{summary.distance:.2f} m driven  /  ' + stance_text, 16, y + 20, 12,
+                 WARN if stance is not None and stance < .01 else (.86, .90, .93), 256)
+            y += 40
         touching = ', '.join(sorted(self.drive_touching))
-        text('touching: ' + touching if touching else 'touching nothing', 16, top + 118, 12,
-             WARN if touching else MUTED, 256)
-        y = top + 146
-        if drive:
+        text('touching: ' + touching if touching else 'touching nothing', 16, y, 12, WARN if touching else MUTED, 256)
+        y += 28
+        if self.goal_tracker is not None:
+            section('GOALS  /  ' + self.field_title(), y)
+            y = self.draw_goal_lines(text, self.goal_tracker.results(), y + 20, bottom) + 8
+        if drive and s is not None and y + 20 + 36 <= bottom:
             section('MOTORS  /  speed and torque', y)
             y += 20
-            compact = len(s.motors) > 2 if s else False
-            for motor in (s.motors if s else ()):
+            compact = len(s.motors) > 2 or bool(arm)
+            for motor in s.motors:
+                if y + (30 if compact else 36) > bottom:
+                    break
                 rpm = abs(motor.rpm)
                 limit = f' of {motor.no_load_rpm:g}' if motor.no_load_rpm else ''
                 text(f'{motor.name.title()}  {rpm:.0f}{limit} rpm', 16, y, 12 if compact else 13, max_width=150)
@@ -355,15 +369,33 @@ class TestDrive:
                 ui.rect(148, bar_y, 124, 5, (.14, .19, .23))
                 ui.rect(148, bar_y, 124 * load, 5, WARN if motor.saturated else (.55, .66, .72))
                 y += 30 if compact else 36
-            if s and any(m.saturated for m in s.motors):
-                text('A motor is giving all it can.', 16, y, 11, WARN)
-                y += 16
-            if s and any(m.slipping for m in s.motors):
-                worst = max(m.slip for m in s.motors)
-                text(f'Wheels slipping: tread {worst:.2f} m/s faster than the floor.', 16, y, 11, WARN, 256)
-                y += 16
-            limit, source, alone = self.telemetry.speed_limit()
+            for warning, show in (('A motor is giving all it can.', any(m.saturated for m in s.motors)),
+                                  ('Wheels slipping: the treads outrun the floor.', any(m.slipping for m in s.motors))):
+                if show and y + 16 <= bottom:
+                    text(warning, 16, y, 11, WARN, 256)
+                    y += 16
             y += 8
+        if arm and y + 20 + 18 <= bottom:
+            section('ARM  /  keys and joint angles', y)
+            y += 20
+            for spec in arm:
+                if y + 18 > bottom:
+                    break
+                values = []
+                for name in spec.actuators[:2]:
+                    try:
+                        value, unit = self.joint_control.display_position(name)
+                    except (KeyError, AttributeError):
+                        continue
+                    values.append(f'{round(value):d}' + (' deg' if unit == 'deg' else ' %'))  # no "-0"
+                text(f'{spec.positive_key}/{spec.negative_key}', 16, y, 12, ACCENT)
+                text(spec.label or spec.id, 58, y, 12, (.86, .90, .93), 140)
+                reading = ' / '.join(values)
+                text(reading, 272 - ui.width(reading, 11), y + 1, 11, MUTED)
+                y += 18
+            y += 8
+        if drive and y + 58 <= bottom:
+            limit, source, alone = self.telemetry.speed_limit()
             section('WHAT SETS THE TOP SPEED', y)
             if source == 'drive assist':
                 text(f'Drive assist setting: {limit:.2f} m/s', 16, y + 20, 12)
@@ -373,17 +405,14 @@ class TestDrive:
                 text(f'Motor no-load speed: {limit:.2f} m/s', 16, y + 20, 12)
                 text('Datasheet speed at the wheel; load lowers it', 16, y + 38, 11, MUTED, 256)
             y += 66
-            if self.goal_tracker is None:
-                section('KEYS', y)
+        if self.goal_tracker is None and y + 58 <= bottom:
+            section('KEYS', y)
+            if drive:
                 text('W / S drive    A / D turn    P pause', 16, y + 20, 12, max_width=256)
                 text('F chase or room view    Enter stop', 16, y + 38, 12, max_width=256)
-        elif self.goal_tracker is None:
-            section('KEYS', y)
-            text('Operate or Program move the joints.', 16, y + 20, 12, max_width=256)
-            text('P pause    Enter stop', 16, y + 38, 12, max_width=256)
-        if self.goal_tracker is not None:
-            section('GOALS  /  ' + self.field_title(), y)
-            self.draw_goal_lines(text, self.goal_tracker.results(), y + 20, wh - 92)
+            else:
+                text('Operate or Program move the joints.', 16, y + 20, 12, max_width=256)
+                text('P pause    Enter stop', 16, y + 38, 12, max_width=256)
         button('Stop and redesign', 12, wh - 78, 264, self.stop_and_redesign, tone='danger')
 
     def draw_goal_lines(self, text, results, y, bottom):
@@ -410,10 +439,15 @@ class TestDrive:
              16, 186, 12, WARN if r.tipped else (.86, .90, .93), 256)
         text(f'wheels slipping {100 * r.slip_share:.0f} % of the time', 16, 206, 12,
              WARN if r.slip_share > .1 else (.86, .90, .93), 256)
+        y = 226
+        if r.min_margin is not None:
+            text(f'lowest stance margin {100 * r.min_margin:.1f} cm' + ('  (near tipping)' if r.min_margin < .01 else ''),
+                 16, y, 12, WARN if r.min_margin < .01 else (.86, .90, .93), 256)
+            y += 20
         touched = ', '.join(r.touched)
-        text('touched: ' + touched if touched else 'touched nothing', 16, 226, 12,
+        text('touched: ' + touched if touched else 'touched nothing', 16, y, 12,
              WARN if touched else MUTED, 256)
-        y = 248
+        y += 22
         if r.tipped:
             text('It tipped over.', 16, y, 12, WARN)
             y += 20
