@@ -104,7 +104,9 @@ def test_real_profiles_produce_different_native_speed_limits():
     from little_world.core.scene import Scene
     from little_world.physics.mujoco_backend import MujocoBackend
     speeds=[]
-    for profile in PROFILES.values():
+    # The two ROBOTIS servos this was written for. The Pololu gearmotors (ADR 0011) spin
+    # 30x faster and are checked against their own free speed in test_drivetrain.
+    for profile in (PROFILES['XH430-W210 / 12 V'],PROFILES['XH430-W350 / 12 V']):
         cap=profile.stall_torque*.3
         bp=Blueprint((Body('rotor',Geometry('box',(.1,.1,.1)),'metal'),
                       Hinge('joint','rotor',damping=0),Motor('motor','joint',cap,profile)),(METAL,))

@@ -7,8 +7,24 @@ from little_world.core.state import State, BodyState, DeferredBodyStates
 from little_world.assets.textures import TEXTURES, SIZE, texture_bytes
 from little_world.materials import surface_of
 from little_world.materials import contact_pairs
+from little_world.materials import rolling
 
 _IMPLICIT = (mj.mjtIntegrator.mjINT_IMPLICIT, mj.mjtIntegrator.mjINT_IMPLICITFAST)
+
+# MuJoCo's dry friction (frictionloss) is a soft constraint. Until the damping it asks
+# for reaches the friction bound it acts as a damper, so a joint loaded below its
+# friction creeps and a coasting one stops late - by how much depends on the inertia
+# behind it. Sourced friction (ADR 0011) gets the stiffest settings MuJoCo accepts: a
+# reference time constant of two steps and impedance 0.9999 (mjMAXIMP). Measured on a
+# Pololu 37D output driving a 2.2e-4 kg m^2 disc, against MuJoCo's defaults: coast-down
+# from no-load speed 0.145 s, as Coulomb friction predicts (0.213 s); under 80 % of the
+# friction torque it holds (crept 0.20 rad in 1 s); a bare output shaft runs at the
+# datasheet's 330 rpm (3.7 % fast). Joints without sourced friction keep the defaults.
+DRY_FRICTION_SOLIMP = (.9999, .9999, .001, .5, 2.)
+
+
+def dry_friction_solref(timestep):
+    return (2 * timestep, 1.)
 
 
 def _fwd_position(m, d, contact_hook):
@@ -50,6 +66,106 @@ def apply_pair_friction(d, geom_surface, pair_mu):
         d.contact.friction[sourced, :2] = mu[sourced, None]
 
 
+_WHEEL_SHAPES = (mj.mjtGeom.mjGEOM_CYLINDER, mj.mjtGeom.mjGEOM_SPHERE)
+_RING_GAP = np.pi / 4    # a tread ring leaves no gap wider than this around its axle
+_RADIAL = .95            # a rolling contact's normal points at the axle, within 18 degrees
+
+
+def _rolling_tables(model, pose, geom_surfaces):
+    """Which geoms are wheel treads, and the hinge each one rolls on.
+
+    A geom is a tread when its surface has a sourced rolling lever arm, it is rigidly
+    part of a body whose only joint is a hinge, and it is shaped like a wheel about
+    that hinge: a cylinder on the axis, a sphere centred on it, or one element of a
+    ring of same-surface elements around it with no gap wider than 45 degrees (the
+    tread blocks of a tread wheel). A rubber gripper pad on a hinged finger is not a
+    tread, although it presses on things. `pose` is any MjData after kinematics: only
+    positions relative to the hinge matter, and those are rigid. None when nothing in
+    the scene has a tread - then no joint loss is ever written and the step is untouched.
+    """
+    b = np.zeros(model.ngeom)
+    for name, surface in geom_surfaces.items():
+        b[model.geom(name).id] = rolling.lever_arm(surface)
+    g = np.flatnonzero(b)
+    body = model.body_weldid[model.geom_bodyid[g]]
+    j = model.body_jntadr[body]
+    hinged = (body > 0) & (model.body_jntnum[body] == 1)
+    hinged[hinged] = model.jnt_type[j[hinged]] == mj.mjtJoint.mjJNT_HINGE
+    g, j = g[hinged], j[hinged]
+    joint = np.full(model.ngeom, -1, dtype=np.intp)
+    if g.size:
+        axis = pose.xaxis[j]
+        offset = pose.geom_xpos[g] - pose.xanchor[j]
+        radial = offset - np.einsum("ij,ij->i", offset, axis)[:, None] * axis
+        centred = np.linalg.norm(radial, axis=1) < 1e-3
+        along = np.abs(np.einsum("ij,ij->i", pose.geom_xmat[g].reshape(-1, 3, 3)[:, :, 2], axis))
+        kind = model.geom_type[g]
+        wheel = centred & ((kind == mj.mjtGeom.mjGEOM_SPHERE) |
+                           (np.isin(kind, _WHEEL_SHAPES) & (along > .996)))
+        joint[g[wheel]] = j[wheel]
+        rim = ~centred
+        if rim.any():
+            a, r = axis[rim], radial[rim]
+            reference = np.where(np.abs(a[:, :1]) < .9, (1., 0., 0.), (0., 1., 0.))
+            e1 = np.cross(a, reference)
+            e1 /= np.linalg.norm(e1, axis=1)[:, None]
+            angle = np.arctan2(np.einsum("ij,ij->i", np.cross(a, e1), r), np.einsum("ij,ij->i", e1, r))
+            members, hinge, arm = g[rim], j[rim], b[g[rim]]
+            for key in {(int(h), float(x)) for h, x in zip(hinge, arm)}:
+                ring = (hinge == key[0]) & (arm == key[1])
+                angles = np.sort(angle[ring])
+                if np.diff(np.r_[angles, angles[0] + 2 * np.pi]).max() <= _RING_GAP:
+                    joint[members[ring]] = key[0]
+    rolls = joint >= 0
+    if not rolls.any():
+        return None
+    dofs = np.unique(model.jnt_dofadr[joint[rolls]])
+    return dict(b=np.where(rolls, b, 0.), tread=rolls, joint=joint, dofs=dofs,
+                root=model.body_rootid[model.geom_bodyid], force=np.zeros(6))
+
+
+def apply_rolling_resistance(m, d, tables, base):
+    """Set each wheel hinge's dry friction to b * N for the step that follows.
+
+    N is the normal force the solver has just found at that wheel's tread contacts
+    with anything outside its own machine. Only rolling contacts count: the contact
+    normal has to point at the axle (within 18 degrees), so a caster's swivel, a
+    wheel's side face against a wall and a tread block's flank against a kerb are not
+    charged. MuJoCo applies the loss as frictionloss, a constraint - a stopped wheel
+    is held, not jittered - with the stiff parameters set at compile time. A handful
+    of contacts qualify in any scene, so they are handled one by one in plain Python.
+    """
+    loss = base.copy()
+    if d.ncon:
+        tread, root = tables["tread"], tables["root"]
+        con = d.contact
+        geoms = con.geom
+        hit = tread[geoms]
+        rows = np.flatnonzero(hit[:, 0] | hit[:, 1])
+        if rows.size:
+            b, joint, dofadr, f6 = tables["b"], tables["joint"], m.jnt_dofadr, tables["force"]
+            pos, frame, xaxis, xanchor = con.pos, con.frame, d.xaxis, d.xanchor
+            for i in rows.tolist():
+                pair = geoms[i].tolist()
+                for side in (0, 1):
+                    g, other = pair[side], pair[1 - side]
+                    if not tread[g] or root[g] == root[other]:
+                        continue
+                    j = joint[g]
+                    ax, ay, az = xaxis[j].tolist()
+                    px, py, pz = (pos[i] - xanchor[j]).tolist()
+                    along_axis = px * ax + py * ay + pz * az
+                    rx, ry, rz = px - along_axis * ax, py - along_axis * ay, pz - along_axis * az
+                    nx, ny, nz = frame[i, :3].tolist()
+                    toward = nx * rx + ny * ry + nz * rz
+                    if toward * toward < _RADIAL * _RADIAL * (rx * rx + ry * ry + rz * rz):
+                        continue
+                    mj.mj_contactForce(m, d, i, f6)
+                    loss[dofadr[j]] += b[g] * max(f6[0], 0.)
+    dofs = tables["dofs"]
+    m.dof_frictionloss[dofs] = loss[dofs]
+
+
 def staged_forward(m, d, contact_hook, energy_sensor=False):
     _fwd_position(m, d, contact_hook)
     _after_position(m, d, energy_sensor)
@@ -84,6 +200,9 @@ class MujocoBackend:
         self._pair_mu = None
         self._any_sourced = False
         self._energy_sensor = False
+        self._base_frictionloss = None
+        self._roll = None  # rolling-resistance tables, or None when nothing rolls on a sourced tread
+        self._profiled = np.zeros(0, dtype=np.intp)  # actuators whose speed-torque line is implicit
 
     def compile(self, scene, timestep):
         positive(timestep, "timestep")
@@ -102,6 +221,8 @@ class MujocoBackend:
         spec.worldbody.add_light(pos=(0, 0, 4), dir=(0, 0, -1), diffuse=(.8, .8, .8))
         body_names, motor_names, camera_names = [], [], []
         geom_surfaces = {}  # native geom name -> sourced surface ID
+        spec_joints = {}  # native joint name -> MjSpec joint, for gearbox friction
+        geared = []  # native joints carrying a gearmotor's sourced friction
         profiles={}
         robots=[]
         servo_names={}
@@ -177,9 +298,10 @@ class MujocoBackend:
                 add_body(name)
             for c in bp.components:
                 if isinstance(c, Hinge):
-                    native[c.body].add_joint(name=prefix + c.id, type=mj.mjtJoint.mjJNT_HINGE,
-                                              axis=c.axis, pos=c.position, damping=c.damping,
-                                              limited=c.limits is not None, range=c.limits or (0., 0.))
+                    spec_joints[prefix + c.id] = native[c.body].add_joint(
+                        name=prefix + c.id, type=mj.mjtJoint.mjJNT_HINGE,
+                        axis=c.axis, pos=c.position, damping=c.damping,
+                        limited=c.limits is not None, range=c.limits or (0., 0.))
                 elif isinstance(c, Camera):
                     native[c.body].add_camera(name=prefix + c.id, pos=c.transform.position,
                                               quat=c.transform.quaternion, fovy=c.fovy)
@@ -189,12 +311,24 @@ class MujocoBackend:
                     native_name=prefix+c.body+'__robot_'+metadata(bodies[c.body].robot_asset)['actuators'][c.channel]
                     servo_names[prefix+c.id]=(native_name,c.channel)
                 elif isinstance(c, Motor):
+                    # A sourced motor's affine bias starts at zero and stays there until
+                    # its speed-torque line binds; step() then writes the line's slope so
+                    # the integrator follows the line implicitly (ADR 0011).
                     spec.add_actuator(name=prefix + c.id, target=prefix + c.joint,
                                       trntype=mj.mjtTrn.mjTRN_JOINT, gear=(1, 0, 0, 0, 0, 0),
                                       ctrllimited=True, ctrlrange=(-c.max_torque, c.max_torque),
-                                      gainprm=(1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+                                      gainprm=(1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                                      biastype=(mj.mjtBias.mjBIAS_NONE if c.profile is None
+                                                else mj.mjtBias.mjBIAS_AFFINE))
                     motor_names.append(prefix + c.id)
                     if c.profile is not None:profiles[prefix+c.id]=c.profile
+            # A sourced gearmotor's own friction (brushes, bearings, gears), referred to
+            # its output shaft from the datasheet's no-load current (ADR 0011). It is there
+            # whether or not the motor is powered: back-driving a gearbox costs torque.
+            for c in bp.components:
+                if isinstance(c, Motor) and c.profile is not None and c.profile.friction_torque:
+                    spec_joints[prefix + c.joint].frictionloss += c.profile.friction_torque
+                    geared.append(prefix + c.joint)
         # Build before replacing a working runtime: failed compile is transactional.
         model = spec.compile()
         data = mj.MjData(model)
@@ -213,11 +347,23 @@ class MujocoBackend:
             pair_mu[index[a], index[b]] = pair_mu[index[b], index[a]] = pair.kinetic
         energy_sensor = bool(np.isin(model.sensor_type, (mj.mjtSensor.mjSENS_E_POTENTIAL,)).any())
         # Local tables until the swap below, so a failure here leaves the old runtime whole.
+        geared_dofs = [int(model.jnt_dofadr[model.joint(name).id]) for name in geared]
+        if geared_dofs:
+            model.dof_solref[geared_dofs] = dry_friction_solref(timestep)
+            model.dof_solimp[geared_dofs] = DRY_FRICTION_SOLIMP
         staged_forward(model, data, lambda m, d: apply_pair_friction(d, geom_surface, pair_mu),
                        energy_sensor)
+        # Wheels carry no rolling loss yet, so their friction settings could not have
+        # mattered to the forward pass above.
+        roll = _rolling_tables(model, data, geom_surfaces)
+        if roll is not None:
+            model.dof_solref[roll["dofs"]] = dry_friction_solref(timestep)
+            model.dof_solimp[roll["dofs"]] = DRY_FRICTION_SOLIMP
         self.close()
         self._geom_surface, self._pair_mu, self._energy_sensor = geom_surface, pair_mu, energy_sensor
         self._any_sourced = bool(geom_surfaces)
+        self._base_frictionloss = model.dof_frictionloss.copy()
+        self._roll = roll
         self.model, self.data = model, data
         self._body_ids = {n: model.body(n).id for n in body_names}
         self._motor_ids = {n: model.actuator(n).id for n in motor_names}
@@ -239,7 +385,13 @@ class MujocoBackend:
             for i in range(1,model.nbody):
                 if model.body(i).name.startswith(native_prefix):
                     self.robot_owners[model.body(i).name]=native_prefix.split(name+'__robot_')[0]+name
-        self._motor_profiles={self._motor_ids[n]:(p,int(model.jnt_dofadr[model.actuator_trnid[self._motor_ids[n],0]])) for n,p in profiles.items()}
+        self._motor_profiles={}
+        for n,p in profiles.items():
+            dof=int(model.jnt_dofadr[model.actuator_trnid[self._motor_ids[n],0]])
+            # The most one step of this motor alone can add to its joint's speed, per
+            # N m: timestep / inertia, with MuJoCo's inertia estimate at the design pose.
+            self._motor_profiles[self._motor_ids[n]]=(p,dof,float(model.opt.timestep*model.dof_invweight0[dof]))
+        self._profiled=np.array(sorted(self._motor_profiles),dtype=np.intp)
 
     def _ready(self):
         if self.model is None:
@@ -276,6 +428,7 @@ class MujocoBackend:
         if unknown:
             raise ValueError(f"unknown actuators: {sorted(unknown)}")
         controls = np.zeros(self.model.nu)
+        bias = np.zeros((self.model.nu, 2))
         controls[self._servo_ids]=self.data.ctrl[self._servo_ids]
         for name, value in commands.items():
             if not isfinite(value):
@@ -285,11 +438,21 @@ class MujocoBackend:
             if self.model.actuator_ctrllimited[idx] and not low <= value <= high:
                 raise ValueError(f"{name} command outside [{low}, {high}]")
             if idx in self._motor_profiles:
-                profile,dof=self._motor_profiles[idx]
-                value=profile.constrain(value,float(self.data.qvel[dof]),high)
+                profile,dof,per_newton_metre=self._motor_profiles[idx]
+                velocity=float(self.data.qvel[dof])
+                slope=profile.slope(value,velocity,high,reach=abs(high)*per_newton_metre)
+                value=profile.constrain(value,velocity,high)
+                # Force = value + slope * (v - velocity): exactly `value` now, and the
+                # line's slope for the implicit integrator while the line limits it.
+                bias[idx]=-slope*velocity,slope
             controls[idx] = value
         self.data.ctrl[:] = controls
+        if self._profiled.size:
+            self.model.actuator_biasprm[self._profiled,0]=bias[self._profiled,0]
+            self.model.actuator_biasprm[self._profiled,2]=bias[self._profiled,1]
         staged_step(self.model, self.data, self._contact_policy, self._energy_sensor)
+        if self._roll is not None:
+            apply_rolling_resistance(self.model, self.data, self._roll, self._base_frictionloss)
         # Refresh the observed and rendered kinematics at post-integration time.
         # The next mj_step performs collision/dynamics itself; running a second
         # full constraint solve here doubled that work without advancing time.
@@ -332,6 +495,8 @@ class MujocoBackend:
         mj.mj_resetData(self.model, self.data)
         self.data.qpos[:]=self._initial_qpos
         self.data.ctrl[:]=self._initial_ctrl
+        self.model.dof_frictionloss[:] = self._base_frictionloss
+        self.model.actuator_biasprm[self._profiled] = 0.
         staged_forward(self.model, self.data, self._contact_policy, self._energy_sensor)
         return self.snapshot()
 

@@ -149,7 +149,8 @@ class PrecisionInspector:
                     ('Sliding friction coefficient',str(current_material.sliding_friction if (current_material.texture,current_material.density)==(MATERIALS[material].texture,MATERIALS[material].density) else MATERIALS[material].sliding_friction)),
                     ('Torque limit per jaw (Nm)',str(torque)),
                     ('Contact pad length (mm)',str(round(length*1000,3)))],apply,
-                    'Torque limits squeeze strength. Contact uses the higher material friction of the pair.')
+                    'Torque limits squeeze strength. A library material uses the sourced friction of '
+                    'each contact pair; a typed coefficient is unsourced and MuJoCo takes the higher of the two.')
             self.choose('Gripper material / 2 of 3',tuple(MATERIALS),material_selected)
         self.choose('Gripper shape / 1 of 3',('flat','round','narrow'),shape_selected)
 
@@ -169,7 +170,9 @@ class PrecisionInspector:
             self.form(profile.model+' / 12 V',[
                 ('Assumed operating torque cap (Nm)',str(round(cap,4)))],
                 lambda values:self.edit(lambda:self.editor.set_motor_profile(profile,numbers(values[0],1)[0])),
-                f'Spec endpoints: {profile.stall_torque:g} Nm stall / {profile.no_load_rpm:g} rpm. Curve estimated; continuous rating unknown.')
+                f'Spec endpoints: {profile.stall_torque:g} Nm stall / {profile.no_load_rpm:g} rpm. Curve estimated; continuous rating unknown.'
+                +(f' Gearbox friction {profile.friction_torque:.3f} Nm from the {profile.no_load_current:g} A no-load current.'
+                  if profile.friction_torque else ''))
         self.choose('Motor model / unvalidated estimate',tuple(PROFILES)+('Ideal motor / remove profile',),choose_model)
 
     def torque_form(self):

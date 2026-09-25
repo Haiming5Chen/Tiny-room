@@ -54,7 +54,10 @@ selection remain future extensions; vendor calibration remains a separate milest
 
 Phase 3 has started with contact friction (ADR 0010): friction is now a sourced
 property of a pair of surfaces rather than max() of two illustrative numbers, with a
-cited table, confidence labels and a generated reference page. Next in phase 3:
-rolling resistance on the wheel joint (condim 4 ignores rolling coefficients) and
-drivetrain losses from motor datasheets. The per-contact hook that applies the table
-is also where phase 4's first causal chain (surface wetness -> pair friction) enters.
+cited table, confidence labels and a generated reference page. Rolling resistance
+and gearmotor losses followed (ADR 0011): the kit gearmotor is a Pololu 37D from its
+datasheet, with gearbox friction from its no-load current, and wheels carry b x N
+from their measured load. Next in phase 3: elliptic friction cones, which would let
+MuJoCo's own rolling friction replace the hinge policy and reach loose rolling bodies,
+and a sourced rotor inertia. The per-contact hook that applies the pair table is also
+where phase 4's first causal chain (surface wetness -> pair friction) enters.

@@ -75,6 +75,17 @@ the staged step is bit-identical to `mj_step` (tested). MuJoCo receives the kine
 coefficient; static values are recorded but there is still no stick-slip. Menagerie
 robot geoms keep their upstream friction.
 
+Axles carry no viscous damping (ADR 0011). Their losses are MuJoCo dry friction
+(`frictionloss`) with the stiffest constraint settings MuJoCo accepts, so they behave
+as Coulomb friction: a gearmotor's friction derived from its datasheet no-load
+current, and rolling resistance b x N (`materials/rolling.py`), recomputed every step
+from the load the solver found at each tread. Only wheel-shaped geoms count - a
+cylinder or sphere on the hinge axis, or a ring of tread blocks around it - and only
+contacts whose normal points at the axle. A sourced motor profile hands its
+speed-torque line's slope to the actuator's affine bias wherever the line limits the
+command, so MuJoCo's implicitfast integrator follows the line at any inertia. Ideal
+drive modules, swivels and user-made hinges keep the 0.01 N m s damping.
+
 The inspection UI uses GLFW input and MuJoCo's renderer directly. It deliberately
 does not install the simulate application's shortcut handler: otherwise drive keys
 also toggle rendering options. This reuses solver/rendering capabilities without

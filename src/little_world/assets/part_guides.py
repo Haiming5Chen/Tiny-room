@@ -1,4 +1,6 @@
 """Beginner explanations and honest model scope for the original mechanical kit."""
+from little_world.assets.real_motors import KIT_GEARMOTOR, PROFILES
+from little_world.materials.rolling import lever_arm
 
 
 def part_guide(item):
@@ -50,6 +52,9 @@ def part_guide(item):
         purpose='A passive wheel: it supports a robot and rolls, but cannot drive itself.'
         connection='On a chassis side it gets a free axle. On a motor output it is rigidly attached to the powered shaft.'
         example='Chassis -> gearmotor -> output -> wheel. A complete powered wheel is the quicker alternative.'
+        limits=('Rigid tyre: no deformation, wear or pressure-dependent grip. Rolling resistance acts on '
+                f'the axle from the load the tyre carries (rubber: {lever_arm("rubber")*1000:.1f} mm lever '
+                'arm, a low-confidence analogue; ADR 0011).')
         related='gearmotor'
     elif v in ('hw_gearmotor','hw_motor','hw_servo'):
         level='Assembly'
@@ -57,6 +62,12 @@ def part_guide(item):
         connection='Select the motor, then choose a wheel, crank, roller, hub or arm link. Its output socket is found automatically.'
         example='Motor -> crank arm for a rotating lever; motor -> drive roller to push objects by contact. Bind its joint in Program / keyboard controls.'
         limits='Ideal torque limits and native joint motion. Servo travel is limited; electronics, current draw and gearbox backlash are not simulated.'
+        if v=='hw_gearmotor':
+            p=PROFILES[KIT_GEARMOTOR]
+            limits=(f'{p.model} at {p.voltage:g} V: speed-torque line through the datasheet stall and '
+                    f'no-load points, and {p.friction_torque:.3f} Nm gearbox friction derived from its '
+                    f'{p.no_load_current:g} A no-load current. Current draw, heating, backlash, battery '
+                    'sag and the rotor\'s own inertia are not simulated.')
         related='shaft-driven'
     elif v=='shaft_load':
         purpose={
@@ -105,6 +116,8 @@ def part_guide(item):
         level='Assembly';purpose='An unpowered support wheel that swivels to follow a robot\'s direction.'
         connection='Mount underneath a chassis and check ground height with the main wheels.'
         example='Two driven wheels plus a caster give a stable three-point base.'
+        limits=('The wheel axle has rolling resistance from its load. The swivel keeps a generic '
+                '0.01 Nm s/rad damping with no source behind it.')
     elif item.category=='Structure':
         purpose=item.description+' Structural pieces hold other components in position; they do not move by themselves.'
     return dict(level=level,purpose=purpose,connection=connection,example=example,limits=limits,related=related)

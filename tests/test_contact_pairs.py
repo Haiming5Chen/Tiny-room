@@ -176,15 +176,26 @@ def test_contacts_use_the_sourced_pair_and_unsourced_ones_keep_mujoco():
 
 
 def test_skids_skid_now():
-    """0.2 Nm per wheel. Before: 0.02 m in 4 s, the skids pinned at the floor's 0.8."""
-    backend = MujocoBackend()
-    with World(backend, Scene((room_entity(), Entity("robot", two_wheel_blueprint())))) as world:
-        world.start()
-        x0 = backend.data.body("robot/chassis").xpos[0]
-        for _ in range(2000):
-            world.step({"robot/left_motor": .2, "robot/right_motor": .2})
-        travelled = backend.data.body("robot/chassis").xpos[0] - x0
-    assert travelled > .5
+    """Same robot, same 0.3 Nm per wheel, with and without the sourced skid pair.
+
+    Before ADR 0010 the skids were combined with the floor by max() and dragged at 0.8:
+    at 0.2 Nm the robot moved 2 cm in 4 s. The legacy skid below reproduces that rule
+    (unsourced, so MuJoCo's own combination applies); the other is the shipped one.
+    """
+    def travel(bp):
+        backend = MujocoBackend()
+        with World(backend, Scene((room_entity(), Entity("robot", bp)))) as world:
+            world.start()
+            x0 = backend.data.body("robot/chassis").xpos[0]
+            for _ in range(2000):
+                world.step({"robot/left_motor": .3, "robot/right_motor": .3})
+            return backend.data.body("robot/chassis").xpos[0] - x0
+    shipped = two_wheel_blueprint()
+    legacy = replace(shipped, materials=tuple(
+        replace(m, surface=None, sliding_friction=.0100001) if m.id == "skid" else m
+        for m in shipped.materials))
+    now, before = travel(shipped), travel(legacy)
+    assert now > .8 and now > 10 * before, (now, before)
 
 
 def _incline(angle_deg, surface="wood"):

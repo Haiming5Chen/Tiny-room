@@ -80,9 +80,10 @@ def make_hardware(item):
                 multiply(q,(cos(a/2),0,0,sin(a/2))))
     def screw(name,pos,parent='root',q=(1,0,0,0)):
         cyl(name,.0027,.003,pos,'steel',parent,q)
-    def shaft_motor(name,pos,radius,length,q=QX,limit=None,torque=.5):
+    def shaft_motor(name,pos,radius,length,q=QX,limit=None,torque=.5,damping=.01,profile=None):
         cyl(name,radius,length,pos,'steel',q=q)
-        parts.extend((Hinge(name+'_joint',name,limits=limit),Motor(name+'_motor',name+'_joint',torque)))
+        parts.extend((Hinge(name+'_joint',name,damping=damping,limits=limit),
+                      Motor(name+'_motor',name+'_joint',torque,profile)))
         sockets(name,(('output',(0,0,length/2),(1,0,0,0)),('axis',(0,0,0),(1,0,0,0))))
 
     if variant=='gearmotor':
@@ -90,7 +91,11 @@ def make_hardware(item):
         cyl('rear_cap',.0177,.006,(-.031,0,0),'anodized',q=QX)
         cyl('gearbox',.0185,.023,(.0155,0,0),'metal',q=QX)
         cyl('flange',.019,.003,(.0285,0,0),'steel',q=QX)
-        shaft_motor('output_shaft',(.0385,0,0),.003,.018)
+        # Modelled on the Pololu 37D (THIRD_PARTY.md), so it now behaves like one: the
+        # datasheet's speed-torque line and the gearbox friction its no-load current
+        # implies, instead of an ideal torque source braked by an invented 0.01 N m s/rad.
+        from .real_motors import PROFILES, KIT_GEARMOTOR
+        shaft_motor('output_shaft',(.0385,0,0),.003,.018,damping=0.,profile=PROFILES[KIT_GEARMOTOR])
         for i in range(6):
             a=i*pi/3
             screw('face_screw_'+str(i),(.031,.014*cos(a),.014*sin(a)),q=QX)
@@ -188,7 +193,9 @@ def make_hardware(item):
             box('fork_'+str(i),(.012,.004,.028),(.009,yy,-.016),'metal','swivel')
         cyl('wheel',.020,.022,(.015,0,-.034),'rubber','swivel',QY)
         cyl('axle',.003,.039,(0,0,0),'steel','wheel')
-        parts.append(Hinge('wheel_joint','wheel'))
+        # An axle, not a damper: its losses are rolling resistance, applied from the
+        # load it actually carries (ADR 0011). The swivel keeps its damping.
+        parts.append(Hinge('wheel_joint','wheel',damping=0.))
         for i in (-1,1):
             for j in (-1,1):
                 screw(f'mount_bolt_{i+1}_{j+1}',(i*.018,j*.014,.003))

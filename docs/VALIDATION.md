@@ -408,3 +408,65 @@ holds whichever way it lands. (Run here on Linux only; the Mac has not re-run th
 Not claimed: static friction or stick-slip, pressure-dependent rubber friction, wet
 or dusty surfaces, torsional or rolling friction (unchanged defaults), or calibration
 of any pair against this project's own measurements.
+
+## Drivetrain and axle losses — 2026-09-25
+
+Run on Linux (Python 3.11, MuJoCo 3.3.7, Mesa under Xvfb for the window tests):
+`LITTLE_WORLD_TEST_RENDER=1 xvfb-run .venv/bin/python -m pytest -q` - **494 passed**.
+See ADR 0011 for the model. The defect, measured at the ADR 0010 commit before
+touching anything: every hinge's 0.01 N m s/rad damping was the only loss on a wheel.
+
+| Kit gearmotor and mobile platform | ADR 0010 | Now | Reference |
+| --- | --- | --- | --- |
+| Bare 37 mm gearmotor, 0.5 Nm command | 477 rpm | 330 rpm | Pololu 37D 30:1, 12 V: 330 rpm |
+| Platform drive wheels, 0.5 Nm per motor | 384 rpm | 321 rpm | below 330 under load |
+| Platform speed at that command | 1.94 m/s | 1.74 m/s | |
+| Caster wheel slip while cruising | 100 % | 64 % | casters carry 0.1 N at rest |
+| Platform coast-down | 0.33 g | 0.15 g | 0.13 g from the modelled losses |
+
+The platform stands on its two drive wheels; at rest its casters carry 0.08 N of its
+17 N, so they are dragged more than rolled - a property of that example assembly,
+not of the loss model. Its coast-down (1.44 m/s^2) is 15 % above the closed form for
+gearbox friction plus rolling resistance (1.25 m/s^2). With smooth 50 mm cylinder
+tyres and no swivel damping it is 4 % above (1.17 against 1.13). The difference is
+the 24-block polygon tread and the swivel's unsourced damping, and it does not add up
+linearly: either change alone gives 1.51 or 1.57 m/s^2. Chassis height ripple from
+the polygon tread: 0.2 mm.
+
+Checks in `tests/test_drivetrain.py` (16): the nine Pololu profiles match the
+datasheet table; the net output meets both datasheet endpoints exactly; old profiles,
+invalid currents and JSON round-trip; the rolling table is in metres and labelled;
+kit axles lose their damping while ideal drives keep it; each wheel's dry friction is
+exactly b x N from its own solved contact (to 1e-9) and reset restores the compiled
+values; a swivel gets no rolling loss and its wheel does; the hardware tread wheel's
+24-block ring carries 0.8-1.2 of the platform's weight as rolling load; a rubber pad
+pressed by a hinged finger gets none; **a four-wheel cart's coast-down is within 1 %
+of (M + sum I/r^2) a = b M g / r** (measured +0.2 %; +0.5 % with 20 mm wheels); a
+gearmotor driving a 2.2e-4 kg m^2 disc reaches 330 rpm within 0.1 %, holds still under
+80 % of its friction torque (under 1 mrad in a second) and coasts to rest in the
+Coulomb time to 2 %; a bare output shaft (1.8e-8 kg m^2) runs within 0.1 % of 330 rpm
+with no limit cycle - ADR 0007's once-per-step envelope sawtoothed it around 24,000
+rad/s; the implicit slope appears only where the speed-torque line limits the command.
+
+Dry-friction settings, a 37D driving that disc: MuJoCo's defaults crept 0.20 rad in a
+second under 80 % of the friction torque, took 0.213 s to coast down against Coulomb's
+0.145 s, and let the bare shaft run 3.7 % fast; the shipped settings give 0.000 rad,
+0.145 s and 0.0 %. MuJoCo's own rolling friction (condim 6, same lever arm) on the
+cart: 39 % and 23 % short of the closed form with the pyramidal cones used here, 1.0 %
+and 1.3 % short with elliptic cones; the hinge policy: +0.2 % and +0.5 %.
+
+The two-wheel robot now travels 0.36 m in 4 s at 0.2 Nm (1.15 m under ADR 0010) and
+1.75 m at 0.4 Nm (2.53 m): it weighs 20.5 kg on two 85 mm rubber wheels, and rolling
+resistance takes 0.12 Nm per wheel, 60 % of a 0.2 Nm command. `test_skids_skid_now`
+therefore compares its sourced skids with a legacy max() skid at the same 0.3 Nm
+(1.06 m against 0.02 m) instead of asserting a fixed distance, and
+`test_real_profiles_produce_different_native_speed_limits` keeps to the two ROBOTIS
+servos it was written for (the Pololu profiles have their own speed test).
+
+Cost, best of three interleaved runs against the ADR 0010 commit: compile 0.5-1.5 ms
+more; step two-wheel 86 -> 119 us, arm lab 124 -> 142 us, mobile platform 793 -> 849 us,
+mobile manipulator 1046 -> 1102 us.
+
+Not claimed: rubber's rolling resistance (an analogue), rotor inertia, speed- or
+load-dependent friction, backlash, heating, current limits, tyre deformation, or
+rolling resistance for loose bodies such as a ball on the floor.

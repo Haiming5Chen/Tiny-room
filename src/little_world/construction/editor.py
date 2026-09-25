@@ -272,7 +272,11 @@ class AssemblyEditor:
             parts.append(part)
         if item.variant in ('wheel','drive','hw_tread') and parent is not None:
             joint=prefix+'_hinge'
-            parts.append(Hinge(joint,names['root'],axis=(0,0,-1 if mount=='Right' else 1)))
+            # A passive wheel's losses come from rolling resistance at its real load (ADR
+            # 0011). An ideal drive motor keeps the old damping: an ideal torque source has
+            # no no-load speed, and that damping is the only thing limiting how fast it spins.
+            parts.append(Hinge(joint,names['root'],axis=(0,0,-1 if mount=='Right' else 1),
+                               damping=.01 if item.variant=='drive' else 0.))
             if item.variant=='drive':
                 if mount not in ('Left','Right'):
                     raise ValueError('Drive modules mount on Left or Right faces')

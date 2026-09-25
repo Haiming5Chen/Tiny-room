@@ -27,7 +27,12 @@ change the design, try again.** A desktop robotics sandbox on
   steel...) with cited kinetic and static coefficients, confidence labels and a
   generated [reference page](docs/CONTACT_PAIRS.md), applied contact by contact
   inside the MuJoCo step ([ADR 0010](docs/adr/0010-sourced-contact-pairs.md)).
-- **478 automated tests**, including OpenGL window tests that drive the interface
+- **Motors and wheels lose energy where real ones do.** The kit gearmotor is a Pololu
+  37D 30:1 from its datasheet - speed-torque line, plus gearbox friction derived from
+  its no-load current - and wheels carry rolling resistance from the load they bear
+  ([ADR 0011](docs/adr/0011-drivetrain-and-axle-losses.md)). A bare gearmotor
+  runs at the rated 330 rpm; a test cart coasts down within 1 % of the closed form.
+- **494 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -124,7 +129,23 @@ for that pair - rubber on concrete 0.95 (Xu et al., *Wear* 2025), wood on wood 0
 each cited in [CONTACT_PAIRS.md](docs/CONTACT_PAIRS.md). Pairs with no source keep
 MuJoCo's own rule (the larger coefficient) and are reported as unsourced. The table
 is the fix for a measurable defect: the kit's 0.01 skids used to drag at the floor's
-0.8, and the two-wheel robot moved 2 cm in four seconds at 0.2 Nm; it now moves 1.15 m.
+0.8, and the two-wheel robot moved 2 cm in four seconds at 0.2 Nm. With the sourced
+skid pair it moved 1.15 m; with its tyres' rolling resistance added (below), 0.36 m.
+
+### Drivetrain and axle losses
+
+Wheels used to have one loss, a viscous damping of 0.01 N m s/rad on every hinge, and
+it set everything: the kit gearmotor's bare shaft spun at 477 rpm, the mobile
+platform coasted down at 0.33 g and its caster wheels did not turn. Now the kit
+gearmotor is the Pololu 37D 30:1 at 12 V: its speed-torque line runs through the
+datasheet's stall torque and no-load speed, and its own friction, 0.052 Nm at the
+output, comes from the 0.2 A it draws with no load. Wheels roll against b x N, where
+N is the load the solver found at the tread that step and b is a published lever arm
+(rubber 1.2 mm, a labelled analogue from polyurethane; steel 0.5 mm). The bare
+gearmotor now runs at 330 rpm and the platform coasts down at 0.15 g. Tyres are rigid,
+rotor inertia is not published and not modelled, and loose rolling bodies (a ball)
+have no rolling resistance yet - see [ADR 0011](docs/adr/0011-drivetrain-and-axle-losses.md)
+and [validation](docs/VALIDATION.md).
 
 Catalog insertion uses preset mounting positions; **Connect** resolves precise
 face-to-face alignment afterward. Free placement gizmos, closed-loop mechanisms,
