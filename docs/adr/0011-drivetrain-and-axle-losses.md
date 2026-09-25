@@ -62,6 +62,8 @@ Passive catalog axles and the caster's wheel lose their damping; ideal drive mod
 keep theirs, because an ideal torque source has no no-load speed and that damping is
 the only thing limiting how fast it spins. Swivels and user-created hinges keep the
 default. The part guide and the motor-model form state the friction and its source.
+For the 37 mm gearmotor this replaces ADR 0004's "internal motors model ideal torque
+only"; the 42 mm motor and the servo horn remain ideal.
 
 **Boundaries.** Friction is constant Coulomb friction at the no-load value: no
 speed-dependent part, no load-dependent gear efficiency, and the same in both

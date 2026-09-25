@@ -470,3 +470,41 @@ mobile manipulator 1046 -> 1102 us.
 Not claimed: rubber's rolling resistance (an analogue), rotor inertia, speed- or
 load-dependent friction, backlash, heating, current limits, tyre deformation, or
 rolling resistance for loose bodies such as a ball on the floor.
+
+## Test drive — 2026-09-25
+
+Run on Linux (Python 3.11, MuJoCo 3.3.7, Mesa under Xvfb for the window tests):
+`LITTLE_WORLD_TEST_RENDER=1 xvfb-run .venv/bin/python -m pytest -q` - **510 passed**
+(headless: 479 passed, 31 skipped). See ADR 0012.
+
+Measured on the mobile platform with a segmentation render of the 3D view: the box
+around the machine covered 0.4 % of the view when simulating (0.1 % of its pixels were
+the machine); in the chase view it covers 6.4 % (2.5 %). The chase view stays behind
+the machine as it turns, and a ray against the room pulls it in front of walls.
+
+Checks in `tests/test_test_drive.py` (16): path length is the path, not the
+displacement, and ten seconds of sub-millimetre shimmer add under 5 mm; tilt, the
+time-weighted shares at the motor limit and slipping, and what was touched; paused
+frames add nothing and time cannot run backwards; a run is compared with the previous
+one; angles wrap the short way, the chase view settles behind the machine without
+swinging round, keeps the user's orbit relative to the heading and eases a jump; the
+trail keeps a 3 m straight run as one segment and a quarter turn as a handful. On the
+real platform in the room: forward speed within 10 % of the drive assist's 0.425 m/s,
+each wheel's rpm within 15 % of speed / radius, no slip, the kit gearmotor's 330 rpm
+no-load speed, torque never above what is available, and the drive assist named as
+what sets the top speed (the motors alone could reach 1.73 m/s); a spin on the spot
+turns 140 degrees while the centre of mass moves 3 mm (its chassis-rail origin moves
+25 cm); driving into the pickup stand reports it by name, never the floor, with the
+treads slipping and the motors at their limit more than a fifth of the time. Window
+tests build, drive, stop, read the report and return to the Build stage, and show the
+two-wheel robot's onboard camera only while driving and not when it is already the
+main view.
+
+Cost: the trail draws 30 m of driving with turns in 0.6 ms a frame (straight runs
+merge into one segment); a per-frame telemetry sample, contact scan and log update
+are well under a millisecond. The onboard inset renders the scene a second time, only
+for machines with a camera.
+
+Not claimed: sensor models (the readings are exact simulator state), force or damage
+from contacts, or comparisons under controlled conditions - reports are per session
+and the inventory's trials remain the way to compare saved versions.

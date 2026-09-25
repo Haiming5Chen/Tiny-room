@@ -61,3 +61,9 @@ from their measured load. Next in phase 3: elliptic friction cones, which would 
 MuJoCo's own rolling friction replace the hinge policy and reach loose rolling bodies,
 and a sourced rotor inertia. The per-contact hook that applies the pair table is also
 where phase 4's first causal chain (surface wetness -> pair friction) enters.
+
+The builder's test step is now a test drive (ADR 0012): a chase view, live telemetry
+with the motors' sourced limits, the path on the floor, the machine's own camera, and
+a run report compared with the previous run. Next for the builder: test fields with
+more than one scenario, a clearer structure for arms on wheeled platforms, more arm
+tasks, and the factory cell's rough edges.

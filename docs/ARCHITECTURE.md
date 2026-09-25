@@ -93,6 +93,18 @@ building a graphical construction editor. The UI's wheel-speed feedback generate
 bounded named motor torques; it never assigns body poses or velocities. The core
 and headless direct-torque API are unchanged.
 
+## Test drive
+
+Simulating a machine is a test drive (ADR 0012). `control/drive_telemetry.py` reads
+MuJoCo state the physics has already computed - the machine's centre of mass, forward
+speed, tilt, each drive motor's speed, torque, available torque and wheel slip, and
+contacts with other bodies - as ideal sensors. `control/run_log.py` (standard library)
+accumulates those samples into a run summary. The workshop's `TestDrive` mixin owns
+the presentation only: a chase view on MuJoCo's free camera, kept in front of walls
+with `mj_ray`; the Drive tab with live readings; the path drawn as decor lines; an
+inset rendered from the machine's own camera; and after Stop a report compared with
+the previous run. None of it is written to the Blueprint; an edit clears the report.
+
 ## Interactive construction
 
 `construction.AssemblyEditor` owns immutable Blueprint revisions, selection and

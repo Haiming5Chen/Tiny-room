@@ -43,9 +43,10 @@ from .python_workspace import PythonWorkspace
 
 
 from .app_modes import AppModes
+from .test_drive import TestDrive
 
 
-class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, TestWorkspace, InventoryWorkspace):
+class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, TestWorkspace, InventoryWorkspace, TestDrive):
     PANEL = 288
 
     def __init__(self, path, blueprint=None):
@@ -86,6 +87,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.init_program()
         self.init_inventory()
         self.init_python()
+        self.init_test_drive()
 
     def _scene(self):
         return workshop_scene(Entity('machine', self.editor.blueprint))
@@ -169,6 +171,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                 scene.ngeom+=1
 
     def home(self, room=False):
+        if getattr(self, 'drive_view', None) == 'chase':
+            self.drive_view = 'free'
         self.camera.type = mj.mjtCamera.mjCAMERA_FREE
         self.camera.lookat[:] = (.1, .45, .3) if room else (0, 0, .15)
         self.camera.distance = 5.4 if room else 2.
@@ -185,6 +189,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             if self.editor.blueprint != old[0]:
                 self.rebuild()
             self.status = 'Design updated. Simulate to test the result.'
+            self.run_report = None
+            self.trail = []
         except Exception:
             self.editor.blueprint, self.editor.selection, self.editor.past, self.editor.future = old
             self.rebuild()
@@ -198,6 +204,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         if self.building:
             self.state = self.world.start()
             self.bind_runtime()
+            self.start_test_drive()
             from little_world.construction.docking import catalog_id
             wheels=[b for b in self.editor.bodies if catalog_id(b.id) in ('drive_left','drive_right','wheel_small','wheel_large','tread_wheel')]
             if wheels and not any(b.dynamic for b in self.editor.bodies):
@@ -206,6 +213,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                 self.status='No paired drive control. Passive wheels need motors; add left and right powered wheel modules for WASD.'
             else:self.status = 'Physics is running. Hold WASD to drive; release to brake.' if self.channels else 'Physics is running. Stop to return to the saved design.'
         else:
+            self.stop_test_drive()
             self.state = self.world.reset()
             self.joint_control.reset()
             self.highlight()
@@ -321,6 +329,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             self.clear_keys()
         elif key == glfw.KEY_HOME:
             self.home()
+        elif key == glfw.KEY_F and self.drive_view is not None:
+            self.events.append(self.toggle_drive_view)
         elif key == glfw.KEY_F:
             self.follow = not self.follow
             self.camera.type = mj.mjtCamera.mjCAMERA_FREE
@@ -415,7 +425,12 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         if x < self.PANEL or not 56 < y < glfw.get_window_size(win)[1]-32 or self.camera.type == mj.mjtCamera.mjCAMERA_FIXED:
             return
         height = max(glfw.get_window_size(win)[1], 1)
-        if glfw.get_mouse_button(win, glfw.MOUSE_BUTTON_RIGHT) == glfw.PRESS:
+        right = glfw.get_mouse_button(win, glfw.MOUSE_BUTTON_RIGHT) == glfw.PRESS
+        dragging = right or (glfw.get_mouse_button(win, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
+                             and self.press_mouse is not None and self.press_mouse[0] >= self.PANEL)
+        if dragging and self.chase_mouse(dx, dy, height, right):
+            return
+        if right:
             action = mj.mjtMouse.mjMOUSE_MOVE_V
             self.follow = False
         elif glfw.get_mouse_button(win, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS:
@@ -451,6 +466,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         elif x < self.PANEL:
             if self.active_tab == 'Edit' and 143 <= y <= 286:
                 self.part_offset = max(0, min(max(0, len(self.editor.bodies)-4), self.part_offset-int(yoffset)))
+        elif 56 < y < glfw.get_window_size(win)[1]-32 and self.chase_scroll(yoffset):
+            pass
         elif 56 < y < glfw.get_window_size(win)[1]-32 and self.camera.type != mj.mjtCamera.mjCAMERA_FIXED:
             mj.mjv_moveCamera(self.model, mj.mjtMouse.mjMOUSE_ZOOM, 0, -.05*yoffset, self.render_scene, self.camera)
             self.camera.distance = max(.4, min(15, self.camera.distance))
@@ -503,14 +520,19 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             return
         sx,sy=fw/ww,fh/wh
         viewport=mj.MjrRect(int(self.PANEL*sx),int(32*sy),int((ww-self.PANEL-(338 if self.control_panel else 0))*sx),int((wh-88)*sy))
+        if not self.building and not self.bench_open:
+            self.sample_drive()
+            self.update_drive_camera()
         if self.follow and self.root_id>=0 and self.camera.type!=mj.mjtCamera.mjCAMERA_FIXED:
             self.camera.lookat[:]=self.data.xpos[self.root_id]
         if not self.bench_open and not self.inventory_open and not self.script_open:
             mj.mjv_updateScene(self.model,self.data,self.option,None,self.camera,mj.mjtCatBit.mjCAT_ALL,self.render_scene)
             self.selection_outline()
+            self.draw_trail()
             self.connection_overlay()
             if getattr(self,'factory_mode',False):self.decorate_scene()
             mj.mjr_render(viewport,self.render_scene,self.context)
+            self.render_onboard_inset(viewport,sx,sy)
         ui=self.canvas
         ui.begin()
         self.buttons=[]
@@ -563,11 +585,17 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.draw_navigation(ui,button,text,ww)
         tab_x=12
         for tab,tab_width in zip(('Edit','Add','Connect','Files'),(56,52,82,56)):
-            button(tab,tab_x,70,tab_width,lambda t=tab:setattr(self,'active_tab',t),active=self.active_tab==tab)
+            # While physics runs the first tab is the test drive: nothing can be edited.
+            label='Drive' if tab=='Edit' and not self.building else tab
+            button(label,tab_x,70,tab_width,lambda t=tab:setattr(self,'active_tab',t),active=self.active_tab==tab)
             tab_x+=tab_width+6
         selected=self.editor.selected
         enable=self.building and selected is not None
-        if self.active_tab=='Edit':
+        if not self.building and self.active_tab=='Edit':
+            self.draw_test_drive_panel(ui,button,text,section,ww,wh)
+        elif self.run_report is not None and self.active_tab=='Edit':
+            self.draw_run_report(ui,button,text,section,ww,wh)
+        elif self.active_tab=='Edit':
             section('PARTS  /  click in the room to select',120)
             for i,body in enumerate(self.editor.bodies[self.part_offset:self.part_offset+4]):
                 button(body.id,12,143+i*29,264,lambda n=body.id:self.select(n),self.building,
@@ -648,17 +676,21 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             button('Arm on moving cart',12,640,264,lambda:self.edit(lambda:self.editor.load(mobile_manipulator_blueprint())),self.building,h=32)
         button('Focus',self.PANEL+16,72,65,self.home)
         button('Camera',self.PANEL+87,72,70,self.camera_toggle)
-        button('Follow',self.PANEL+163,72,70,self.toggle_follow,active=self.follow)
+        if self.drive_view is not None:
+            button('Chase',self.PANEL+163,72,70,self.toggle_follow,active=self.drive_view=='chase')
+        else:
+            button('Follow',self.PANEL+163,72,70,self.toggle_follow,active=self.follow)
         button('Operate',self.PANEL+239,72,85,self.operate_robot)
         button('Guide',self.PANEL+330,72,64,self.show_guide)
         button('Undo',ww-166,72,68,lambda:self.edit(self.editor.undo),self.building and bool(self.editor.past),h=26)
         button('Redo',ww-92,72,68,lambda:self.edit(self.editor.redo),self.building and bool(self.editor.future),h=26)
         help_text=('Click a part to select. Drag to orbit. Right-drag to pan. Scroll to zoom.' if self.building else
-                   'Hold WASD to drive. Release to brake. P pauses. Enter returns to build.')
+                   'Hold WASD to drive. Release to brake. P pauses. F chase or room view. Enter returns to build.')
         if self.control_panel:help_text='Drag to orbit. Right-drag to pan. Scroll to zoom.'
         text(help_text,self.PANEL+18,wh-57,12,(.8,.86,.86),ww-self.PANEL-35-(338 if self.control_panel else 0))
         text(self.status,16,wh-24,12,(.61,.70,.73),ww-32)
-        if self.active_tab=='Add' and self.library_open:
+        self.draw_inset_frame(ui,text,wh)
+        if self.building and self.active_tab=='Add' and self.library_open:
             self.render_catalog_preview(ww,wh,fw,fh)
             text('PREVIEW / drag to rotate',ww-224,112,11,muted)
             text(self.catalog_selection.replace('_',' '),ww-224,321,12,max_width=212)
@@ -740,6 +772,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
 
 
     def toggle_follow(self):
+        if self.drive_view is not None:
+            self.toggle_drive_view();return
         self.follow=not self.follow
         self.camera.type=mj.mjtCamera.mjCAMERA_FREE
 

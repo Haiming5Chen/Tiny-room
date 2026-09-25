@@ -19,7 +19,9 @@ change the design, try again.** A desktop robotics sandbox on
 - **Build -> simulate -> reset -> redesign**, with undo/redo, face-to-face precision
   connections, joint limits, sourced servo profiles, a block program editor, a live
   test panel (contact, tilt, joint error, torque) and side-by-side trials of saved
-  versions.
+  versions. Simulating a vehicle is a **test drive**: a chase camera, live motor and
+  slip telemetry, the path on the floor and a run report compared with the last run
+  ([ADR 0012](docs/adr/0012-test-drive.md)).
 - **A pick-and-place cell** where the Panda plans with damped-least-squares IK and
   lifts by real finger contact - a missed grasp is a failure, not an animation.
 - **Friction from the literature, not from max().** Contact friction is a property
@@ -32,7 +34,7 @@ change the design, try again.** A desktop robotics sandbox on
   its no-load current - and wheels carry rolling resistance from the load they bear
   ([ADR 0011](docs/adr/0011-drivetrain-and-axle-losses.md)). A bare gearmotor
   runs at the rated 330 rpm; a test cart coasts down within 1 % of the closed form.
-- **494 automated tests**, including OpenGL window tests that drive the interface
+- **510 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -102,8 +104,15 @@ undo/redo and save remain in the top toolbar:
    Delete removes a selected part and its descendants.
 4. Click **SIMULATE**, then hold WASD to drive compatible powered wheel groups.
    Release to brake. **P** pauses. **STOP / RETURN TO BUILD** restores the saved
-   design poses; simulated motion never overwrites the Blueprint.
-5. Use **Undo / Redo**, **Save / Load**, and try again.
+   design poses; simulated motion never overwrites the Blueprint. A machine that can
+   drive gets a test drive: the camera chases it (drag to look around, scroll to zoom,
+   **F** for the room), the **Drive** tab shows its speed, each motor's speed and
+   torque against its sourced limits, wheel slip and what it touches, and its path is
+   drawn on the floor. A machine with a camera also shows what that camera sees.
+5. Stop shows a **run report** - distance, top speed, tilt, time at the motor limit,
+   slip, what it touched, and the change from the previous run - with **Redesign in
+   Build stage**, **Run again** and, when the drive assist set the top speed,
+   **Adjust drive assist**. Use **Undo / Redo**, **Save / Load**, and try again.
 
 In **Files**, **Start with block** replaces the design with one ordinary body (undoable). Add a
 left wheel, reselect `base`, and add a right wheel to make a motorized assembly.

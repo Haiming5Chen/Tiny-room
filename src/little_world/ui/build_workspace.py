@@ -342,6 +342,8 @@ class BuildWorkspace(DragDocking):
         if not self.part_drag and not self.bench_sockets:
             text('BUILD STAGE / '+state,left+16,122,11,(.68,.82,.84),width-32)
             text('Selected: '+(self.editor.selection or 'none')+' / Replace or Delete above',left+16,143,11,(.52,.67,.72),width-32)
+            last=self.last_run_line()
+            if last:text(last,left+16,164,11,(.96,.72,.38) if self.runs[-1].touched or self.runs[-1].tipped else (.52,.67,.72),width-32)
         text('10 cm grid',ww-106,wh-176,10,(.49,.64,.69))
         self.draw_docking(ui,text,ww,wh)
 
