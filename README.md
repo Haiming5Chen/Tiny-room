@@ -21,7 +21,9 @@ change the design, try again.** A desktop robotics sandbox on
   test panel (contact, tilt, joint error, torque) and side-by-side trials of saved
   versions. Simulating a vehicle is a **test drive**: a chase camera, live motor and
   slip telemetry, the path on the floor and a run report compared with the last run
-  ([ADR 0012](docs/adr/0012-test-drive.md)).
+  ([ADR 0012](docs/adr/0012-test-drive.md)), in one of seven **test fields** whose
+  goals the physics decides: a sprint, a slalom, ramps, curbs, a crate to push and a
+  pick-and-place table ([ADR 0013](docs/adr/0013-test-fields.md)).
 - **A pick-and-place cell** where the Panda plans with damped-least-squares IK and
   lifts by real finger contact - a missed grasp is a failure, not an animation.
 - **Friction from the literature, not from max().** Contact friction is a property
@@ -34,7 +36,7 @@ change the design, try again.** A desktop robotics sandbox on
   its no-load current - and wheels carry rolling resistance from the load they bear
   ([ADR 0011](docs/adr/0011-drivetrain-and-axle-losses.md)). A bare gearmotor
   runs at the rated 330 rpm; a test cart coasts down within 1 % of the closed form.
-- **510 automated tests**, including OpenGL window tests that drive the interface
+- **524 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -113,6 +115,11 @@ undo/redo and save remain in the top toolbar:
    slip, what it touched, and the change from the previous run - with **Redesign in
    Build stage**, **Run again** and, when the drive assist set the top speed,
    **Adjust drive assist**. Use **Undo / Redo**, **Save / Load**, and try again.
+6. **Field** (above the room view) chooses where to test: the workshop room, a sprint
+   lane, a slalom of bollard gates, 8 / 14 / 20 degree ramps, 10 / 20 / 35 mm curbs,
+   a 4 kg crate to push, or a pick-and-place table. Each field's goals are drawn on
+   the floor, ticked off live in the Drive tab and listed with times in the run
+   report, which compares runs in the same field ([ADR 0013](docs/adr/0013-test-fields.md)).
 
 In **Files**, **Start with block** replaces the design with one ordinary body (undoable). Add a
 left wheel, reselect `base`, and add a right wheel to make a motorized assembly.

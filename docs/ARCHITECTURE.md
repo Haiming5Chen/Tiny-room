@@ -105,6 +105,13 @@ with `mj_ray`; the Drive tab with live readings; the path drawn as decor lines; 
 inset rendered from the machine's own camera; and after Stop a report compared with
 the previous run. None of it is written to the Blueprint; an edit clears the report.
 
+Where the test happens is a test field (ADR 0013, `little_world/fields/`): ordinary
+Blueprint entities authored in the machine's start frame - so the design never moves -
+plus goals judged from the core `State` alone (`fields/goals.py`, standard library):
+lines crossed in order, zones reached or objects delivered at rest, staying upright,
+leaving obstacles undisturbed. `Scene.backdrop` is an appearance hint ('sky') that the
+MuJoCo adapter turns into a gradient skybox and a directional sun.
+
 ## Interactive construction
 
 `construction.AssemblyEditor` owns immutable Blueprint revisions, selection and

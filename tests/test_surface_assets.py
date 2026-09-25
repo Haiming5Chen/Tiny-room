@@ -44,7 +44,8 @@ def test_surface_texture_changes_native_material():
         geom=backend.model.geom('machine/chassis_geom').id
         mat=backend.model.geom_matid[geom]
         ids.append(int(backend.model.mat_texid[mat,1]))
-        assert backend.model.ntex==5
+        from little_world.assets.textures import TEXTURES
+        assert backend.model.ntex==len(TEXTURES), 'the fixed registry, whatever the materials use'
     assert len(set(ids))==4
     backend.close()
 

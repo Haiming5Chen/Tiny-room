@@ -146,7 +146,8 @@ def test_catalog_ui_preview_insert_and_selected_surface(monkeypatch,tmp_path):
             assert material.texture=='wood_grain'
             geom=app.model.geom('machine/'+body.id+'_geom').id
             assert np.allclose(app.model.geom_rgba[geom],material.rgba)  # selection doesn't repaint it
-            assert app.model.ntex==5
+            from little_world.assets.textures import TEXTURES
+            assert app.model.ntex==len(TEXTURES)
             assert resources==(app.context,app.canvas)
             glfw.set_window_should_close(app.window,True)
     monkeypatch.setattr(app,'draw',exercise)

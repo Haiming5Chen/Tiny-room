@@ -508,3 +508,41 @@ for machines with a camera.
 Not claimed: sensor models (the readings are exact simulator state), force or damage
 from contacts, or comparisons under controlled conditions - reports are per session
 and the inventory's trials remain the way to compare saved versions.
+
+## Test fields — 2026-09-25
+
+See ADR 0013. Every field compiles with the mobile platform and the six-wheel rover
+without overlapping them at the start, and the platform settles within 2 mm of its
+height in the workshop room. Results of driving straight ahead with the drive assist
+(5 rad/s targets, its default 0.425 m/s limit); the ramp columns aim each machine
+head-on at one ramp:
+
+| Machine | 5 m sprint | Curbs cleared | Ramps climbed | 4 kg crate past 3 m |
+| --- | --- | --- | --- | --- |
+| Mobile platform (2 x Pololu 37D, casters) | 11.8 s | 10, 20 mm | 8 deg | no |
+| Two-wheel robot (20.5 kg, skids) | 13.6 s | none | none | 14.0 s |
+| Four-wheel rover | 12.4 s | 10, 20, 35 mm | 8, 14, 20 deg | 7.5 s |
+| Six-wheel rover | 12.4 s | 10 mm | 8 deg | 7.0 s |
+| Delivery cart (casters) | 12.5 s | none | none | 9.9 s |
+
+The failures have physical reasons the tests hold: the platform's 20 mm swivel casters
+cannot climb a 35 mm curb; the two-wheel robot needs m g sin 8 deg = 28 N on the 8
+degree ramp and its 1 Nm motors on 85 mm wheels give 23.5 N - with a plastic chassis
+(9.1 kg, 12.4 N needed) the same robot climbs it; a 4 kg crate on concrete takes 15.7 N
+to slide. The platform's sprint time is 5 m at the drive assist's 0.425 m/s to within
+6 %, not its motors' 1.73 m/s. The rigid four-point platform stalls on the 14 degree
+ramp with its drive wheels unloaded once a caster is on the slope - the same thing a
+rigid chassis without suspension does.
+
+Checks in `tests/test_fields.py` (14): lines crossed forward within their extent,
+gates only in order with timed splits, "whole machine over" for curbs, delivery only
+at rest, upright and undisturbed kept until broken (a moved bollard stays counted),
+open versus missed; field data (titles, goals naming real bodies, unknown fields
+refused, nothing overlapping the start), compilation with a sky and equal settling
+height, and the four physical results above; a window test chooses a field through
+the real button, drives it, refuses a field change while running and reads the goals
+in the report. Full display-enabled suite: **524 passed**.
+
+Not claimed: the props are test props, not standard courses; goals judge body
+positions (a line is crossed when any body is past it within the gate), not contact
+patches; fields are not randomised; inventory trials still run in the workshop room.

@@ -4,11 +4,14 @@ A workshop mixin. It reads state through `control/drive_telemetry.py` and keeps 
 own session-only history; the Blueprint and the saved design are never touched.
 """
 import time
+from dataclasses import dataclass
 from math import cos, radians, sin
 import mujoco as mj
 import numpy as np
 from little_world.control.drive_telemetry import DriveTelemetry
-from little_world.control.run_log import RunLog
+from little_world.control.run_log import RunLog, RunSummary
+from little_world.fields import FIELDS
+from little_world.fields.goals import GoalTracker, Line, Zone
 from .chase_camera import ChaseCamera
 
 MUTED = (.49, .57, .63)
@@ -21,24 +24,40 @@ TRAIL_POINTS = 600   # kept after merging: straight runs cost one segment, curve
 _ZERO = np.zeros(3)
 _EYE = np.eye(3).ravel()
 _TRAIL_COLOUR = np.array((.37, .83, .69, .9), dtype=np.float32)
+_MARK = {'open': (.93, .93, .89, .85), 'met': (.37, .83, .69, 1.), 'kept': (.37, .83, .69, 1.),
+         'missed': (.96, .50, .36, 1.), 'failed': (.96, .50, .36, 1.), 'lane': (.93, .93, .89, .45)}
+_MARK = {k: np.array(v, dtype=np.float32) for k, v in _MARK.items()}
+GOAL_WORDS = {'met': 'done', 'kept': 'kept', 'open': 'to do', 'missed': 'missed', 'failed': 'failed'}
+
+
+@dataclass(frozen=True)
+class RunRecord:
+    """One finished run: where, what the log measured, and how the field's goals went."""
+    number: int
+    field: str
+    summary: RunSummary
+    goals: tuple = ()           # fields.goals.Result
+    limit: tuple | None = None  # DriveTelemetry.speed_limit() at the end, for a vehicle
 
 
 class TestDrive:
     def init_test_drive(self):
+        self.field_id = getattr(self, 'field_id', 'workshop')   # the test field (ADR 0013)
         self.drive_view = None      # 'chase', 'room' or 'free' while a machine is simulated
         self.chase = ChaseCamera()
         self.telemetry = None
         self.run_log = None
         self.drive_sample = None
         self.drive_touching = set()
-        self.runs = []              # RunSummary, oldest first, this session only
+        self.runs = []              # RunRecord, oldest first, this session only
         self.run_count = 0          # runs finished this session, including ones dropped from `runs`
-        self.run_report = None      # shown after Stop until the user moves on
+        self.run_report = None      # the RunRecord shown after Stop until the user moves on
+        self.goal_tracker = None
+        self.last_goals = ()        # the last run's goal results, for the floor markings
         self.build_camera = None
         self.drive_clock = None
         self.trail = []             # the machine's path over the floor, kept after Stop
         self.trail_height = 0.
-        self.run_limit = None       # what set the top speed in the last run (see speed_limit)
         self.onboard = -1           # the machine's first camera, shown as an inset while driving
         self.inset_camera = None
         self.inset_rect = None      # window coordinates of the inset, for its frame and label
@@ -60,6 +79,10 @@ class TestDrive:
         self.drive_view = None
         self.trail = []
         self.trail_height = self.floor_top() + .003
+        self.last_goals = ()
+        field = FIELDS[self.field_id]
+        root = next((b.id for b in self.editor.bodies if b.parent is None), None)
+        self.goal_tracker = GoalTracker(field.goals, 'machine/' + root) if field.goals and root else None
         self.onboard = next((i for i in range(self.model.ncam)
                              if self.model.camera(i).name.startswith('machine/')), -1)
         if self.drivable() and self.telemetry.root >= 0:
@@ -77,11 +100,13 @@ class TestDrive:
 
     def stop_test_drive(self):
         if self.run_log is not None and self.run_log.samples > 1:
-            self.run_limit = self.telemetry.speed_limit() if self.telemetry.channels else None
-            summary = self.run_log.summary()
-            self.runs = (self.runs + [summary])[-HISTORY:]
+            goals = self.goal_tracker.results(finished=True) if self.goal_tracker else ()
             self.run_count += 1
-            self.run_report = summary
+            record = RunRecord(self.run_count, self.field_id, self.run_log.summary(), goals,
+                               self.telemetry.speed_limit() if self.telemetry.channels else None)
+            self.runs = (self.runs + [record])[-HISTORY:]
+            self.run_report = record
+            self.last_goals = goals
             self.active_tab = 'Edit'
         if self.build_camera is not None:
             kind, lookat, distance, azimuth, elevation, follow = self.build_camera
@@ -91,7 +116,7 @@ class TestDrive:
             self.follow = follow
         self.build_camera = None
         self.drive_view = None
-        self.telemetry = self.run_log = None
+        self.telemetry = self.run_log = self.goal_tracker = None
 
     def sample_drive(self):
         if self.telemetry is None:
@@ -99,6 +124,8 @@ class TestDrive:
         self.drive_sample = self.telemetry.sample()
         self.drive_touching = self.telemetry.touched()
         self.run_log.add(self.drive_sample, self.drive_touching)
+        if self.goal_tracker is not None and self.state is not None:
+            self.goal_tracker.update(self.state)
         if self.telemetry.channels:
             self.extend_trail(self.drive_sample.position[:2])
 
@@ -143,6 +170,78 @@ class TestDrive:
             start[0], start[1], end[0], end[1] = x0, y0, x1, y1
             mj.mjv_initGeom(geom, mj.mjtGeom.mjGEOM_LINE, _ZERO, _ZERO, _EYE, _TRAIL_COLOUR)
             mj.mjv_connector(geom, mj.mjtGeom.mjGEOM_LINE, 3., start, end)
+            geom.category = mj.mjtCatBit.mjCAT_DECOR
+            scene.ngeom += 1
+
+    def field_title(self):
+        return FIELDS[self.field_id].title
+
+    def choose_field(self):
+        if not self.building:
+            self.status = 'Stop the run before changing the test field.'
+            return
+        titles = {f.title: f.id for f in FIELDS.values()}
+
+        def apply(title):
+            self.set_field(titles[title])
+        self.choose('Test field', tuple(titles), apply)
+
+    def set_field(self, field_id):
+        """Rebuild the scene around the same design in another field (build mode only)."""
+        if field_id not in FIELDS:
+            raise ValueError(f'Unknown test field: {field_id}')
+        if not self.building:
+            raise ValueError('Stop the run before changing the test field')
+        previous = self.field_id
+        self.field_id = field_id
+        try:
+            self.rebuild()
+        except Exception:
+            self.field_id = previous
+            self.rebuild()
+            raise
+        self.trail, self.last_goals, self.run_report = [], (), None
+        self.home(True)
+        field = FIELDS[field_id]
+        self.status = field.title + ': ' + field.summary
+
+    def goal_marks(self):
+        """(goal, status) for what can be drawn on the floor: lines and small zones."""
+        field = FIELDS[self.field_id]
+        if self.goal_tracker is not None:
+            results = {r.id: r.status for r in self.goal_tracker.results()}
+        else:
+            results = {r.id: r.status for r in self.last_goals}
+        return [(g, results.get(g.id, 'open')) for g in field.goals if isinstance(g, (Line, Zone))]
+
+    def draw_field_marks(self, scene=None):
+        scene = self.render_scene if scene is None else scene
+        field = FIELDS[self.field_id]
+        if self.bench_open or not (field.goals or field.markings):
+            return
+        floor = self.floor_top() + .004
+        segments = [(a, b, floor, _MARK['lane']) for a, b in field.markings]
+        for goal, status in self.goal_marks():
+            colour = _MARK[status]
+            if isinstance(goal, Line):
+                segments.append((goal.a, goal.b, floor, colour))
+            else:
+                (x0, y0, z0), (x1, y1, _) = goal.lo, goal.hi
+                if x1 - x0 > 3. or y1 - y0 > 3.:
+                    continue        # a half-plane, not a place: its line is a marking instead
+                z = max(z0 + .024, floor) if z0 > floor else floor + .006
+                corners = ((x0, y0), (x1, y0), (x1, y1), (x0, y1))
+                for i in range(4):
+                    segments.append((corners[i], corners[(i + 1) % 4], z, colour))
+        start, end = np.zeros(3), np.zeros(3)
+        for a, b, z, colour in segments:
+            if scene.ngeom >= scene.maxgeom:
+                return
+            geom = scene.geoms[scene.ngeom]
+            start[:] = a[0], a[1], z
+            end[:] = b[0], b[1], z
+            mj.mjv_initGeom(geom, mj.mjtGeom.mjGEOM_LINE, _ZERO, _ZERO, _EYE, colour)
+            mj.mjv_connector(geom, mj.mjtGeom.mjGEOM_LINE, 4., start, end)
             geom.category = mj.mjtCatBit.mjCAT_DECOR
             scene.ngeom += 1
 
@@ -274,19 +373,37 @@ class TestDrive:
                 text(f'Motor no-load speed: {limit:.2f} m/s', 16, y + 20, 12)
                 text('Datasheet speed at the wheel; load lowers it', 16, y + 38, 11, MUTED, 256)
             y += 66
-            section('KEYS', y)
-            text('W / S drive    A / D turn    P pause', 16, y + 20, 12, max_width=256)
-            text('F chase or room view    Enter stop', 16, y + 38, 12, max_width=256)
-        else:
+            if self.goal_tracker is None:
+                section('KEYS', y)
+                text('W / S drive    A / D turn    P pause', 16, y + 20, 12, max_width=256)
+                text('F chase or room view    Enter stop', 16, y + 38, 12, max_width=256)
+        elif self.goal_tracker is None:
             section('KEYS', y)
             text('Operate or Program move the joints.', 16, y + 20, 12, max_width=256)
             text('P pause    Enter stop', 16, y + 38, 12, max_width=256)
+        if self.goal_tracker is not None:
+            section('GOALS  /  ' + self.field_title(), y)
+            self.draw_goal_lines(text, self.goal_tracker.results(), y + 20, wh - 92)
         button('Stop and redesign', 12, wh - 78, 264, self.stop_and_redesign, tone='danger')
 
+    def draw_goal_lines(self, text, results, y, bottom):
+        """One line per goal: status word, label, time or detail. Stops before `bottom`."""
+        for r in results:
+            if y > bottom - 16:
+                text('...', 16, y, 12, MUTED)
+                return y + 18
+            colour = ACCENT if r.status in ('met', 'kept') else WARN if r.status in ('missed', 'failed') else MUTED
+            text(GOAL_WORDS[r.status], 16, y, 11, colour)
+            detail = r.detail or ('' if r.time is None else f'{r.time:.1f} s')
+            text(r.label + ('  /  ' + detail if detail else ''), 66, y, 12, (.86, .90, .93), 206)
+            y += 18
+        return y
+
     def draw_run_report(self, ui, button, text, section, ww, wh):
-        r = self.run_report
-        number = self.run_count
-        section(f'RUN {number} REPORT  /  ideal sensors', 120)
+        record = self.run_report
+        r = record.summary
+        title = FIELDS[record.field].title if record.field in FIELDS else record.field
+        section(f'RUN {record.number} REPORT  /  {title}', 120)
         text(f'{r.duration:.1f} s  /  {r.distance:.2f} m driven', 16, 140, 16, max_width=256)
         text(f'top speed {r.top_speed:.2f} m/s  /  average {r.average_speed:.2f}', 16, 166, 12, max_width=256)
         text(f'max tilt {r.max_tilt:.0f} deg  /  motors at their limit {100 * r.saturated_share:.0f} %',
@@ -300,32 +417,58 @@ class TestDrive:
         if r.tipped:
             text('It tipped over.', 16, y, 12, WARN)
             y += 20
-        if number > 1:
-            delta = r.versus(self.runs[-2])
-            text(f'vs run {number - 1}: {delta["distance"]:+.2f} m, top speed {delta["top_speed"]:+.2f} m/s',
+        if record.goals:
+            y = self.draw_goal_lines(text, record.goals, y, wh - 250)
+        earlier = [run for run in self.runs if run.field == record.field and run.number < record.number]
+        if earlier:
+            before = earlier[-1]
+            delta = r.versus(before.summary)
+            met = sum(g.status in ('met', 'kept') for g in record.goals)
+            was = sum(g.status in ('met', 'kept') for g in before.goals)
+            goals = f', goals {met - was:+d}' if record.goals else ''
+            text(f'vs run {before.number}: {delta["distance"]:+.2f} m, top {delta["top_speed"]:+.2f} m/s{goals}',
                  16, y, 12, max_width=256)
-        button('Redesign in Build stage', 12, 282, 264, self.stop_and_redesign, h=36, tone='primary')
-        button('Run again', 12, 326, 264, self.run_again, h=32)
-        button('Back to editing', 12, 366, 264, lambda: setattr(self, 'run_report', None), h=28)
-        if self.run_limit is not None and self.run_limit[0] is not None:
-            limit, source, alone = self.run_limit
-            text(f'Top speed set by the {source}: {limit:.2f} m/s', 16, 404, 12, max_width=256)
+            y += 20
+        y += 8
+        button('Redesign in Build stage', 12, y, 264, self.stop_and_redesign, h=36, tone='primary')
+        button('Run again', 12, y + 44, 264, self.run_again, h=32)
+        button('Back to editing', 12, y + 84, 264, lambda: setattr(self, 'run_report', None), h=28)
+        y += 122
+        if record.limit is not None and record.limit[0] is not None:
+            limit, source, alone = record.limit
+            text(f'Top speed set by the {source}: {limit:.2f} m/s', 16, y, 12, max_width=256)
             if source == 'drive assist':
-                button('Adjust drive assist', 12, 424, 264, self.drive_settings_form, h=26)
-        section('THIS SESSION', 466)
-        first = number - len(self.runs) + 1
+                button('Adjust drive assist', 12, y + 20, 264, self.drive_settings_form, h=26)
+                y += 28
+            y += 26
+        section('THIS SESSION', y)
         for i, run in enumerate(self.runs):
-            line = f'Run {first + i}   {run.distance:.2f} m   top {run.top_speed:.2f} m/s   {run.duration:.1f} s'
-            text(line, 16, 486 + i * 19, 12, (.86, .90, .93) if run is r else MUTED, 256)
+            if y + 20 + i * 19 > wh - 52:
+                break
+            where = FIELDS[run.field].title if run.field in FIELDS else run.field
+            line = f'Run {run.number}  {where}  {run.summary.distance:.2f} m  {run.summary.duration:.1f} s'
+            text(line, 16, y + 20 + i * 19, 12, (.86, .90, .93) if run is record else MUTED, 256)
 
     def last_run_line(self):
         """One line for the Build stage, so the last result stays in view while redesigning."""
         if not self.runs:
             return None
-        r = self.runs[-1]
+        record = self.runs[-1]
+        r = record.summary
+        if record.goals:
+            met = sum(g.status in ('met', 'kept') for g in record.goals)
+            where = FIELDS[record.field].title if record.field in FIELDS else record.field
+            return f'Last run in {where}: {met} of {len(record.goals)} goals, {r.distance:.2f} m in {r.duration:.1f} s'
         touched = ', '.join(r.touched) if r.touched else 'nothing'
         return (f'Last run: {r.distance:.2f} m in {r.duration:.1f} s, top {r.top_speed:.2f} m/s, '
                 f'touched {touched}')
+
+    def last_run_troubled(self):
+        if not self.runs:
+            return False
+        record = self.runs[-1]
+        return bool(record.summary.touched) or record.summary.tipped or any(
+            g.status in ('missed', 'failed') for g in record.goals)
 
     def render_onboard_inset(self, viewport, sx, sy):
         """What the machine's own camera sees, in the corner of the driving view.

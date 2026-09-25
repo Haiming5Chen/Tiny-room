@@ -250,7 +250,7 @@ def test_build_drive_stop_report_and_back_to_the_build_stage(monkeypatch, tmp_pa
             click("STOP / RETURN TO BUILD")
         elif n == 3:
             assert app.building and app.drive_view is None
-            assert app.run_report is not None and app.run_report.distance > .1
+            assert app.run_report is not None and app.run_report.summary.distance > .1
             assert tuple(app.camera.lookat) == pytest.approx(build_view["lookat"])
             click("Redesign in Build stage")
         elif n == 4:

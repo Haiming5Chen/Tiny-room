@@ -99,6 +99,7 @@ class BuildWorkspace(DragDocking):
         self.build_stage(scene)
         self.selection_outline(scene)
         scene.flags[mj.mjtRndFlag.mjRND_SHADOW]=False
+        scene.flags[mj.mjtRndFlag.mjRND_SKYBOX]=False  # the stage keeps its own dark backdrop
         scene,context=self.spatial_drag_scene(scene)
         x,y,w,h=rect
         mj.mjr_render(mj.MjrRect(int(x*fw/ww),int((wh-y-h)*fh/wh),int(w*fw/ww),int(h*fh/wh)),scene,context)
@@ -343,7 +344,7 @@ class BuildWorkspace(DragDocking):
             text('BUILD STAGE / '+state,left+16,122,11,(.68,.82,.84),width-32)
             text('Selected: '+(self.editor.selection or 'none')+' / Replace or Delete above',left+16,143,11,(.52,.67,.72),width-32)
             last=self.last_run_line()
-            if last:text(last,left+16,164,11,(.96,.72,.38) if self.runs[-1].touched or self.runs[-1].tipped else (.52,.67,.72),width-32)
+            if last:text(last,left+16,164,11,(.96,.72,.38) if self.last_run_troubled() else (.52,.67,.72),width-32)
         text('10 cm grid',ww-106,wh-176,10,(.49,.64,.69))
         self.draw_docking(ui,text,ww,wh)
 

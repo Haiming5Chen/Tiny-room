@@ -215,10 +215,19 @@ class MujocoBackend:
             tex=spec.add_texture(name=name, type=mj.mjtTexture.mjTEXTURE_2D,
                                  width=SIZE, height=SIZE, nchannel=3)
             tex.data=texture_bytes(name)
+        if scene.backdrop == 'sky':
+            # Appearance only: a gradient where MuJoCo would otherwise leave black.
+            spec.add_texture(name='backdrop_sky', type=mj.mjtTexture.mjTEXTURE_SKYBOX,
+                             builtin=mj.mjtBuiltin.mjBUILTIN_GRADIENT, rgb1=(.52, .60, .66),
+                             rgb2=(.10, .12, .14), width=256, height=1536)
         spec.option.timestep = timestep
         spec.option.gravity = (0, 0, -9.81)
         spec.option.integrator = mj.mjtIntegrator.mjINT_IMPLICITFAST
         spec.worldbody.add_light(pos=(0, 0, 4), dir=(0, 0, -1), diffuse=(.8, .8, .8))
+        if scene.backdrop == 'sky':
+            # An open field is larger than the room light's cone: add a low sun as well.
+            spec.worldbody.add_light(pos=(0, 0, 6), dir=(-.35, .25, -1), diffuse=(.55, .55, .52),
+                                     specular=(.1, .1, .1), type=mj.mjtLightType.mjLIGHT_DIRECTIONAL, castshadow=False)
         body_names, motor_names, camera_names = [], [], []
         geom_surfaces = {}  # native geom name -> sourced surface ID
         spec_joints = {}  # native joint name -> MjSpec joint, for gearbox friction
@@ -237,7 +246,8 @@ class MujocoBackend:
                 appearance=spec.add_material(name=prefix+material.id, rgba=material.rgba,
                     specular=.1+.65*(1-material.roughness),
                     shininess=.1+.8*(1-material.roughness),
-                    texuniform=False, texrepeat=(3,2) if material.texture=='wood_floor' else (1,1))
+                    texuniform=material.texture=='concrete',
+                    texrepeat=(3,2) if material.texture=='wood_floor' else (.5,.5) if material.texture=='concrete' else (1,1))
                 if material.texture:
                     appearance.textures[mj.mjtTextureRole.mjTEXROLE_RGB]=material.texture
             bodies = {b.id: b for b in bp.components if isinstance(b, Body)}

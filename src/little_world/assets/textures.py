@@ -7,11 +7,11 @@ or geometric tire tread.
 from functools import lru_cache
 import numpy as np
 
-TEXTURES=('wood_grain','brushed_metal','rubber_tread','matte_plastic','wood_floor')
+TEXTURES=('wood_grain','brushed_metal','rubber_tread','matte_plastic','wood_floor','concrete')
 SIZE=512
 
 
-@lru_cache(maxsize=5)
+@lru_cache(maxsize=8)
 def texture_bytes(name):
     if name in ('wood_grain','wood_floor'):
         import gzip
@@ -28,6 +28,17 @@ def texture_bytes(name):
         value=np.where(groove,.46,.91)+.045*noise
     elif name=='matte_plastic':
         value=.92+.055*noise
+    elif name=='concrete':
+        # Trowelled slab: broad cloudy variation, fine grain and sparse aggregate flecks.
+        # The clouds are a coarse random grid smoothed by repeated wrap-around box blurs,
+        # so the texture tiles without seams and without visible squares.
+        coarse=rng.uniform(-1,1,(16,16)).repeat(SIZE//16,0).repeat(SIZE//16,1)
+        for _ in range(3):
+            for axis in (0,1):
+                coarse=sum(np.roll(coarse,k,axis) for k in range(-16,17,4))/9
+        coarse/=max(1e-9,np.abs(coarse).max())
+        flecks=np.where(rng.uniform(0,1,(SIZE,SIZE))>.985,rng.uniform(-.12,.10,(SIZE,SIZE)),0.)
+        value=.80+.05*coarse+.03*noise+flecks
     else:
         raise ValueError(f'Unknown surface texture: {name}')
     rgb=np.repeat((np.clip(value,0,1)*255).astype(np.uint8)[...,None],3,axis=2)

@@ -90,7 +90,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.init_test_drive()
 
     def _scene(self):
-        return workshop_scene(Entity('machine', self.editor.blueprint))
+        from little_world.fields import field_scene
+        return field_scene(getattr(self, 'field_id', 'workshop'), Entity('machine', self.editor.blueprint))
 
     @property
     def building(self):
@@ -118,9 +119,12 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         ratio = glfw.get_framebuffer_size(self.window)[0] / max(1, glfw.get_window_size(self.window)[0])
         # Primitive geometry and the fixed texture registry let fonts/FBOs
         # remain alive across model edits without re-uploading assets.
-        if self.context is not None and getattr(self,'_render_model',None) is not self.model and (self.model.nmesh or getattr(self,'_had_meshes',False)):
+        textures=tuple(int(t) for t in self.model.tex_type)
+        if self.context is not None and getattr(self,'_render_model',None) is not self.model and (
+                self.model.nmesh or getattr(self,'_had_meshes',False) or textures!=getattr(self,'_render_textures',textures)):
+            # A test field adds a sky texture the old context never uploaded.
             self.context.free();self.context=None
-        self._render_model=self.model;self._had_meshes=bool(self.model.nmesh)
+        self._render_model=self.model;self._had_meshes=bool(self.model.nmesh);self._render_textures=textures
         if self.context is None:
             self.context = mj.MjrContext(self.model, 150)
             if self.canvas is None:self.canvas = Canvas(ratio)
@@ -174,9 +178,15 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         if getattr(self, 'drive_view', None) == 'chase':
             self.drive_view = 'free'
         self.camera.type = mj.mjtCamera.mjCAMERA_FREE
-        self.camera.lookat[:] = (.1, .45, .3) if room else (0, 0, .15)
-        self.camera.distance = 5.4 if room else 2.
-        self.camera.azimuth, self.camera.elevation = 125, -32
+        if room:
+            from little_world.fields import FIELDS
+            lookat, distance, azimuth, elevation = FIELDS[getattr(self, 'field_id', 'workshop')].home
+            self.camera.lookat[:] = lookat
+            self.camera.distance, self.camera.azimuth, self.camera.elevation = distance, azimuth, elevation
+        else:
+            self.camera.lookat[:] = (0, 0, .15)
+            self.camera.distance = 2.
+            self.camera.azimuth, self.camera.elevation = 125, -32
         self.follow = False
 
     def edit(self, operation):
@@ -528,6 +538,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         if not self.bench_open and not self.inventory_open and not self.script_open:
             mj.mjv_updateScene(self.model,self.data,self.option,None,self.camera,mj.mjtCatBit.mjCAT_ALL,self.render_scene)
             self.selection_outline()
+            self.draw_field_marks()
             self.draw_trail()
             self.connection_overlay()
             if getattr(self,'factory_mode',False):self.decorate_scene()
@@ -682,11 +693,15 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             button('Follow',self.PANEL+163,72,70,self.toggle_follow,active=self.follow)
         button('Operate',self.PANEL+239,72,85,self.operate_robot)
         button('Guide',self.PANEL+330,72,64,self.show_guide)
+        field_label='Field: '+self.field_title()
+        button(field_label,self.PANEL+400,72,min(200,ww-self.PANEL-576),self.choose_field,self.building)
         button('Undo',ww-166,72,68,lambda:self.edit(self.editor.undo),self.building and bool(self.editor.past),h=26)
         button('Redo',ww-92,72,68,lambda:self.edit(self.editor.redo),self.building and bool(self.editor.future),h=26)
         help_text=('Click a part to select. Drag to orbit. Right-drag to pan. Scroll to zoom.' if self.building else
                    'Hold WASD to drive. Release to brake. P pauses. F chase or room view. Enter returns to build.')
         if self.control_panel:help_text='Drag to orbit. Right-drag to pan. Scroll to zoom.'
+        help_width=min(ui.width(help_text,12),ww-self.PANEL-35-(338 if self.control_panel else 0))
+        ui.rect(self.PANEL+10,wh-62,help_width+16,22,(.03,.045,.055,.62))  # legible on a light floor
         text(help_text,self.PANEL+18,wh-57,12,(.8,.86,.86),ww-self.PANEL-35-(338 if self.control_panel else 0))
         text(self.status,16,wh-24,12,(.61,.70,.73),ww-32)
         self.draw_inset_frame(ui,text,wh)
