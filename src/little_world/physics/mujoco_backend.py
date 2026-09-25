@@ -22,6 +22,7 @@ _IMPLICIT = (mj.mjtIntegrator.mjINT_IMPLICIT, mj.mjtIntegrator.mjINT_IMPLICITFAS
 # friction torque it holds (crept 0.20 rad in 1 s); a bare output shaft runs at the
 # datasheet's 330 rpm (3.7 % fast). Joints without sourced friction keep the defaults.
 DRY_FRICTION_SOLIMP = (.9999, .9999, .001, .5, 2.)
+NOSLIP_ITERATIONS = 2
 
 
 def dry_friction_solref(timestep):
@@ -225,6 +226,10 @@ class MujocoBackend:
         spec.option.timestep = timestep
         spec.option.gravity = (0, 0, -9.81)
         spec.option.integrator = mj.mjtIntegrator.mjINT_IMPLICITFAST
+        # MuJoCo's soft friction lets a contact creep below its friction limit: a 16 g
+        # cube squeezed at 12 N slid out of the kit gripper at 2 mm/s. The noslip pass
+        # removes that creep and leaves real sliding alone (ADR 0017).
+        spec.option.noslip_iterations = NOSLIP_ITERATIONS
         spec.worldbody.add_light(pos=(0, 0, 4), dir=(0, 0, -1), diffuse=(.8, .8, .8))
         if scene.backdrop == 'sky':
             # An open field is larger than the room light's cone: add a low sun as well.
@@ -285,8 +290,20 @@ class MujocoBackend:
                         g.name='geom_'+str(i)
                         # Keep detailed appearance; hide collision-only hulls.
                         if g.group==3:g.rgba=(0,0,0,0)
+                    # MuJoCo filters contacts between a body and its parent, except when the
+                    # parent is welded to the world - which a robot's base is here. The
+                    # Kinova Gen3's shoulder then touched its base 12 mm deep at every pose
+                    # and its first joint ground against that contact at its 105 N m limit.
+                    # Adjacent links of a registered model never collide (ADR 0017).
+                    adjacent=[]
+                    def links(body):
+                        for c in body.bodies:
+                            adjacent.append((body.name,c.name));links(c)
+                    links(child.body(meta.get('root','link0')))
                     frame=nb.add_frame(pos=tuple(-x for x in meta['center']))
                     frame.attach_body(child.body(meta.get('root','link0')),prefix=native_prefix)
+                    for a,c in adjacent:
+                        spec.add_exclude(bodyname1=native_prefix+a,bodyname2=native_prefix+c)
                     robots.append((name,native_prefix,meta))
                     camera_names.extend(c.name for c in child.cameras)
                     return nb

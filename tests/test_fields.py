@@ -169,12 +169,15 @@ def test_the_sprint_is_timed_by_the_drive_assist_speed():
     assert abs(split - 5 / .425) / (5 / .425) < .06, split
 
 
-def test_small_casters_stop_at_a_curb_taller_than_themselves():
-    """The platform's 20 mm swivel casters roll over 10 and 20 mm curbs, not 35 mm."""
+def test_a_pushed_caster_stops_at_a_curb_as_tall_as_its_radius():
+    """The platform's swivel casters have 40 mm wheels. Pushed at the axle, a free wheel
+    climbs a step lower than its radius - the edge's reaction then points above the axle -
+    and not one as tall: at 20 mm the push meets the edge at the axle's own height and
+    nothing lifts it. Before ADR 0017 the platform 'cleared' 20 mm on soft-friction creep."""
     from little_world.robots.mobile_platform import mobile_platform_blueprint
     results = run('curbs', mobile_platform_blueprint(), 13.)
-    assert results['curb_10'].status == 'met' and results['curb_20'].status == 'met'
-    assert results['curb_35'].status == 'missed'
+    assert results['curb_10'].status == 'met'
+    assert results['curb_20'].status == 'missed' and results['curb_35'].status == 'missed'
 
 
 def test_the_heavy_example_robot_cannot_climb_eight_degrees_and_a_lighter_one_can():
