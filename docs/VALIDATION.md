@@ -353,3 +353,58 @@ in `docs/media/real-workspace.png` and `docs/media/anime-workspace.png`.
 Automatic pick and place remains specific to the Panda known-object cell; the
 other sourced arms support joint experiments and programming, not general grasp
 planning. Existing running apps need a restart to load the unified workflow.
+
+## Sourced contact-pair friction — 2026-09-25
+
+Run on Linux (Python 3.11, MuJoCo 3.3.7, Mesa under Xvfb for the window tests):
+`LITTLE_WORLD_TEST_RENDER=1 xvfb-run .venv/bin/python -m pytest -q` - **478 passed**.
+Before this change the same machine gave 463 passed and 2 failed; see the last
+paragraph for those two.
+
+The defect, measured before touching anything: the two-wheel robot's skids are
+"skid" material (0.01) on a 0.8 floor, and MuJoCo's max() gave every skid contact
+0.8. Driving at a steady 0.4 Nm per wheel, a skid carried 82 N and dragged with 65 N
+of tangential force - a ratio of exactly 0.80.
+
+| Two-wheel robot, room floor, 4 s | Before | After |
+| --- | --- | --- |
+| 0.2 Nm per wheel | 0.02 m | 1.15 m |
+| 0.4 Nm per wheel | 0.78 m | 2.53 m |
+| 1.0 Nm per wheel | 2.79 m (wall) | 2.76 m (wall) |
+
+| Contact, as solved | Before | After (source) |
+| --- | --- | --- |
+| rubber wheel on concrete floor | 1.20 | 0.95 (Xu et al. 2025) |
+| skid on concrete floor | 0.80 | 0.10 (PTFE, analogue of Chemours steel data) |
+| wood block on wood floor | 0.65 | 0.36 (Villar-Garcia et al. 2022) |
+| wooden cube on aluminium stand | 0.60 | 0.19 (CTU Code factor) |
+| steel pivot cap on wood floor | 0.65 | 0.17 (Villar-Garcia et al. 2022) |
+
+Checks added in `tests/test_contact_pairs.py`: every pair is bounded, cited, labelled
+and at most low confidence when it is an analogue; lookup is symmetric and returns
+nothing it has no source for; surfaces round-trip through Blueprint JSON and old JSON
+loads; library materials saved before surfaces existed are recognised only when id,
+density and friction are all unchanged; a gripper friction the user typed is never
+replaced; a wooden block holds on a wooden plank 6 degrees below atan(0.36) and slides
+6 degrees above it; an unsourced pair (copper on the floor) keeps MuJoCo's max(); the
+inventory trial fingerprint changes when any table value changes; the reference page
+is regenerated from the table. **With nothing sourced, 600 steps of the staged
+`mj_step` are bit-identical to `mj_step`** (qpos and qvel compared exactly).
+
+Cost, best of three on this machine: compile time unchanged (two-wheel 8.1 -> 7.9 ms,
+mobile manipulator 116 -> 118 ms); `backend.step` two-wheel 81 -> 107 us, arm lab
+133 -> 171 us, mobile platform 836 -> 943 us, mobile manipulator 1002 -> 1053 us.
+About 16 us of that is the staged step and 9 us the table lookup; the remainder is
+the physics changing (contacts that used to stick now slide).
+
+The two tests that failed here before this change - `test_arm_grasps_lifts_holds_and_releases_by_contact`
+and `test_program_workspace_pickup_save_step_and_drag` - asserted that a released cube
+lands on the floor. Where it lands is a millimetre-scale coin toss: moving the cube's
+start by 1 mm sends it back onto its stand or down beside it, and so does the
+difference between the macOS and Linux builds of the same MuJoCo version. Both tests
+now assert what release means - the cube comes back down and no pad touches it - which
+holds whichever way it lands. (Run here on Linux only; the Mac has not re-run them.)
+
+Not claimed: static friction or stick-slip, pressure-dependent rubber friction, wet
+or dusty surfaces, torsional or rolling friction (unchanged defaults), or calibration
+of any pair against this project's own measurements.

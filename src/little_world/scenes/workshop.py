@@ -7,16 +7,18 @@ from little_world.core.scene import Scene
 
 
 def workshop_entities():
+    # `surface` names the real surface each finish stands for, for sourced pair friction.
+    # Walls and the window have none: nothing in the room is meant to slide on them.
     palette = (
         Material('plaster', 1600, .7, (.84, .85, .80, 1)),
         Material('teal', 1600, .7, (.27, .43, .44, 1)),
-        Material('oak', 650, .6, (1., 1., 1., 1), 'wood_grain', .75),
-        Material('floor_a', 650, .65, (1., 1., 1., 1), 'wood_floor', .8),
-        Material('floor_b', 650, .65, (.97, .97, .97, 1), 'wood_floor', .8),
-        Material('dark', 2700, .6, (.12, .17, .19, 1)),
+        Material('oak', 650, .6, (1., 1., 1., 1), 'wood_grain', .75, 'wood'),
+        Material('floor_a', 650, .65, (1., 1., 1., 1), 'wood_floor', .8, 'wood'),
+        Material('floor_b', 650, .65, (.97, .97, .97, 1), 'wood_floor', .8, 'wood'),
+        Material('dark', 2700, .6, (.12, .17, .19, 1), surface='aluminium'),
         Material('sky', 1200, .5, (.58, .79, .85, 1)),
-        Material('cream', 650, .6, (.91, .84, .65, 1)),
-        Material('red', 600, .6, (.76, .25, .16, 1)),
+        Material('cream', 650, .6, (.91, .84, .65, 1), surface='wood'),
+        Material('red', 600, .6, (.76, .25, .16, 1), surface='wood'),
     )
     parts = []
 

@@ -7,8 +7,12 @@ from .store import fingerprint
 
 
 def environment_fingerprint():
+    # The room and the contact table together: changing a sourced friction pair changes
+    # every trial, so a stored comparison made under the old table must read as historical.
     from little_world.scenes.workshop import workshop_entities
-    return hashlib.sha256(json.dumps([asdict(e) for e in workshop_entities()],sort_keys=True).encode()).hexdigest()
+    from little_world.materials import contact_pairs
+    room=json.dumps([asdict(e) for e in workshop_entities()],sort_keys=True)
+    return hashlib.sha256((room+contact_pairs.fingerprint()).encode()).hexdigest()
 
 
 def compare_trials(left,right,program,mode='hold_drive',seconds=5.,dt=.002):

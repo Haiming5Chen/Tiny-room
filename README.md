@@ -22,7 +22,12 @@ change the design, try again.** A desktop robotics sandbox on
   versions.
 - **A pick-and-place cell** where the Panda plans with damped-least-squares IK and
   lifts by real finger contact - a missed grasp is a failure, not an animation.
-- **465 automated tests**, including OpenGL window tests that drive the interface
+- **Friction from the literature, not from max().** Contact friction is a property
+  of a *pair* of surfaces: 26 pairs (rubber on concrete, PTFE on wood, aluminium on
+  steel...) with cited kinetic and static coefficients, confidence labels and a
+  generated [reference page](docs/CONTACT_PAIRS.md), applied contact by contact
+  inside the MuJoCo step ([ADR 0010](docs/adr/0010-sourced-contact-pairs.md)).
+- **478 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -109,10 +114,22 @@ Mouse drag orbits, right drag pans, and scroll zooms. **Room view / Focus**
 change the framing. **F** follows the assembly, **C** toggles the onboard camera,
 **Home** restores the close view, and **Enter** switches build/simulate.
 
+### Contact friction
+
+Friction belongs to a pair of surfaces, so each material names the real surface it
+stands for (`Material.surface`: rubber, PTFE, aluminium, steel, wood, ABS, HDPE,
+concrete) and every contact between two named surfaces uses the sourced coefficient
+for that pair - rubber on concrete 0.95 (Xu et al., *Wear* 2025), wood on wood 0.36
+(Villar-Garcia et al., *Forests* 2022), PTFE on steel 0.10 (Chemours) and 23 more,
+each cited in [CONTACT_PAIRS.md](docs/CONTACT_PAIRS.md). Pairs with no source keep
+MuJoCo's own rule (the larger coefficient) and are reported as unsourced. The table
+is the fix for a measurable defect: the kit's 0.01 skids used to drag at the floor's
+0.8, and the two-wheel robot moved 2 cm in four seconds at 0.2 Nm; it now moves 1.15 m.
+
 Catalog insertion uses preset mounting positions; **Connect** resolves precise
 face-to-face alignment afterward. Free placement gizmos, closed-loop mechanisms,
 editing room furniture, and general controller assignment are not implemented yet.
-Materials affect density/contact friction and surface appearance. Wood uses CC0
+Materials affect density, contact friction (see *Contact friction* above) and surface appearance. Wood uses CC0
 image textures; metal, rubber and plastic use procedural surface textures with
 approximate specular response. No thermal, chemical, deformation or calibrated
 PBR behavior is implied. See [workshop decision](docs/adr/0002-workshop.md).

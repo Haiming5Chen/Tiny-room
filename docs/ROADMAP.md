@@ -50,3 +50,11 @@ Workbench assembly management now includes a collapsible hierarchy, component/de
 picking, subtree focus, duplication with independent joints/actuators, and direct
 undo/redo/delete. Reusable user-authored module libraries and multi-robot controller
 selection remain future extensions; vendor calibration remains a separate milestone.
+
+
+Phase 3 has started with contact friction (ADR 0010): friction is now a sourced
+property of a pair of surfaces rather than max() of two illustrative numbers, with a
+cited table, confidence labels and a generated reference page. Next in phase 3:
+rolling resistance on the wheel joint (condim 4 ignores rolling coefficients) and
+drivetrain losses from motor datasheets. The per-contact hook that applies the table
+is also where phase 4's first causal chain (surface wetness -> pair friction) enters.

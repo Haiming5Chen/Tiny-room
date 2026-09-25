@@ -12,9 +12,14 @@ class Material:
 
     texture: str | None = None
     roughness: float = .6
+    # Named real-world surface for sourced PAIR friction (materials/contact_pairs.py).
+    # None keeps the illustrative sliding_friction above and MuJoCo's own combination.
+    surface: str | None = None
 
     def __post_init__(self):
         positive(self.density, "density")
+        if self.surface is not None and (not isinstance(self.surface, str) or not self.surface.isidentifier()):
+            raise ValueError("surface must be a surface ID such as 'rubber', or None")
         if self.texture is not None and (not isinstance(self.texture,str) or not self.texture):
             raise ValueError("texture must be a nonempty asset ID or None")
         if not isfinite(self.roughness) or not 0 <= self.roughness <= 1:

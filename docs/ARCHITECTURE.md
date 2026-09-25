@@ -63,10 +63,17 @@ and dynamic friction, nor a restitution/stiffness calibration. Density drives
 inferred mass/inertia. Illustrative material values are not measured datasets.
 Camera is optical RGB rendering, not radiative heat transport.
 
-At equal geom priority, MuJoCo combines friction using the larger pair coefficient.
-Consequently a low-friction part alone does not impose a low-friction contact against
-a higher-friction floor. The first prototype accepts this solver behavior; alternative
-pair-mixing/calibration belongs in an explicitly tested future adapter policy.
+At equal geom priority, MuJoCo combines friction using the larger pair coefficient,
+so a low-friction part alone could not impose a low-friction contact against a
+higher-friction floor: the 0.01 skid slid at the floor's 0.8. That adapter policy now
+exists (ADR 0010). `Material.surface` names the real surface a material stands for,
+and `materials/contact_pairs.py` holds sourced dry friction for 26 pairs of 8 surfaces.
+The adapter runs `mj_step` stage by stage and, between `mj_collision` and
+`mj_makeConstraint`, writes each contact's tangential coefficient from that table.
+Contacts between unlisted surfaces keep MuJoCo's combination. With nothing sourced
+the staged step is bit-identical to `mj_step` (tested). MuJoCo receives the kinetic
+coefficient; static values are recorded but there is still no stick-slip. Menagerie
+robot geoms keep their upstream friction.
 
 The inspection UI uses GLFW input and MuJoCo's renderer directly. It deliberately
 does not install the simulate application's shortcut handler: otherwise drive keys

@@ -19,9 +19,12 @@ def factory_scene(machine=None,product='Small block',recipe=None):
     from .recipe import CellRecipe,TRAYS
     recipe=recipe or CellRecipe(product=product)
     product=recipe.product
-    palette=(Material('steel',2700,.7,(.5,.56,.6,1)),Material('dark',2700,.7,(.12,.16,.20,1)),
-             Material('floor',2000,.8,(.25,.29,.32,1)),Material('blue',950,.8,(.08,.4,.75,1)),
-             Material('amber',950,.8,(.9,.55,.09,1)),Material('product',600,1.,(.78,.22,.12,1)))
+    # Surfaces for sourced pair friction: steel table and frame, concrete floor, HDPE
+    # trays, a wooden product. The Panda's own finger geoms come from Menagerie and
+    # keep their upstream friction, so the grasp itself is unchanged by this table.
+    palette=(Material('steel',2700,.7,(.5,.56,.6,1),surface='steel'),Material('dark',2700,.7,(.12,.16,.20,1),surface='steel'),
+             Material('floor',2000,.8,(.25,.29,.32,1),surface='concrete'),Material('blue',950,.8,(.08,.4,.75,1),surface='hdpe'),
+             Material('amber',950,.8,(.9,.55,.09,1),surface='hdpe'),Material('product',600,1.,(.78,.22,.12,1),surface='wood'))
     parts=[]
     def box(id,size,pos,mat='steel'):
         parts.append(Body(id,Geometry('box',size),mat,Transform(pos)))

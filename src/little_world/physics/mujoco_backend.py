@@ -5,6 +5,69 @@ import numpy as np
 from little_world.core.component import Body, Hinge, Motor, RobotServo, Camera, Transform, positive
 from little_world.core.state import State, BodyState, DeferredBodyStates
 from little_world.assets.textures import TEXTURES, SIZE, texture_bytes
+from little_world.materials import surface_of
+from little_world.materials import contact_pairs
+
+_IMPLICIT = (mj.mjtIntegrator.mjINT_IMPLICIT, mj.mjtIntegrator.mjINT_IMPLICITFAST)
+
+
+def _fwd_position(m, d, contact_hook):
+    """mj_fwdPosition in MuJoCo 3.3.7's order, with one hook between collision detection
+    and constraint construction - the only point at which a contact's friction can be
+    set and still reach the solver. See ADR 0010; bit-identity with mj_step is tested."""
+    mj.mj_kinematics(m, d); mj.mj_comPos(m, d); mj.mj_camlight(m, d)
+    mj.mj_flex(m, d); mj.mj_tendon(m, d)
+    mj.mj_makeM(m, d); mj.mj_factorM(m, d)
+    mj.mj_collision(m, d)
+    contact_hook(m, d)
+    mj.mj_makeConstraint(m, d); mj.mj_island(m, d)
+    mj.mj_transmission(m, d); mj.mj_projectConstraint(m, d)
+
+
+def _after_position(m, d, energy_sensor):
+    """The rest of mj_forwardSkip once the position stage is done."""
+    mj.mj_sensorPos(m, d)
+    if not energy_sensor:
+        if m.opt.enableflags & mj.mjtEnableBit.mjENBL_ENERGY:
+            mj.mj_energyPos(m, d)
+        else:
+            d.energy[:2] = 0
+    mj.mj_forwardSkip(m, d, mj.mjtStage.mjSTAGE_POS, 0)
+
+
+def apply_pair_friction(d, geom_surface, pair_mu):
+    """Overwrite the tangential friction of every contact whose surface pair is sourced.
+
+    Only those contacts are written: an unsourced one keeps all five of MuJoCo's values,
+    including a second tangent coefficient that an explicit <pair> may have made
+    different from the first. One fancy assignment, a few microseconds per step."""
+    if not d.ncon:
+        return
+    surface = geom_surface[d.contact.geom]
+    mu = pair_mu[surface[:, 0], surface[:, 1]]
+    sourced = np.flatnonzero(mu == mu)          # NaN marks an unsourced pair
+    if sourced.size:
+        d.contact.friction[sourced, :2] = mu[sourced, None]
+
+
+def staged_forward(m, d, contact_hook, energy_sensor=False):
+    _fwd_position(m, d, contact_hook)
+    _after_position(m, d, energy_sensor)
+
+
+def staged_step(m, d, contact_hook, energy_sensor=False):
+    """mj_step with a contact hook. Identical to mj_step when the hook changes nothing."""
+    mj.mj_checkPos(m, d); mj.mj_checkVel(m, d)
+    staged_forward(m, d, contact_hook, energy_sensor)
+    mj.mj_checkAcc(m, d)
+    if m.opt.enableflags & mj.mjtEnableBit.mjENBL_FWDINV:
+        mj.mj_compareFwdInv(m, d)
+    if m.opt.integrator in _IMPLICIT:
+        mj.mj_implicit(m, d)
+    elif m.opt.integrator == mj.mjtIntegrator.mjINT_RK4:
+        mj.mj_RungeKutta(m, d, 4)
+    else:
+        mj.mj_Euler(m, d)
 
 
 class MujocoBackend:
@@ -17,6 +80,10 @@ class MujocoBackend:
         self._camera_ids = {}
         self._static_states = {}
         self._motor_profiles = {}
+        self._geom_surface = None
+        self._pair_mu = None
+        self._any_sourced = False
+        self._energy_sensor = False
 
     def compile(self, scene, timestep):
         positive(timestep, "timestep")
@@ -34,6 +101,7 @@ class MujocoBackend:
         spec.option.integrator = mj.mjtIntegrator.mjINT_IMPLICITFAST
         spec.worldbody.add_light(pos=(0, 0, 4), dir=(0, 0, -1), diffuse=(.8, .8, .8))
         body_names, motor_names, camera_names = [], [], []
+        geom_surfaces = {}  # native geom name -> sourced surface ID
         profiles={}
         robots=[]
         servo_names={}
@@ -97,6 +165,9 @@ class MujocoBackend:
                 else:
                     kind, dims = mj.mjtGeom.mjGEOM_SPHERE, (size[0], 0, 0)
                 mat = materials[b.material]
+                surface = surface_of(mat)
+                if surface is not None:
+                    geom_surfaces[prefix + name + "_geom"] = contact_pairs.validate_surface(surface)
                 nb.add_geom(name=prefix + name + "_geom", type=kind, size=dims,
                             density=mat.density, friction=(mat.sliding_friction, .005, .0001),
                             rgba=mat.rgba, material=prefix+mat.id, condim=4)
@@ -132,8 +203,21 @@ class MujocoBackend:
                 data.qpos[model.jnt_qposadr[model.joint(native_prefix+name).id]]=value
             for name,value in zip(meta['actuators'],meta['ctrl']):
                 data.ctrl[model.actuator(native_prefix+name).id]=value
-        mj.mj_forward(model, data)
+        surfaces = sorted(contact_pairs.SURFACES)
+        index = {name: i for i, name in enumerate(surfaces)}
+        geom_surface = np.full(model.ngeom, len(surfaces), dtype=np.intp)
+        for name, surface in geom_surfaces.items():
+            geom_surface[model.geom(name).id] = index[surface]
+        pair_mu = np.full((len(surfaces) + 1,) * 2, np.nan)
+        for (a, b), pair in contact_pairs.PAIRS.items():
+            pair_mu[index[a], index[b]] = pair_mu[index[b], index[a]] = pair.kinetic
+        energy_sensor = bool(np.isin(model.sensor_type, (mj.mjtSensor.mjSENS_E_POTENTIAL,)).any())
+        # Local tables until the swap below, so a failure here leaves the old runtime whole.
+        staged_forward(model, data, lambda m, d: apply_pair_friction(d, geom_surface, pair_mu),
+                       energy_sensor)
         self.close()
+        self._geom_surface, self._pair_mu, self._energy_sensor = geom_surface, pair_mu, energy_sensor
+        self._any_sourced = bool(geom_surfaces)
         self.model, self.data = model, data
         self._body_ids = {n: model.body(n).id for n in body_names}
         self._motor_ids = {n: model.actuator(n).id for n in motor_names}
@@ -161,6 +245,31 @@ class MujocoBackend:
         if self.model is None:
             raise RuntimeError("backend is not compiled")
 
+    def _contact_policy(self, m, d):
+        """Sourced pair friction, written into each new contact before the solver sees it.
+
+        MuJoCo gives a contact the larger of its two geoms' coefficients. Here any
+        contact between two surfaces with a sourced pair (materials/contact_pairs.py)
+        gets that pair's kinetic coefficient in both tangent directions instead.
+        Contacts without a sourced pair are left exactly as MuJoCo made them.
+        """
+        if self._any_sourced:
+            apply_pair_friction(d, self._geom_surface, self._pair_mu)
+
+    def contact_report(self):
+        """Current contacts: (geom, geom, coefficient in use, sourced pair or None)."""
+        self._ready()
+        surfaces = sorted(contact_pairs.SURFACES)
+        out = []
+        for i in range(self.data.ncon):
+            c = self.data.contact[i]
+            a, b = (int(self._geom_surface[g]) for g in (c.geom1, c.geom2))
+            pair = (contact_pairs.lookup(surfaces[a], surfaces[b])
+                    if a < len(surfaces) and b < len(surfaces) else None)
+            out.append((self.model.geom(c.geom1).name, self.model.geom(c.geom2).name,
+                        float(c.friction[0]), pair))
+        return out
+
     def step(self, commands):
         self._ready()
         unknown = commands.keys() - self._motor_ids.keys()
@@ -180,7 +289,7 @@ class MujocoBackend:
                 value=profile.constrain(value,float(self.data.qvel[dof]),high)
             controls[idx] = value
         self.data.ctrl[:] = controls
-        mj.mj_step(self.model, self.data)
+        staged_step(self.model, self.data, self._contact_policy, self._energy_sensor)
         # Refresh the observed and rendered kinematics at post-integration time.
         # The next mj_step performs collision/dynamics itself; running a second
         # full constraint solve here doubled that work without advancing time.
@@ -223,7 +332,7 @@ class MujocoBackend:
         mj.mj_resetData(self.model, self.data)
         self.data.qpos[:]=self._initial_qpos
         self.data.ctrl[:]=self._initial_ctrl
-        mj.mj_forward(self.model, self.data)
+        staged_forward(self.model, self.data, self._contact_policy, self._energy_sensor)
         return self.snapshot()
 
     def capture(self, camera, width=320, height=240):

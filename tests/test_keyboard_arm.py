@@ -60,7 +60,18 @@ def test_arm_grasps_lifts_holds_and_releases_by_contact():
         assert lifted>initial+.09
         assert advance(.4)>initial+.09
         control.press('H');advance(1.);control.release('H')
-        assert advance(.8)<.05
+        # Released means let go - not "lands on the floor". Where a dropped 25 mm cube
+        # comes to rest is a millimetre-scale coin toss: shifting its start by 1 mm moves
+        # it from back-on-the-stand to the floor, and so does the difference between the
+        # macOS and Linux builds of the same MuJoCo. This asserted the floor for a week and
+        # passed on one platform only. What release has to guarantee is below.
+        final=advance(.8)
+        assert final<initial+.01  # it came back down: nothing holds it up
+        cube=backend.model.body('objects/grasp_cube').id
+        held=[i for i in range(backend.data.ncon)
+              if cube in (backend.model.geom_bodyid[backend.data.contact[i].geom1],backend.model.geom_bodyid[backend.data.contact[i].geom2])
+              and 'pad' in backend.model.geom(backend.data.contact[i].geom1).name+backend.model.geom(backend.data.contact[i].geom2).name]
+        assert not held  # and no pad is touching it
         assert backend.model.neq==0  # No hidden grasp constraints.
         world.reset();control.reset()
         assert not control.targets and not control.held

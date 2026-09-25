@@ -1,7 +1,7 @@
 """Module-level gripper edits expressed entirely as ordinary Blueprint data."""
 from dataclasses import replace
 from little_world.core.component import Body,Geometry,Transform,Motor,positive
-from little_world.materials import RUBBER,METAL,PLASTIC,WOOD
+from little_world.materials import RUBBER,METAL,PLASTIC,WOOD,unsourced
 
 MATERIALS={m.id:m for m in (RUBBER,METAL,PLASTIC,WOOD)}
 
@@ -27,6 +27,9 @@ def configure_gripper(editor,shape,material,friction,torque,pad_length):
     if not .02<=pad_length<=.09:raise ValueError('Pad length must be 20 to 90 mm')
     prefix=root.removesuffix('_root')
     mat=replace(MATERIALS[material],id=prefix+'_contact',sliding_friction=friction)
+    # A number the user typed is the number they want: it must not be replaced by the
+    # sourced pair table. Only the untouched library value stays sourced.
+    if friction!=MATERIALS[material].sliding_friction:mat=unsourced(mat)
     parts=[]
     for c in editor.blueprint.components:
         if isinstance(c,Body) and c.id in (prefix+'_finger_left_pad',prefix+'_finger_right_pad'):

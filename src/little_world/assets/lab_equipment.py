@@ -10,7 +10,8 @@ from little_world.materials import METAL,RUBBER,PLASTIC,WOOD
 
 BLUE=replace(PLASTIC,id='lab_blue',rgba=(.07,.26,.48,1),roughness=.5)
 DARK=replace(METAL,id='lab_dark',rgba=(.12,.15,.18,1))
-CARTON=replace(WOOD,id='lab_carton',density=150,rgba=(.64,.43,.22,1))
+# Cardboard, not wood: no sourced pairs, so it keeps its illustrative coefficient.
+CARTON=replace(WOOD,id='lab_carton',density=150,rgba=(.64,.43,.22,1),surface=None)
 PALETTE=(METAL,RUBBER,PLASTIC,WOOD,BLUE,DARK,CARTON)
 
 

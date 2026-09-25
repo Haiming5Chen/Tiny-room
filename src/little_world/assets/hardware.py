@@ -9,8 +9,9 @@ from little_world.core.component import Body, Geometry, Transform, Attachment, H
 from little_world.materials import METAL, RUBBER, PLASTIC
 
 DARK=replace(METAL,id='anodized',rgba=(.12,.15,.18,1),roughness=.42)
-STEEL=replace(METAL,id='steel',density=7800,rgba=(.58,.62,.66,1),roughness=.22)
-COPPER=replace(METAL,id='copper',density=8900,rgba=(.72,.37,.16,1),roughness=.35)
+STEEL=replace(METAL,id='steel',density=7800,rgba=(.58,.62,.66,1),roughness=.22,surface='steel')
+# No sourced copper pairs: its contacts keep the illustrative coefficient.
+COPPER=replace(METAL,id='copper',density=8900,rgba=(.72,.37,.16,1),roughness=.35,surface=None)
 PALETTE=(METAL,RUBBER,PLASTIC,DARK,STEEL,COPPER)
 QX=(sqrt(.5),0,sqrt(.5),0)  # cylinder Z -> X
 QY=(sqrt(.5),-sqrt(.5),0,0)

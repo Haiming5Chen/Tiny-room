@@ -42,12 +42,15 @@ def test_program_workspace_pickup_save_step_and_drag(tmp_path,monkeypatch):
         for _ in range(250):app.tick_program();app.state=app.world.step(app.joint_commands())
         assert app.runner.state=='paused' and app.runner.index==1 and app.paused
         app.stop_program();app.simulate();app.start_program()
+        start=float(app.data.body('objects/grasp_cube').xpos[2])
         peak=0
         for _ in range(2500):
             app.tick_program();app.state=app.world.step(app.joint_commands())
             peak=max(peak,float(app.data.body('objects/grasp_cube').xpos[2]))
         assert app.runner.state=='completed' and peak>.30
-        assert app.data.body('objects/grasp_cube').xpos[2]<.05
+        # Released and back down, wherever it lands: back on the stand or beside it is a
+        # millimetre-scale coin toss that differs between platforms (test_keyboard_arm).
+        assert app.data.body('objects/grasp_cube').xpos[2]<start+.01
         assert not app.program_keys
         app.simulate();assert app.building
         done=True;glfw.set_window_should_close(app.window,True)
