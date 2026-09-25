@@ -43,6 +43,9 @@ def trial(bp,program,mode,seconds,dt):
         if mode=='program':program.validate(bp,tuple(obs.indices));runner.start(program)
         from little_world.control.mujoco_drive import MujocoDrive
         drive_control=MujocoDrive(backend,bp)
+        from little_world.control.navigation import BasePose
+        try:base=BasePose(backend,drive_control,bp)
+        except ValueError:base=None
         motor_channels={}
         for i in range(model.nu):motor_channels[i]=i
         root=next(b.id for b in bp.components if isinstance(b,Body) and b.parent is None)
@@ -52,11 +55,11 @@ def trial(bp,program,mode,seconds,dt):
             drive=(3.,3.) if mode=='hold_drive' and step*dt<2 else (0.,0.)
             control.clear()
             if mode=='program' and runner.state=='running':
-                from little_world.programming.execution import apply,joint_angles,needs_grasp
+                from little_world.programming.execution import apply,base_targets,joint_angles,needs_grasp
                 contacts,distances=obs.program_inputs(program)
                 held=obs.grasped() if needs_grasp(program) else frozenset()
-                output=runner.tick(dt,joint_angles(control),contacts,distances,held)
-                drive=output['drive']
+                output=runner.tick(dt,joint_angles(control),contacts,distances,held,base.pose() if base else None)
+                drive=base_targets(output,base) if output['base'] else output['drive']
                 for key in apply(output,control):control.press(key)
             commands=control.step_commands(dt)
             commands.update(drive_control.step_commands(drive,dt,angular=mode=='program'))

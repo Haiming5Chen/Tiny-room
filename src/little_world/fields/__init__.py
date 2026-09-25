@@ -241,7 +241,45 @@ PICK_PLACE = Field(
     home=((.3, .1, .2), 1.5, 150., -32.))
 
 
-FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE)}
+TABLE = (2.0, 0., .40, .50, .12)    # centre x, y; depth, width, height (m)
+FETCH_CUBE = (1.84, 0.)             # 4 cm behind the table's front edge
+BIN, BIN_SIZE, BIN_WALL = (.5, .8), .20, .04   # a bin on the floor, left of the start
+
+
+def fetch_entities():
+    x, y, depth, width, height = TABLE
+    parts = slab()
+    parts.append(fixed('table', (depth, width, height), 'plywood', (x, y, height / 2)))
+    bx, by = BIN
+    half = BIN_SIZE / 2
+    parts.append(fixed('bin_base', (BIN_SIZE, BIN_SIZE, .006), 'tray', (bx, by, .003)))
+    for i, (dx, dy, sx, sy) in enumerate(((half - .003, 0, .006, BIN_SIZE), (-half + .003, 0, .006, BIN_SIZE),
+                                          (0, half - .003, BIN_SIZE, .006), (0, -half + .003, BIN_SIZE, .006))):
+        parts.append(fixed(f'bin_wall_{i}', (sx, sy, BIN_WALL), 'tray', (bx + dx, by + dy, BIN_WALL / 2)))
+    props = (loose('fetch_cube', (.025, .025, .040), 'cube', (FETCH_CUBE[0], FETCH_CUBE[1], height + .020)),)
+    return field_entities(parts, props)
+
+
+def fetch_goals():
+    x, y, depth, width, height = TABLE
+    front = x - depth / 2
+    bx, by = BIN
+    inside = BIN_SIZE / 2 - .006
+    return (Zone('reached', 'Reached the table', (front - .2, y - width / 2, -1.), (front, y + width / 2, 2.)),
+            Zone('lifted', 'Cube lifted 5 cm', (-10., -10., height + .02 + .05), (20., 20., 3.), target='objects/fetch_cube'),
+            # On the bin's floor, as in the pick-and-place field: held above it does not count.
+            Zone('delivered', 'Cube resting in the bin', (bx - inside, by - inside, 0.), (bx + inside, by + inside, .032),
+                 target='objects/fetch_cube', rest=True, after='lifted'),
+            Upright('upright', 'Stayed upright'))
+
+
+FETCH = Field(
+    'fetch', 'Fetch',
+    'A cube on a table 1.8 m ahead: drive there, pick it up, bring it back and set it in the bin left of the start.',
+    fetch_entities, goals=fetch_goals(), home=((1.0, .35, .15), 3.6, -70., -32.))
+
+
+FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE, FETCH)}
 
 
 def field_scene(field_id, machine):

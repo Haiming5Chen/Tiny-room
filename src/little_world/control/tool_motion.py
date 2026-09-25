@@ -65,6 +65,10 @@ class ToolMotion:
         self.scratch = mj.MjData(m)
         self.jp = np.zeros((3, m.nv))
         self.jr = np.zeros((3, m.nv))
+        # The moving part of the arm: everything below its first joint's body.
+        first = int(m.jnt_bodyid[int(m.actuator(self.prefix + self.joints[0][1]).trnid[0])])
+        self.moving = {b for b in range(m.nbody) if _below(m, b, first)}
+        self.machine = {b for b in range(m.nbody) if m.body(b).name.startswith(self.prefix)}
 
     # -- reading the tool --------------------------------------------------------------
 
@@ -177,6 +181,22 @@ class ToolMotion:
                 break
         return best, float(np.sqrt(best_cost))
 
+    def self_collision(self, angles, depth=.001):
+        """True when the arm at these joint angles would sink more than `depth` into the
+        rest of its own machine - a forearm resting on the chassis it is mounted on.
+        The solver does not see collisions; waypoints are checked with this after."""
+        d = self._pose(angles)
+        mj.mj_collision(self.model, d)
+        bodies = self.model.geom_bodyid
+        for i in range(d.ncon):
+            c = d.contact[i]
+            if c.dist > -depth:
+                continue
+            a, b = int(bodies[c.geom1]), int(bodies[c.geom2])
+            if a in self.machine and b in self.machine and (a in self.moving) != (b in self.moving):
+                return True
+        return False
+
     def pose(self, angles):
         """Joint angles as a program pose: ((action id, (degrees, ...)), ...)."""
         by_action = {}
@@ -202,6 +222,15 @@ class ToolMotion:
     def teach(self):
         """The arm's current joint targets as a pose."""
         return self.pose(self.targets())
+
+
+def _below(model, body, top):
+    """Whether `body` is `top` or hangs below it in the model's tree."""
+    while body > 0:
+        if body == top:
+            return True
+        body = int(model.body_parentid[body])
+    return False
 
 
 def blueprint_ancestors(found, module):
@@ -263,7 +292,7 @@ def pick_and_place(motion, jaws, place, target=None, clearance=.06, speed=40.):
         for angle in (hold, None):
             for point in candidates:
                 angles, short = motion.solve(point, seed, angle)
-                if short <= REACHED:
+                if short <= REACHED and not motion.self_collision(angles):
                     poses[label], seed = motion.pose(angles), angles
                     return
         raise ValueError(f'The arm cannot reach the {label} point: {100 * short:.1f} cm short')
@@ -284,6 +313,90 @@ def pick_and_place(motion, jaws, place, target=None, clearance=.06, speed=40.):
                pose('lift', speed / 2), pose('over', speed), pose('down', speed / 2),
                Block('action', jaws, -1, .8), pose('retract', speed)]
     return Program(tuple(blocks))
+
+
+PICK_FORWARD = .23      # m ahead of the drive axle where the tool meets an object: within
+PLACE_FORWARD = .25     # the compact arm's reach at table and floor height, clear of the chassis
+BACK_OFF = .25          # m to back away from the table before turning, so the arm clears it
+DROP = .03              # m above the bin's floor the object is let go from
+
+
+def at_base(base_now, base_plan, point):
+    """A world point as it sits relative to the base now, if it sits relative to the base
+    at `base_plan` as it does in the world: planar poses (x, y, yaw). A joint solution
+    for the machine standing at `base_plan` is the solution for this point now."""
+    x0, y0, yaw0 = base_plan
+    x1, y1, yaw1 = base_now
+    dx, dy = point[0] - x0, point[1] - y0
+    c0, s0, c1, s1 = np.cos(-yaw0), np.sin(-yaw0), np.cos(yaw1), np.sin(yaw1)
+    fx, fy = c0 * dx - s0 * dy, s0 * dx + c0 * dy
+    return np.array((x1 + c1 * fx - s1 * fy, y1 + s1 * fx + c1 * fy, point[2]))
+
+
+def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=0.):
+    """A program for a mobile manipulator: drive to the object, pick it up, back away,
+    drive to `place` (x, y, height of the surface under it) and set it down. Each arm
+    waypoint is solved for the machine standing where the program will have driven it,
+    as it stands now - so plan it with the machine settled on the floor, not in its level
+    design pose; the drive axle's midpoint comes to within 1 cm and 2 degrees of each stop.
+    `reach_in` lets go that much short of `place`, on the side the machine comes from:
+    a short arm reaching into a bin keeps its chassis off the bin's near wall."""
+    backend = motion.backend
+    now = base.pose()
+    body = backend.model.body(target).id
+    held = backend.data.xpos[body].copy()
+    half = float(held[2] - _bottom(backend, body))
+    start = motion.targets()
+    _, pointing = motion.tool(angles=start)
+    hold = float(pointing[2])
+    heading = float(np.arctan2(held[1] - now[1], held[0] - now[0]))
+    ahead = np.array((np.cos(heading), np.sin(heading)))
+    pick = (*(held[:2] - PICK_FORWARD * ahead), heading)
+    retreat = (*(np.array(pick[:2]) - BACK_OFF * ahead), heading)
+    goal = np.array((place[0], place[1], place[2] + half + DROP))
+    towards = float(np.arctan2(goal[1] - retreat[1], goal[0] - retreat[0]))
+    along = np.array((np.cos(towards), np.sin(towards)))
+    goal[:2] -= reach_in * along
+    drop = (*(goal[:2] - PLACE_FORWARD * along), towards)
+    poses, seed = {}, start
+
+    def reach(label, stand, candidates):
+        nonlocal seed
+        blocked = False
+        for angle in (hold, None):
+            for point in candidates:
+                angles, short = motion.solve(at_base(now, stand, point), seed, angle)
+                if short <= REACHED:
+                    if motion.self_collision(angles):
+                        blocked = True
+                        continue
+                    poses[label], seed = motion.pose(angles), angles
+                    return
+        if blocked:
+            raise ValueError(f'The arm would hit its own machine reaching the {label} point')
+        raise ValueError(f'The arm cannot reach the {label} point from where the base stops: {100 * short:.1f} cm short')
+    up = np.array((0., 0., 1.))
+    reach('above', pick, [held + clearance * up])
+    reach('at', pick, [held])
+    reach('lift', pick, [held + clearance * up])
+    # A short arm reaching down past its own chassis may be stopped by it: let go higher.
+    lowest = [goal + rise * up for rise in (0., .02, .04, .06, .08)]
+    reach('over', drop, [point + clearance * up for point in lowest])
+    reach('down', drop, lowest)
+    reach('retract', drop, [goal + clearance * up])
+    pose = lambda label, pace: Block('pose', value=pace, duration=2., angles=poses[label])
+    goto = lambda stop: Block('goto', value=.01, duration=60., point=(stop[0], stop[1], float(np.degrees(stop[2]))))
+    # The arm takes its 'above' pose before the drive, so the open jaws arrive over the
+    # object instead of pushing it off the table on the way in.
+    return Program((
+        Block('action', jaws, -1, .6), pose('above', speed),
+        goto(pick), pose('at', speed / 2),
+        Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5),
+        pose('lift', speed / 2),
+        goto(retreat), goto(drop),
+        pose('over', speed / 2), pose('down', speed / 2),
+        Block('action', jaws, -1, .8),
+        pose('retract', speed)))
 
 
 def _bottom(backend, body):

@@ -71,5 +71,8 @@ made every kit arm chatter once disturbed, now integrated by the solver (ADR 001
 Machines now read as modules with roles, and their stance is predicted before a run
 and measured during it (ADR 0015). Arms now move their tool rather than single joints,
 programs hold taught poses and grasp checks, and a pick-and-place program solved for the
-built arm meets the Pick and place field's goals (ADR 0016). Next for the builder: the
-same task from a mobile base (drive, then reach), and the factory cell's rough edges.
+built arm meets the Pick and place field's goals (ADR 0016). Programs drive a base to a
+point, and the mobile manipulator fetches a cube from a table into a bin by itself in the
+Fetch field (ADR 0018) - which exposed and fixed grasp creep (ADR 0017). Next for the
+builder: the factory cell's rough edges, and fields that need a path (a doorway, a
+corridor) rather than a straight drive.

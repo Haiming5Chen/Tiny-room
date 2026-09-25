@@ -519,13 +519,14 @@ head-on at one ramp:
 
 | Machine | 5 m sprint | Curbs cleared | Ramps climbed | 4 kg crate past 3 m |
 | --- | --- | --- | --- | --- |
-| Mobile platform (2 x Pololu 37D, casters) | 11.8 s | 10, 20 mm | 8 deg | no |
+| Mobile platform (2 x Pololu 37D, casters) | 11.8 s | 10, 20 mm (10 mm since ADR 0017) | 8 deg | no |
 | Two-wheel robot (20.5 kg, skids) | 13.6 s | none | none | 14.0 s |
 | Four-wheel rover | 12.4 s | 10, 20, 35 mm | 8, 14, 20 deg | 7.5 s |
 | Six-wheel rover | 12.4 s | 10 mm | 8 deg | 7.0 s |
 | Delivery cart (casters) | 12.5 s | none | none | 9.9 s |
 
-The failures have physical reasons the tests hold: the platform's 20 mm swivel casters
+The failures have physical reasons the tests hold: the platform's swivel casters (40 mm
+wheels; ADR 0017 found they had crept up the 20 mm curb, as tall as their radius)
 cannot climb a 35 mm curb; the two-wheel robot needs m g sin 8 deg = 28 N on the 8
 degree ramp and its 1 Nm motors on 85 mm wheels give 23.5 N - with a plastic chassis
 (9.1 kg, 12.4 N needed) the same robot climbs it; a 4 kg crate on concrete takes 15.7 N
@@ -639,3 +640,61 @@ goals. Full display-enabled suite: **564 passed**.
 Not claimed: no path planning or collision avoidance (a straight step into the stand
 hits the stand), no orientation about the tool's axis, kit arms only; the template plans
 once from the state it is made in.
+
+## Friction that holds — 2026-09-25
+
+See ADR 0017. The arm lab held its 16 g cube still for 10 s with the jaws at their
+0.6 N m limit: with MuJoCo's default soft friction the cube slid 18.5 mm out of the
+grip, accelerating; with two noslip iterations, 0.14 mm. A box on a 20 degree plane with
+friction 0.2 still slides at g (sin a - mu cos a) within 5 %. The ADR 0013 matrix re-run:
+
+| Machine | 5 m sprint | Curbs cleared | Ramps climbed | 4 kg crate past 3 m |
+| --- | --- | --- | --- | --- |
+| Mobile platform | 11.8 s | 10 mm | 8 deg | no |
+| Two-wheel robot | 13.5 s | none | none | 13.8 s |
+| Four-wheel rover | 12.4 s | 10, 20, 35 mm | 8, 14, 20 deg | 7.5 s |
+| Six-wheel rover | 12.4 s | 10 mm | 8 deg | 7.0 s |
+| Delivery cart | 12.5 s | none | none | 9.7 s |
+
+The one change is the platform's 20 mm curb: its casters' 40 mm wheels had crept up an
+edge as tall as their radius, which a pushed free wheel cannot climb. The Kinova Gen3's
+first joint, frozen by noslip, turned out to be grinding against a 12 mm overlap between
+its shoulder and base (present in the Menagerie file) at its 105 N m limit; contacts
+between adjacent links of registered robots are now excluded, and it turns with force
+to spare. Cost per step: two-wheel robot 198 -> 251 us, arm lab 246 -> 308 us, mobile
+platform 1096 -> 1211 us, mobile manipulator 1289 -> 1457 us.
+
+Checks in `tests/test_grip_friction.py` (3): a held cube stays within 1 mm of the grip
+for 10 s; sliding above the friction limit is unchanged; adjacent robot links do not
+touch and the Kinova's first joint turns below its limit. `tests/test_fields.py` now
+holds the curb result as the physics of a pushed wheel.
+
+Not claimed: tangential creep is removed, not normal softness; no separate static
+friction coefficient.
+
+## Fetch: driving to a point — 2026-09-25
+
+See ADR 0018. The mobile manipulator, running the Fetch program solved for it from where
+it stands, reaches the table at 9.7 s, has the cube lifted at 16.2 s and resting in the
+bin at 32.9 s, stays upright, and completes at 33.6 s. Before ADR 0017 the same program
+lost the cube on the way back: it crept 2.1 cm out of the jaws in 9 s of driving.
+Driving to points (1.5, 0), (0.5, 0.6, 90 deg), (0.8, -0.4, 180 deg), (0, 0, 0 deg) in
+turn, the platform came to rest within 0.5 cm and 2 degrees of each, the mobile
+manipulator within 2.1 cm and 2 degrees. Two defects in the first versions were found
+by running it: the turn on the spot drifted the base out of tolerance and the controller
+went back and forth between point and heading (fixed by hysteresis), and the arm as
+designed pushed the cube 3.7 cm along the table on the way in (fixed by taking the pose
+above it before driving).
+
+Checks in `tests/test_fetch.py` (9): drive ahead, turn first when off the bearing, back
+up to a goal close behind, turn round for one far behind; slow down near the goal but
+not below 3 cm/s; turn to the heading without chasing the point again unless pushed
+away; wheel speeds from forward speed and turn rate; goto blocks as version-2 data, and
+the runner failing without a base and ending on arrival; the base pose is the axle
+midpoint; a program drives the platform to (1, 0.5, 90 deg); the mobile manipulator
+meets all four Fetch goals by itself; and a window test builds the Fetch program with
+its button, runs it and sees the base drive off towards the table. Full display-enabled
+suite: **576 passed**; headless 541 (35 need a display).
+
+Not claimed: ideal positions (no odometry drift or localisation), no path planning or
+obstacle avoidance, plans made once from the state they are made in.

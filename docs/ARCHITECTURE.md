@@ -86,6 +86,11 @@ speed-torque line's slope to the actuator's affine bias wherever the line limits
 command, so MuJoCo's implicitfast integrator follows the line at any inertia. Ideal
 drive modules, swivels and user-made hinges keep the 0.01 N m s damping.
 
+The adapter also runs MuJoCo's noslip pass (two iterations, ADR 0017): its soft
+friction otherwise lets a contact creep below its friction limit - a held cube slid out
+of the gripper at 2 mm/s - and excludes contacts between adjacent links of registered
+robot models, which MuJoCo's parent filter skips when the parent is welded to the world.
+
 Controllers use the same mechanism for their own damping (ADR 0014). A command may be
 a `core.command.Torque`: a float that also carries its slope with respect to joint
 speed. The position controller returns `Torque(command, -kd)` below its limit and the
@@ -134,6 +139,12 @@ scratch copy of the state whose result becomes joint targets for the same servos
 Programs carry `pose` and `grasp` blocks as data (`programming/program.py`, version 2
 when used); `programming/execution.py` hands a runner's output to a position controller
 the same way in the window, in inventory trials and headless.
+
+A base with a left and a right drive wheel can be driven to a point (ADR 0018):
+`control/navigation.py` turns the axle midpoint's pose into a forward speed and a turn
+rate (standard library; `BasePose` reads the pose from MuJoCo as an ideal observation)
+and those into wheel speeds for the same drive controller the keyboard uses. The runner
+owns one controller per `goto` block, so its hysteresis lives with the block.
 
 ## Interactive construction
 

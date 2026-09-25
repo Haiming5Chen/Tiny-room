@@ -27,5 +27,15 @@ def apply(output, control):
     return keys
 
 
+def base_targets(output, base):
+    """Wheel speed targets (rad/s, left and right) for a goto block's drive command,
+    or None when the block is not driving the base. `base` is a BasePose."""
+    if not output.get('base'):
+        return None
+    from little_world.control.navigation import wheel_targets
+    forward, turn = output['base']
+    return wheel_targets(forward, turn, base.radius, base.track)
+
+
 def needs_grasp(program):
     return any(b.kind == 'grasp' for b in program.blocks)

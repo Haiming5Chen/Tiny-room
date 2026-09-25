@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from math import cos, radians, sin
 import mujoco as mj
 import numpy as np
-from little_world.control.drive_telemetry import DriveTelemetry
+from little_world.control.drive_telemetry import DriveTelemetry, display_name
 from little_world.control.run_log import RunLog, RunSummary
 from little_world.fields import FIELDS
 from little_world.fields.goals import GoalTracker, Line, Zone
@@ -355,7 +355,13 @@ class TestDrive:
             text(f'{summary.distance:.2f} m driven  /  ' + stance_text, 16, y + 20, 12,
                  WARN if stance is not None and stance < .01 else (.86, .90, .93), 256)
             y += 40
-        touching = ', '.join(sorted(self.drive_touching))
+        # What the gripper holds is not a collision: name it apart from what is touched.
+        observations = getattr(self, 'observations', None)
+        held = {display_name(n) for n in observations.grasped()} if observations is not None and arm else set()
+        touching = ', '.join(sorted(self.drive_touching - held))
+        if held:
+            text('holding: ' + ', '.join(sorted(held)), 16, y, 12, ACCENT, 256)
+            y += 20
         # A vehicle touching things is news; an arm touching things is its job.
         text('touching: ' + touching if touching else 'touching nothing', 16, y, 12,
              WARN if touching and not anchored else (.86, .90, .93) if touching else MUTED, 256)

@@ -2,10 +2,10 @@ from dataclasses import dataclass,asdict
 from math import isfinite
 import json
 
-KINDS=('wait','action','drive','move','contact','distance','if_contact','pose','grasp')
+KINDS=('wait','action','drive','move','contact','distance','if_contact','pose','grasp','goto')
 # Blocks a version-1 reader does not know: a program that uses them is written as version 2,
 # which such a reader refuses instead of misreading (ADR 0016).
-VERSION_2_KINDS=('pose','grasp')
+VERSION_2_KINDS=('pose','grasp','goto')
 SETTLE=2.   # degrees: a joint this close to its target has arrived
 
 
@@ -21,6 +21,10 @@ class Block:
     # and arrive together at up to `value` degrees per second; `duration` is how long they
     # may take to settle after that before the block fails.
     angles: tuple = ()
+    # goto: (x, y) in metres in the field's frame, or (x, y, heading in degrees). The
+    # base's drive axle midpoint is brought within `value` metres of it (0: 1 cm),
+    # then turned to the heading; `duration` is the timeout (ADR 0017).
+    point: tuple = ()
 
     def __post_init__(self):
         if self.kind not in KINDS:
@@ -44,6 +48,17 @@ class Block:
             if not 1<=self.value<=180:raise ValueError('Pose speed must be 1 to 180 degrees per second')
         elif angles:
             raise ValueError('Only a pose block carries joint angles')
+        try:
+            point=tuple(float(v) for v in self.point)
+        except (TypeError,ValueError):
+            raise ValueError('A goto point is (x, y) or (x, y, heading)') from None
+        object.__setattr__(self,'point',point)
+        if self.kind=='goto':
+            if len(point) not in (2,3) or any(not isfinite(v) for v in point):raise ValueError('A goto point is (x, y) or (x, y, heading)')
+            if any(abs(v)>100 for v in point[:2]):raise ValueError('A goto point must be within 100 m')
+            if self.value and not .002<=self.value<=.5:raise ValueError('Goto tolerance must be 0.002 to 0.5 m (0: 1 cm)')
+        elif point:
+            raise ValueError('Only a goto block carries a point')
 
 
 @dataclass(frozen=True)
@@ -92,18 +107,20 @@ class Program:
                 if b.target not in body_names or b.other not in body_names:raise ValueError('Missing sensor body reference')
                 if b.target==b.other:raise ValueError('Choose two different bodies')
             if b.kind=='grasp' and b.target and b.target not in body_names:raise ValueError('Missing object to grasp: '+b.target)
+            if b.kind=='goto' and not any(c.kind=='differential_torque' and len(c.actuators)>=2 for c in specs.values()):raise ValueError('Driving to a point needs a two-wheel drive controller')
 
     def to_json(self):
         data=asdict(self)
         for block in data['blocks']:
-            if not block['angles']:del block['angles']   # version-1 files stay exactly as they were
+            for key in ('angles','point'):
+                if not block[key]:del block[key]   # version-1 files stay exactly as they were
         return json.dumps(data,indent=2,allow_nan=False)
 
     @classmethod
     def from_json(cls,text):
         data=json.loads(text)
         if set(data)!={'blocks','repeat','trigger','version'}:raise ValueError('Invalid program fields')
-        if data['version']==1 and any('angles' in b for b in data['blocks']):raise ValueError('Invalid program fields')
+        if data['version']==1 and any('angles' in b or 'point' in b for b in data['blocks']):raise ValueError('Invalid program fields')
         return cls(tuple(Block(**b) for b in data['blocks']),data['repeat'],data['trigger'],data['version'])
 
 
@@ -117,12 +134,12 @@ class Runner:
     def __init__(self):self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
-        self.pose_from=None
+        self.pose_from=None;self.driver=None
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
     def advance(self,skip=1):
-        self.elapsed=0.;self.index+=skip;self.pose_from=None
+        self.elapsed=0.;self.index+=skip;self.pose_from=None;self.driver=None
         if self.index>=len(self.program.blocks):
             self.cycle+=1
             if self.cycle>=self.program.repeat:self.state='completed';self.message='Completed';return
@@ -133,11 +150,12 @@ class Runner:
     def travel(self,block):
         """Seconds a pose's slowest joint needs at the pose's speed, from where it started."""
         return max((abs(g-s) for a,goal in block.angles for s,g in zip(self.pose_from[a],goal)),default=0.)/block.value
-    def tick(self,dt,angles=None,contacts=(),distances=None,held=frozenset()):
+    def tick(self,dt,angles=None,contacts=(),distances=None,held=frozenset(),base=None):
         """One step of simulated time. `angles`: joint action -> current angles (degrees);
-        `held`: names of the objects a gripper holds between both jaws."""
+        `held`: names of the objects a gripper holds between both jaws; `base`: the drive
+        base's (x, y, yaw radians), for goto blocks."""
         if not isfinite(dt) or dt<=0:raise ValueError('Timestep must be positive')
-        output={'action':None,'drive':(0.,0.),'move':None,'pose':None}
+        output={'action':None,'drive':(0.,0.),'move':None,'pose':None,'base':None}
         if self.state!='running':return output
         b=self.program.blocks[self.index];self.elapsed+=dt
         if b.kind=='action':output['action']=(b.target,b.value)
@@ -152,6 +170,14 @@ class Runner:
             travel=self.travel(b)
             u=smoothstep(self.elapsed/travel) if travel>0 else 1.
             output['pose']={a:tuple(s+(g-s)*u for s,g in zip(self.pose_from[a],goal)) for a,goal in b.angles}
+        elif b.kind=='goto':
+            if base is None:self.fail('No drive base to drive to a point');return output
+            if self.driver is None:
+                from math import radians
+                from little_world.control.navigation import GoTo
+                self.driver=GoTo(b.point[:2],radians(b.point[2]) if len(b.point)>2 else None,b.value or .01)
+            forward,turn,arrived=self.driver.step(base)
+            output['base']=(forward,turn)
         condition=False
         if b.kind=='move':condition=bool((angles or {}).get(b.target)) and all(abs(v-b.value)<=SETTLE for v in angles[b.target])
         elif b.kind=='pose':
@@ -160,8 +186,9 @@ class Runner:
         elif b.kind in ('contact','if_contact'):condition=frozenset((b.target,b.other)) in contacts
         elif b.kind=='distance':condition=(distances or {}).get((b.target,b.other),float('inf'))<=b.value
         elif b.kind=='grasp':condition=(b.target in held) if b.target else bool(held)
+        elif b.kind=='goto':condition=arrived
         if b.kind=='if_contact':self.advance(1 if condition else 2)
-        elif b.kind in ('move','contact','distance','grasp'):
+        elif b.kind in ('move','contact','distance','grasp','goto'):
             if condition:self.advance()
             elif self.elapsed+1e-9>=b.duration:
                 self.fail('Nothing held: the grasp missed' if b.kind=='grasp' else 'Timed out: '+b.kind+' '+b.target)

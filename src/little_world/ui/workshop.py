@@ -134,6 +134,9 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         from little_world.control.mujoco_drive import MujocoDrive
         self.drive_control=MujocoDrive(self.backend,self.editor.blueprint)
         self.channels=[c[:3] for c in self.drive_control.channels]
+        from little_world.control.navigation import BasePose
+        try:self.base_pose=BasePose(self.backend,self.drive_control,self.editor.blueprint)
+        except ValueError:self.base_pose=None   # no left and right drive: nothing to drive to a point
         root = next((b for b in self.editor.bodies if b.parent is None), None)
         if root:
             self.root_id = self.model.body('machine/' + root.id).id

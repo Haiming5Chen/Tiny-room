@@ -65,6 +65,60 @@ class ProgramWorkspace:
         self.program_edit(pick_and_place(self.tool_motion,jaws.id,(float(self.data.xpos[tray][0]),float(self.data.xpos[tray][1]),top)))
         self.status='Pick and place solved for this arm. Run it: the field judges the result.'
 
+    def fetch_program(self):
+        """Drive to the table, pick the cube, bring it back and set it in the bin, each stop
+        and waypoint solved for this machine (ADR 0018)."""
+        from little_world.control.tool_motion import fetch
+        from little_world.fields import BIN_SIZE
+        if self.tool_motion is None:raise ValueError(self.tool_reason or 'The Fetch program needs an arm with a gripper')
+        if getattr(self,'base_pose',None) is None:raise ValueError('The Fetch program needs a left and a right drive wheel')
+        jaws=self.jaws_action()
+        if jaws is None:raise ValueError('Bind the gripper to a keyboard action first')
+        try:bin_id=self.model.body('field/bin_base').id;self.model.body('objects/fetch_cube')
+        except KeyError:raise ValueError('Choose the Fetch field: its table, cube and bin are what the program uses') from None
+        top=float(self.data.xpos[bin_id][2]+max(self.model.geom_size[g][2] for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==bin_id))
+        place=(float(self.data.xpos[bin_id][0]),float(self.data.xpos[bin_id][1]),top)
+        if self.building:
+            # Plan from the machine as it stands, settled on the floor, not level as designed.
+            self.simulate()
+            for _ in range(round(.6/self.world.timestep)):
+                commands=dict(self.drive_control.step_commands((0.,0.),self.world.timestep,angular=True))
+                commands.update(self.joint_control.step_commands(self.world.timestep))
+                self.state=self.world.step(commands)
+            self.paused=True
+        self.program_edit(fetch(self.tool_motion,self.base_pose,jaws.id,'objects/fetch_cube',place,reach_in=BIN_SIZE/2-.045))
+        self.status='Fetch solved for this machine: drive, pick, bring back, set down. Run it: the field judges it.'
+
+    def field_program(self):
+        """The template for the chosen field's task."""
+        task={'pick_place':self.pick_place_program,'fetch':self.fetch_program}.get(getattr(self,'field_id',None))
+        if task is None:raise ValueError('Choose the Pick and place or Fetch field: their goals have a program template')
+        task()
+
+    def goto_form(self,index=None):
+        """A goto step: drive the base's axle midpoint to a point, then turn to a heading."""
+        old=self.program.blocks[index] if index is not None else None
+        base=getattr(self,'base_pose',None)
+        if old is None and base is None:raise ValueError('Driving to a point needs a left and a right drive wheel')
+        if old:x,y,*heading=old.point
+        else:
+            x,y,yaw=base.degrees();heading=[yaw]
+        def apply(values):
+            nx,ny=(numbers(v,1)[0] for v in values[:2])
+            point=(nx,ny) if not values[2].strip() else (nx,ny,numbers(values[2],1)[0])
+            b=Block('goto',value=numbers(values[3],1)[0],duration=numbers(values[4],1)[0],point=point)
+            blocks=list(self.program.blocks)
+            if index is None:blocks.append(b)
+            else:blocks[index]=b
+            self.program_edit(replace(self.program,blocks=tuple(blocks)))
+            self.program_selected=len(blocks)-1 if index is None else index
+        self.form('Block / drive to a point',[('x (metres, field frame: ahead of the start)',f'{x:.3f}'),
+                                             ('y (metres, left of the start)',f'{y:.3f}'),
+                                             ('Heading at the end (degrees; blank: any)',f'{heading[0]:.1f}' if heading else ''),
+                                             ('Arrive within (metres)',str(old.value if old and old.value else .01)),
+                                             ('Timeout (seconds)',str(old.duration if old else 30))],apply,
+                  'Ideal position sensing. Starts from where the base is now: drive there first to use it as a waypoint.',text_input=True)
+
     def pose_form(self,index=None):
         """A pose step: the arm's joint targets now, or an existing pose's speed and settle time."""
         old=self.program.blocks[index] if index is not None else None
@@ -103,6 +157,8 @@ class ProgramWorkspace:
                 self.pose_form(index);return
             if kind=='grasp':
                 self.grasp_form(index);return
+            if kind=='goto':
+                self.goto_form(index);return
             def target_selected(target=''):
                 if kind=='action':fields=[('Direction: 1 increase / -1 decrease',str(old.value if old else 1)),('Duration (seconds)',str(old.duration if old else 1))]
                 elif kind=='drive':fields=[('Left wheel target (rad/s)',str(old.value if old else 3)),('Right wheel target (rad/s)',str(old.secondary if old else 3)),('Duration (seconds)',str(old.duration if old else 1))]
@@ -123,7 +179,7 @@ class ProgramWorkspace:
                 self.choose('Choose joint action',tuple(labels),lambda label:target_selected(labels[label]))
             else:target_selected()
         if old:kind_selected(old.kind)
-        else:self.choose('Add program block',('pose','grasp','action','drive','wait','move','contact','distance','if_contact'),kind_selected)
+        else:self.choose('Add program block',('pose','grasp','goto','action','drive','wait','move','contact','distance','if_contact'),kind_selected)
 
     def sensor_block_form(self,kind,index=None):
         names=tuple(self.observations.indices)
@@ -167,13 +223,15 @@ class ProgramWorkspace:
         elif self.runner.state=='paused':self.start_program()
 
     def tick_program(self):
-        from little_world.programming.execution import apply,joint_angles,needs_grasp
+        from little_world.programming.execution import apply,base_targets,joint_angles,needs_grasp
         self.program_keys.clear();self.program_drive=None
         if self.runner.state!='running':return
         contacts,distances=self.observations.program_inputs(self.program)
         held=self.observations.grasped() if needs_grasp(self.program) else frozenset()
-        result=self.runner.tick(self.world.timestep,joint_angles(self.joint_control),contacts,distances,held)
-        self.program_drive=result['drive']
+        base=getattr(self,'base_pose',None)
+        result=self.runner.tick(self.world.timestep,joint_angles(self.joint_control),contacts,distances,held,
+                                base.pose() if base is not None else None)
+        self.program_drive=base_targets(result,base) if result['base'] else result['drive']
         self.program_keys|=apply(result,self.joint_control)
         if self.runner.state in ('paused','failed'):self.paused=True
         if self.runner.state in ('paused','failed','completed'):self.status='Program: '+self.runner.message
@@ -208,7 +266,7 @@ class ProgramWorkspace:
         for row,b in enumerate(self.program.blocks[self.program_offset:self.program_offset+rows]):
             i=self.program_offset+row;y=282+row*43
             names={'wait':'Wait','action':'Joint action','drive':'Drive','move':'Move to angle','contact':'Wait for contact','distance':'Wait for distance','if_contact':'If contact',
-                   'pose':'Move to pose','grasp':'Check grasp'}
+                   'pose':'Move to pose','grasp':'Check grasp','goto':'Drive to'}
             label=f'{i+1}. '+names[b.kind]+(' / '+labels.get(b.target,b.target.split('/')[-1]) if b.target else '')
             active=self.runner.index==i and self.runner.state in ('running','paused')
             button(label,x+16,y,294,lambda i=i:setattr(self,'program_selected',i),active=active or (editing and self.program_selected==i),h=26)
@@ -221,6 +279,7 @@ class ProgramWorkspace:
             elif b.kind=='if_contact':detail='True: next block / false: skip next'
             elif b.kind=='pose':detail=f'{len(b.angles)} joints together / up to {b.value:g} deg/s'
             elif b.kind=='grasp':detail=f'Holding {b.target.split(chr(47))[-1] if b.target else "anything"} / timeout {b.duration:g}s'
+            elif b.kind=='goto':detail=f'x {b.point[0]:.2f}  y {b.point[1]:.2f} m'+(f'  /  {round(b.point[2]):d} deg' if len(b.point)>2 else '')+f'  /  within {100*(b.value or .01):.0f} cm'
             text(detail,x+24,y+28,10,(.6,.74,.77),276)
             self.program_rows.append((i,x+16,y,294,38))
         if not self.program.blocks:text('Add blocks or load an example.',x+16,286,12,(.6,.74,.77),294)
@@ -240,6 +299,8 @@ class ProgramWorkspace:
             button('Joint motion example',x+16,y,294,self.joint_example,editing,h=28)
         else:
             button('Pickup template',x+16,y,143,self.pickup_program,editing,h=28)
-            button('Pick and place',x+167,y,143,self.pick_place_program,editing and self.tool_motion is not None,h=28)
+            field=getattr(self,'field_id',None)
+            button({'fetch':'Fetch program','pick_place':'Pick and place'}.get(field,'Field task'),x+167,y,143,self.field_program,
+                   editing and self.tool_motion is not None and field in ('fetch','pick_place'),h=28)
         button('Step',x+16,wh-110,294,lambda:self.start_program(True),self.runner.state!='running' and bool(self.program.blocks),h=28)
         text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)

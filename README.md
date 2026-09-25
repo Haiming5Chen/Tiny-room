@@ -21,9 +21,9 @@ change the design, try again.** A desktop robotics sandbox on
   test panel (contact, tilt, joint error, torque) and side-by-side trials of saved
   versions. Simulating a vehicle is a **test drive**: a chase camera, live motor and
   slip telemetry, the path on the floor and a run report compared with the last run
-  ([ADR 0012](docs/adr/0012-test-drive.md)), in one of seven **test fields** whose
-  goals the physics decides: a sprint, a slalom, ramps, curbs, a crate to push and a
-  pick-and-place table ([ADR 0013](docs/adr/0013-test-fields.md)).
+  ([ADR 0012](docs/adr/0012-test-drive.md)), in one of eight **test fields** whose
+  goals the physics decides: a sprint, a slalom, ramps, curbs, a crate to push, a
+  pick-and-place table and a fetch-and-return ([ADR 0013](docs/adr/0013-test-fields.md)).
 - **A pick-and-place cell** where the Panda plans with damped-least-squares IK and
   lifts by real finger contact - a missed grasp is a failure, not an animation.
 - **Friction from the literature, not from max().** Contact friction is a property
@@ -49,7 +49,16 @@ change the design, try again.** A desktop robotics sandbox on
   pick-and-place program solved for the arm you built: in the Pick and place field the
   arm lab puts the cube in the tray, and a missed grasp stops the program
   ([ADR 0016](docs/adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md)).
-- **564 automated tests**, including OpenGL window tests that drive the interface
+- **A mobile manipulator that fetches by itself.** Programs can drive the base to a
+  point and heading; the Fetch program - solved for the machine you built - drives 1.6 m
+  to a table, picks up a cube, backs away, drives to a bin and lets go, and the Fetch
+  field's goals are all met at 33 s
+  ([ADR 0018](docs/adr/0018-fetch-drive-to-a-point.md)). Running it exposed that
+  MuJoCo's soft friction let a held cube slide out of the jaws at 2 mm/s; two noslip
+  iterations stop that without touching real sliding, which also corrected a curb result
+  and freed a Menagerie arm grinding against its own base
+  ([ADR 0017](docs/adr/0017-friction-that-holds.md)).
+- **576 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -580,6 +589,16 @@ it resting in the tray at 5.7 s.
 
 <p align="center">
   <img src="docs/media/arm-pick-and-place.png" width="80%" alt="The arm lab has set the cube in the tray; both field goals are done and the program is complete">
+</p>
+
+**Drive to** moves the base's drive axle to a point and heading in the field (ideal
+position sensing, no path planning). In the **Fetch** field the same button reads
+**Fetch program**: for the mobile manipulator it drives to the table, picks up the cube,
+backs away, drives to the bin and lets it go, each stop and arm waypoint solved for the
+machine as it stands ([ADR 0018](docs/adr/0018-fetch-drive-to-a-point.md)).
+
+<p align="center">
+  <img src="docs/media/fetch-done.png" width="80%" alt="The mobile manipulator has fetched the cube into the bin; all four Fetch goals are done">
 </p>
 
 Programs are versioned `.program.json` files beside the Blueprint. Main **Save**
