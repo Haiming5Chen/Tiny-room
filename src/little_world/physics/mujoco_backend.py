@@ -2,6 +2,7 @@
 from math import isfinite
 import mujoco as mj
 import numpy as np
+from little_world.core.command import slope_of
 from little_world.core.component import Body, Hinge, Motor, RobotServo, Camera, Transform, positive
 from little_world.core.state import State, BodyState, DeferredBodyStates
 from little_world.assets.textures import TEXTURES, SIZE, texture_bytes
@@ -202,7 +203,8 @@ class MujocoBackend:
         self._energy_sensor = False
         self._base_frictionloss = None
         self._roll = None  # rolling-resistance tables, or None when nothing rolls on a sourced tread
-        self._profiled = np.zeros(0, dtype=np.intp)  # actuators whose speed-torque line is implicit
+        self._affine = np.zeros(0, dtype=np.intp)  # kit motors: their slope, if any, is integrated implicitly
+        self._motor_dofs = {}
 
     def compile(self, scene, timestep):
         positive(timestep, "timestep")
@@ -321,15 +323,15 @@ class MujocoBackend:
                     native_name=prefix+c.body+'__robot_'+metadata(bodies[c.body].robot_asset)['actuators'][c.channel]
                     servo_names[prefix+c.id]=(native_name,c.channel)
                 elif isinstance(c, Motor):
-                    # A sourced motor's affine bias starts at zero and stays there until
-                    # its speed-torque line binds; step() then writes the line's slope so
-                    # the integrator follows the line implicitly (ADR 0011).
+                    # A motor's affine bias is zero unless a step gives it a slope: the
+                    # sourced speed-torque line where it binds (ADR 0011), or the
+                    # controller's own damping (ADR 0014). The integrator then lets the
+                    # torque follow the joint's speed within the step, implicitly.
                     spec.add_actuator(name=prefix + c.id, target=prefix + c.joint,
                                       trntype=mj.mjtTrn.mjTRN_JOINT, gear=(1, 0, 0, 0, 0, 0),
                                       ctrllimited=True, ctrlrange=(-c.max_torque, c.max_torque),
                                       gainprm=(1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-                                      biastype=(mj.mjtBias.mjBIAS_NONE if c.profile is None
-                                                else mj.mjtBias.mjBIAS_AFFINE))
+                                      biastype=mj.mjtBias.mjBIAS_AFFINE)
                     motor_names.append(prefix + c.id)
                     if c.profile is not None:profiles[prefix+c.id]=c.profile
             # A sourced gearmotor's own friction (brushes, bearings, gears), referred to
@@ -401,7 +403,10 @@ class MujocoBackend:
             # The most one step of this motor alone can add to its joint's speed, per
             # N m: timestep / inertia, with MuJoCo's inertia estimate at the design pose.
             self._motor_profiles[self._motor_ids[n]]=(p,dof,float(model.opt.timestep*model.dof_invweight0[dof]))
-        self._profiled=np.array(sorted(self._motor_profiles),dtype=np.intp)
+        # Every kit motor's joint speed, for the slope its command may carry.
+        self._motor_dofs={self._motor_ids[n]:int(model.jnt_dofadr[model.actuator_trnid[self._motor_ids[n],0]])
+                          for n in motor_names}
+        self._affine=np.array(sorted(self._motor_dofs),dtype=np.intp)
 
     def _ready(self):
         if self.model is None:
@@ -447,19 +452,27 @@ class MujocoBackend:
             low, high = self.model.actuator_ctrlrange[idx]
             if self.model.actuator_ctrllimited[idx] and not low <= value <= high:
                 raise ValueError(f"{name} command outside [{low}, {high}]")
+            slope = slope_of(value)   # the controller's own damping, ADR 0014
+            if slope and idx not in self._motor_dofs:
+                raise ValueError(f"{name} is a model's position servo: its command has no torque slope")
             if idx in self._motor_profiles:
                 profile,dof,per_newton_metre=self._motor_profiles[idx]
                 velocity=float(self.data.qvel[dof])
-                slope=profile.slope(value,velocity,high,reach=abs(high)*per_newton_metre)
-                value=profile.constrain(value,velocity,high)
-                # Force = value + slope * (v - velocity): exactly `value` now, and the
-                # line's slope for the implicit integrator while the line limits it.
-                bias[idx]=-slope*velocity,slope
+                line=profile.slope(value,velocity,high,reach=abs(high)*per_newton_metre)
+                limited=profile.constrain(value,velocity,high)
+                # Where the line limits the torque it is what the torque follows; a
+                # command the line cut short no longer follows the controller either.
+                slope=line if line else slope if limited==value else 0.
+                value=limited
+            if slope:
+                # Force = value + slope * (v - velocity): exactly `value` at the speed
+                # the command was computed for, and the slope for the implicit step.
+                bias[idx]=-slope*float(self.data.qvel[self._motor_dofs[idx]]),slope
             controls[idx] = value
         self.data.ctrl[:] = controls
-        if self._profiled.size:
-            self.model.actuator_biasprm[self._profiled,0]=bias[self._profiled,0]
-            self.model.actuator_biasprm[self._profiled,2]=bias[self._profiled,1]
+        if self._affine.size:
+            self.model.actuator_biasprm[self._affine,0]=bias[self._affine,0]
+            self.model.actuator_biasprm[self._affine,2]=bias[self._affine,1]
         staged_step(self.model, self.data, self._contact_policy, self._energy_sensor)
         if self._roll is not None:
             apply_rolling_resistance(self.model, self.data, self._roll, self._base_frictionloss)
@@ -506,7 +519,7 @@ class MujocoBackend:
         self.data.qpos[:]=self._initial_qpos
         self.data.ctrl[:]=self._initial_ctrl
         self.model.dof_frictionloss[:] = self._base_frictionloss
-        self.model.actuator_biasprm[self._profiled] = 0.
+        self.model.actuator_biasprm[self._affine] = 0.
         staged_forward(self.model, self.data, self._contact_policy, self._energy_sensor)
         return self.snapshot()
 
@@ -537,3 +550,5 @@ class MujocoBackend:
         self._body_ids, self._motor_ids, self._camera_ids = {}, {}, {}
         self._static_states = {}
         self._motor_profiles = {}
+        self._motor_dofs = {}
+        self._affine = np.zeros(0, dtype=np.intp)

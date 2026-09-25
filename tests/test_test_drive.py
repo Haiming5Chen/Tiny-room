@@ -243,9 +243,13 @@ def test_build_drive_stop_report_and_back_to_the_build_stage(monkeypatch, tmp_pa
             app.key(app.window, glfw.KEY_W, 0, glfw.PRESS, 0)
             step["t"] = now
         elif n == 2:
-            if now - step["t"] < 1.5:
+            # Wait on simulated time, not the wall clock: how much simulation 1.5 s of a
+            # window buys depends on the machine running the test, and at full rate the
+            # platform has reached the room's pickup stand (about 0.95 s) by then.
+            if app.drive_sample is None or app.drive_sample.time < .7:
+                assert now - step["t"] < 20, "the simulation is not advancing"
                 return
-            assert app.drive_sample is not None and app.drive_sample.speed > .1
+            assert app.drive_sample.speed > .1
             app.key(app.window, glfw.KEY_W, 0, glfw.RELEASE, 0)
             click("STOP / RETURN TO BUILD")
         elif n == 3:

@@ -1,5 +1,6 @@
 """Bounded joint-position control; independent of UI and native solver handles."""
 from math import radians
+from little_world.core.command import Torque
 
 
 class KeyboardPositionControl:
@@ -22,7 +23,12 @@ class KeyboardPositionControl:
         self.targets.clear()
 
     def commands(self,observations,dt):
-        """Observations: actuator -> (angle, speed, lower, upper, max torque[, model bias]), SI."""
+        """Observations: actuator -> (angle, speed, lower, upper, max torque[, model bias]), SI.
+
+        Each command is a Torque whose slope is the controller's damping, -kd, so a
+        backend can apply that damping to the speed during the step rather than the
+        speed before it (ADR 0014). A command at its limit no longer follows speed:
+        it is the limit, a plain float."""
         result={}
         for spec in self.specs:
             direction=int(spec.positive_key in self.held)-int(spec.negative_key in self.held)
@@ -31,5 +37,6 @@ class KeyboardPositionControl:
                 bias=extra[0] if extra else 0.
                 target=self.targets.get(name,angle)+direction*radians(spec.speed)*dt
                 self.targets[name]=target=max(lower,min(upper,target))
-                result[name]=max(-limit,min(limit,bias+spec.kp*(target-angle)-spec.kd*velocity))
+                torque=bias+spec.kp*(target-angle)-spec.kd*velocity
+                result[name]=Torque(torque,-spec.kd) if -limit<torque<limit else max(-limit,min(limit,torque))
         return result

@@ -233,9 +233,11 @@ def test_choose_a_field_drive_it_and_read_the_goals(monkeypatch, tmp_path):
             app.key(app.window, glfw.KEY_W, 0, glfw.PRESS, 0)
             step['t'] = now
         elif n == 4:
-            if now - step['t'] < 4.:
+            # On simulated progress, not the wall clock: the start line is 0.6 m out.
+            met = {r.id: r.status for r in app.goal_tracker.results()}['start'] == 'met'
+            if not met and now - step['t'] < 30.:
                 return
-            assert {r.id: r.status for r in app.goal_tracker.results()}['start'] == 'met'
+            assert met
             app.key(app.window, glfw.KEY_W, 0, glfw.RELEASE, 0)
             app.events.append(next(b for b in app.buttons if b.label == 'STOP / RETURN TO BUILD').action)
         elif n == 5:
