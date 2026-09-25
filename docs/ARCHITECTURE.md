@@ -127,6 +127,14 @@ their motors. The same module computes how the rigid design settles on a level f
 which parts carry it, its tilt and its stance margin - and the drive telemetry measures
 that margin from the simulator's supporting contacts during the run.
 
+An arm's tool can be moved instead of its joints (ADR 0016, `control/tool_motion.py`,
+MuJoCo-bound like the keyboard binding it drives): the tool module's point, the
+keyboard-bound joints between it and the machine, and a Levenberg-Marquardt solve on a
+scratch copy of the state whose result becomes joint targets for the same servos.
+Programs carry `pose` and `grasp` blocks as data (`programming/program.py`, version 2
+when used); `programming/execution.py` hands a runner's output to a position controller
+the same way in the window, in inventory trials and headless.
+
 ## Interactive construction
 
 `construction.AssemblyEditor` owns immutable Blueprint revisions, selection and

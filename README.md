@@ -44,7 +44,12 @@ change the design, try again.** A desktop robotics sandbox on
   how it stands before it runs: which parts carry it, its tilt and its stance margin,
   within 0.1 degrees and 1 mm of where the simulator settles
   ([ADR 0015](docs/adr/0015-machine-structure-and-stance.md)).
-- **546 automated tests**, including OpenGL window tests that drive the interface
+- **Arms that do a task, judged by the physics.** Move the gripper in straight steps
+  instead of joint by joint, teach poses into a program, check grasps, and generate a
+  pick-and-place program solved for the arm you built: in the Pick and place field the
+  arm lab puts the cube in the tray, and a missed grasp stops the program
+  ([ADR 0016](docs/adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md)).
+- **564 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -560,9 +565,22 @@ Use **Add**, **Edit**, **Delete**, drag rows to reorder, and program-specific
 Undo/Redo. Blocks support timed joint actions, left/right wheel-speed targets,
 waits, and joint target angles with timeouts. Sensor blocks wait for contact or a
 body-centre distance threshold. **If contact** executes the next block when true
-and skips it otherwise. This is a sequential block editor, not an arbitrary graph,
-nested-loop language. The separate Python workspace authors designs; conditions use ideal simulation
-observations; a timeout fails and pauses instead of silently continuing.
+and skips it otherwise. **Move to pose** moves several joints together so they arrive
+at once (taught from the robot controls), and **Check grasp** fails the program when
+the jaws hold nothing, so a missed grasp stops instead of carrying air. This is a
+sequential block editor, not an arbitrary graph, nested-loop language. The separate
+Python workspace authors designs; conditions use ideal simulation observations; a
+timeout fails and pauses instead of silently continuing.
+
+**Pick and place** (next to the pickup template) builds a complete program for the arm
+in the **Pick and place** field: close on the cube, check the grasp, lift, carry it over
+the tray, lower, open and retract, every waypoint solved for this arm. Run it and the
+field judges the result from the physics: the arm lab lifts the cube at 1.9 s and has
+it resting in the tray at 5.7 s.
+
+<p align="center">
+  <img src="docs/media/arm-pick-and-place.png" width="80%" alt="The arm lab has set the cube in the tray; both field goals are done and the program is complete">
+</p>
 
 Programs are versioned `.program.json` files beside the Blueprint. Main **Save**
 saves both; main **Load** reads both (or starts an empty program when no sidecar
@@ -781,8 +799,21 @@ Panda's **Open / Close** buttons remain visible across pages and change closure 
 10% per click; keyboard bindings still work. With multiple grippers, click the
 gripper selector to cycle between them. **Pause / Resume** freezes/continues the
 scene; **Stop simulation** restores the saved design. Manual clicks stop an active
-program. This is joint-level control, not Cartesian hand positioning or automatic
-grasp planning.
+program.
+
+Switch the panel from **Joints** to **Tool** to move the gripper instead of single
+joints: **Up / Down / Forward / Back / Left / Right** in 1, 2 or 5 cm steps along the
+arm's own forward and left, with the tool held at its angle (**Hold tool angle**). Each
+step is solved for the arm's joints by damped least squares and handed to the servos,
+so contact and torque limits still apply; a step out of reach changes nothing and says
+how far short it is. **Teach pose** adds where the arm is as a program step
+([ADR 0016](docs/adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md)). Registered
+robot models keep joint-level control here; the Panda's own planner is in the factory
+cell.
+
+<p align="center">
+  <img src="docs/media/arm-tool-mode.png" width="80%" alt="Robot controls in Tool mode: straight steps for the gripper, the tool target, and Teach pose">
+</p>
 
 ### Automated Factory starter cell
 

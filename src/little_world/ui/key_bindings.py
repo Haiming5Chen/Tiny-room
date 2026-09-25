@@ -15,11 +15,53 @@ class KeyBindings:
         self.gripper_index=0
         self.joint_control=KeyboardPositionControl()
         self.joint_channels={}
+        # Moving the tool instead of single joints (ADR 0016).
+        self.control_mode='Joints'
+        self.tool_step=.02
+        self.tool_hold=True
+        self.tool_motion=None;self.tool_reason='';self.tool_result=''
 
     def bind_joint_runtime(self):
         from little_world.control.mujoco_keyboard import MujocoKeyboardControl
+        from little_world.control.tool_motion import ToolMotion
         self.joint_control=MujocoKeyboardControl(self.backend,self.editor.blueprint,'machine')
         self.joint_channels=self.joint_control.channels
+        try:
+            self.tool_motion=ToolMotion(self.backend,self.editor.blueprint,self.joint_control);self.tool_reason=''
+        except (ValueError,KeyError) as error:
+            self.tool_motion=None;self.tool_reason=str(error)
+
+    def tool_jog(self,forward=0,left=0,up=0):
+        """Move the tool by one step along the arm's forward, left or up."""
+        if self.tool_motion is None:
+            self.status=self.tool_reason or 'This machine has no arm tool to move.';return
+        if self.building:self.simulate()
+        if self.tool_motion is None:return
+        self.runner.stop();self.program_keys.clear();self.clear_keys();self.paused=False
+        step=self.tool_step
+        short=self.tool_motion.jog(forward*step,left*step,up*step,self.tool_hold)
+        self.tool_result='Target moved' if short<=.002 else f'Out of reach: {100*short:.1f} cm short'
+        self.status=('Tool target moved; the joints follow.' if short<=.002 else
+                     f'Out of reach by {100*short:.1f} cm; nothing moved. Try a smaller step or release Hold tool angle.')
+
+    def teach_pose(self):
+        """Add the arm's current joint targets to the program as a pose step."""
+        from dataclasses import replace
+        from little_world.programming.program import Block
+        if self.tool_motion is None:
+            self.status=self.tool_reason or 'This machine has no arm to teach.';return
+        block=Block('pose',value=30.,duration=2.,angles=self.tool_motion.teach())
+        self.program_edit(replace(self.program,blocks=(*self.program.blocks,block)))
+        self.program_selected=len(self.program.blocks)-1
+        self.status=f'Pose taught as step {len(self.program.blocks)} of the program. Open Program to run it.'
+
+    def tool_readout(self):
+        """Where the tool's target is, in centimetres along the arm's forward, left and up."""
+        import numpy as np
+        motion=self.tool_motion
+        point,_=motion.tool(angles=motion.targets())
+        base=self.data.xpos[motion.base]
+        return tuple(100*float(np.dot(point-base,axis)) for axis in motion.frame())
 
     def joint_commands(self):
         held=self.joint_control.held
@@ -95,15 +137,74 @@ class KeyBindings:
             self.draw_test(ui,button,text,ww,wh);return
         if self.panel_mode=='program':
             self.draw_program(ui,button,text,ww,wh);return
-        text('Click to move, or hold the shown keys.',x+16,151,11,(.6,.74,.77),294)
-        for i,(label,step) in enumerate((('Fine 1 deg',1),('5 deg',5),('15 deg',15))):
-            button(label,x+16+i*100,173,94,lambda n=step:setattr(self,'jog_step',n),active=self.jog_step==step,h=26)
+        button('Joints',x+16,145,145,lambda:setattr(self,'control_mode','Joints'),active=self.control_mode=='Joints',h=26)
+        button('Tool',x+165,145,145,lambda:setattr(self,'control_mode','Tool'),active=self.control_mode=='Tool',h=26)
         grippers=[s for s in self.joint_control.specs if any(a in self.joint_control.servos and self.joint_control.servos[a][1]==7 for a in s.actuators)]
         specs=tuple(s for s in self.joint_control.specs if s not in grippers)
-        rows=max(1,int((wh-458)/57))
+        rows=max(1,int((wh-488)/57))
+        if self.control_mode=='Tool':
+            self.draw_tool_controls(ui,button,text,x,wh)
+        else:
+            self.draw_joint_rows(ui,button,text,x,wh,specs,rows)
+        page_y=wh-238
+        button('<',x+16,page_y,40,lambda:setattr(self,'control_offset',max(0,self.control_offset-rows)),self.control_mode=='Joints' and self.control_offset>0,h=26)
+        button('Resume' if self.paused else 'Pause',x+64,page_y,198,lambda:setattr(self,'paused',not self.paused),not self.building,h=26)
+        button('>',x+270,page_y,40,lambda:setattr(self,'control_offset',self.control_offset+rows),self.control_mode=='Joints' and self.control_offset+rows<len(specs),h=26)
+        self.draw_control_footer(ui,button,text,x,wh,grippers)
+
+    def draw_tool_controls(self,ui,button,text,x,wh):
+        """Tool mode: move the gripper in straight steps; teach where it is (ADR 0016)."""
+        if self.tool_motion is None:
+            text('No tool to move.',x+16,185,13)
+            text(self.tool_reason or 'Add a gripper to an arm and bind its joints.',x+16,209,11,(.6,.74,.77),294)
+            return
+        text('Steps move the tool in a straight line; the joints follow.',x+16,181,11,(.6,.74,.77),294)
+        for i,(label,step) in enumerate((('1 cm',.01),('2 cm',.02),('5 cm',.05))):
+            button(label,x+16+i*100,199,94,lambda n=step:setattr(self,'tool_step',n),active=abs(self.tool_step-step)<1e-9,h=26)
+        for i,(label,move) in enumerate((('Up',dict(up=1)),('Forward',dict(forward=1)),('Left',dict(left=1)),
+                                          ('Down',dict(up=-1)),('Back',dict(forward=-1)),('Right',dict(left=-1)))):
+            button(label,x+16+(i%3)*100,235+(i//3)*38,94,lambda m=move:self.tool_jog(**m),h=32)
+        button('Hold tool angle: '+('on' if self.tool_hold else 'off'),x+16,313,294,
+               lambda:setattr(self,'tool_hold',not self.tool_hold),active=self.tool_hold,h=26)
+        jaws=self.jaws_action()
+        if jaws is not None:
+            text('Gripper',x+16,353,12)
+            button('Open',x+116,347,94,lambda:self.set_jaws(False),h=28)
+            button('Close',x+216,347,94,lambda:self.set_jaws(True),h=28)
+        forward,left,up=self.tool_readout()
+        text(f'Tool target  {forward:.1f} fwd  /  {left:.1f} left  /  {up:.1f} up  cm',x+16,387,11,(.86,.90,.93),294)
+        if self.tool_result:
+            text(self.tool_result,x+16,405,11,(.96,.72,.38) if 'reach' in self.tool_result else (.6,.74,.77),294)
+        button('Teach pose  ->  program step',x+16,425,294,self.teach_pose,
+               self.runner.state not in ('running','paused'),h=30,tone='primary')
+        text(f'{sum(b.kind=="pose" for b in self.program.blocks)} poses in the program',x+16,461,11,(.6,.74,.77),294)
+
+    def jaws_action(self):
+        """The keyboard action that drives the arm's tool, such as a gripper's jaws."""
+        if self.tool_motion is None:return None
+        own=set(self.tool_motion.tool_module.actuators)
+        return next((s for s in self.joint_control.specs if s.actuators and set(s.actuators)<=own),None)
+
+    def set_jaws(self,closed):
+        """Drive the jaws to fully closed or fully open; closed on an object, the motor
+        squeezes it with its torque limit."""
+        from math import degrees
+        spec=self.jaws_action()
+        if spec is None:return
+        if self.building:self.simulate()
+        self.runner.stop();self.program_keys.clear();self.clear_keys();self.paused=False
+        for name in spec.actuators:
+            q,_,lo,hi,_=self.joint_control.channels[name]
+            self.joint_control.set_position_target(name,degrees(hi if closed else lo))
+        self.status='Gripper closing: the jaws stop where they meet something.' if closed else 'Gripper opening.'
+
+    def draw_joint_rows(self,ui,button,text,x,wh,specs,rows):
+        text('Click to move, or hold the shown keys.',x+16,181,11,(.6,.74,.77),294)
+        for i,(label,step) in enumerate((('Fine 1 deg',1),('5 deg',5),('15 deg',15))):
+            button(label,x+16+i*100,199,94,lambda n=step:setattr(self,'jog_step',n),active=self.jog_step==step,h=26)
         self.control_offset=min(self.control_offset,max(0,len(specs)-rows))
         for i,spec in enumerate(specs[self.control_offset:self.control_offset+rows]):
-            y=211+i*57
+            y=237+i*57
             label=f'{spec.positive_key} / {spec.negative_key}   '+(spec.label or spec.id)
             def select(spec=spec):
                 self.control_selection=spec.id
@@ -114,13 +215,11 @@ class KeyBindings:
             values=[self.joint_control.display_position(name) for name in spec.actuators]
             text(' / '.join(f'{v:.1f} {unit}' for v,unit in values),x+24,y+33,11,(.6,.74,.77),276)
         if not specs:
-            text('No joint keys assigned yet.',x+16,204,13)
-            text('Select a motor or powered component,',x+16,235,11,(.6,.74,.77))
-            text('then choose Bind selected.',x+16,253,11,(.6,.74,.77))
-        page_y=wh-238
-        button('<',x+16,page_y,40,lambda:setattr(self,'control_offset',max(0,self.control_offset-rows)),self.control_offset>0,h=26)
-        button('Resume' if self.paused else 'Pause',x+64,page_y,198,lambda:setattr(self,'paused',not self.paused),not self.building,h=26)
-        button('>',x+270,page_y,40,lambda:setattr(self,'control_offset',self.control_offset+rows),self.control_offset+rows<len(specs),h=26)
+            text('No joint keys assigned yet.',x+16,240,13)
+            text('Select a motor or powered component,',x+16,265,11,(.6,.74,.77))
+            text('then choose Bind selected.',x+16,283,11,(.6,.74,.77))
+
+    def draw_control_footer(self,ui,button,text,x,wh,grippers):
         selected=next((c for c in self.joint_control.specs if c.id==self.control_selection),None)
         button('Edit action',x+16,wh-200,142,lambda:self.binding_form(selected),self.building and selected is not None)
         button('Remove',x+168,wh-200,142,lambda:self.edit(lambda:self.editor.remove_binding(selected.id)),self.building and selected is not None)

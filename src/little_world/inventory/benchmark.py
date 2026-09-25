@@ -41,7 +41,6 @@ def trial(bp,program,mode,seconds,dt):
         world.start();model,data=backend.model,backend.data;control=MujocoKeyboardControl(backend,bp);obs=Observations(model,data)
         runner=Runner()
         if mode=='program':program.validate(bp,tuple(obs.indices));runner.start(program)
-        specs={s.id:s for s in control.specs}
         from little_world.control.mujoco_drive import MujocoDrive
         drive_control=MujocoDrive(backend,bp)
         motor_channels={}
@@ -53,14 +52,12 @@ def trial(bp,program,mode,seconds,dt):
             drive=(3.,3.) if mode=='hold_drive' and step*dt<2 else (0.,0.)
             control.clear()
             if mode=='program' and runner.state=='running':
-                angles={s.id:tuple(control.display_position(a)[0] for a in s.actuators) for s in control.specs}
-                contacts,distances=obs.program_inputs(program);output=runner.tick(dt,angles,contacts,distances)
+                from little_world.programming.execution import apply,joint_angles,needs_grasp
+                contacts,distances=obs.program_inputs(program)
+                held=obs.grasped() if needs_grasp(program) else frozenset()
+                output=runner.tick(dt,joint_angles(control),contacts,distances,held)
                 drive=output['drive']
-                if output['action']:
-                    name,direction=output['action'];spec=specs[name];control.press(spec.positive_key if direction==1 else spec.negative_key)
-                if output['move']:
-                    name,angle=output['move']
-                    for a in specs[name].actuators:control.set_position_target(a,angle)
+                for key in apply(output,control):control.press(key)
             commands=control.step_commands(dt)
             commands.update(drive_control.step_commands(drive,dt,angular=mode=='program'))
             velocities={i:float(data.actuator_velocity[i]) for i in motor_channels}

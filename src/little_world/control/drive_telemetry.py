@@ -84,6 +84,11 @@ class DriveTelemetry:
         return DriveSample(float(d.time), tuple(float(v) for v in centre), forward, tilt, tuple(motors),
                            self.margin(centre))
 
+    @property
+    def anchored(self):
+        """The machine is bolted to the world: an arm on a pedestal, not a vehicle."""
+        return not self._free
+
     def support(self):
         """Contact points, over the floor plane, where the machine is held up from below."""
         m, d = self.backend.model, self.backend.data

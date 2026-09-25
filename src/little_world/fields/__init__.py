@@ -210,7 +210,11 @@ PUSH = Field('push', 'Push the crate',
              markings=(((3.0, -1.), (3.0, 1.)),))
 
 
-TRAY = (.30, .30)    # tray centre; the stand and cube are where the workshop has them
+# Tray centre; the stand and cube are where the workshop has them. At (.30, .30) - 0.42 m
+# from the arm's axis - a level tool 2 cm above the tray's floor was beyond the standard arm's
+# reach (ADR 0016); 0.36 m leaves the arm room to lower the cube level, and the tray
+# stays clear of the largest test machine (the six-wheel rover is 0.43 m wide).
+TRAY = (.20, .30)
 
 
 def pick_place_entities():
@@ -229,8 +233,10 @@ PICK_PLACE = Field(
     'pick_place', 'Pick and place',
     'The pickup stand and cube, and a tray beside the arm: lift the cube, then set it in the tray.',
     pick_place_entities,
+    # Resting in the tray means on its floor (the cube's centre 26 mm up standing, 18.5 mm
+    # on its side): held still a centimetre above it by a closed gripper does not count.
     goals=(Zone('lifted', 'Cube lifted 5 cm', (-2., -2., .258), (2., 2., 3.), target='objects/grasp_cube'),
-           Zone('placed', 'Cube resting in the tray', (TRAY[0] - .064, TRAY[1] - .064, 0.), (TRAY[0] + .064, TRAY[1] + .064, .06),
+           Zone('placed', 'Cube resting in the tray', (TRAY[0] - .064, TRAY[1] - .064, 0.), (TRAY[0] + .064, TRAY[1] + .064, .032),
                 target='objects/grasp_cube', rest=True, after='lifted')),
     home=((.3, .1, .2), 1.5, 150., -32.))
 

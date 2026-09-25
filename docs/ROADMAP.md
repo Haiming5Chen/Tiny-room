@@ -69,6 +69,7 @@ from the simulator state followed (ADR 0013). Checking whether an arm on a wheel
 base stands found that it could not stand still: servo damping applied a step late
 made every kit arm chatter once disturbed, now integrated by the solver (ADR 0014).
 Machines now read as modules with roles, and their stance is predicted before a run
-and measured during it (ADR 0015). Next for the builder: more arm tasks (moving the
-tool rather than single joints, taught poses, a pick-and-place program that meets the
-field's goals) and the factory cell's rough edges.
+and measured during it (ADR 0015). Arms now move their tool rather than single joints,
+programs hold taught poses and grasp checks, and a pick-and-place program solved for the
+built arm meets the Pick and place field's goals (ADR 0016). Next for the builder: the
+same task from a mobile base (drive, then reach), and the factory cell's rough edges.

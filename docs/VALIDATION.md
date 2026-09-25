@@ -607,3 +607,35 @@ suite: **546 passed**.
 
 Not claimed: the stance is static and rigid (no acceleration, joints locked at the
 design pose, level rigid floor); roles come from the catalog.
+
+## Arm tasks: tool moves, taught poses, grasp checks — 2026-09-25
+
+See ADR 0016. In the Pick and place field the arm lab runs the template solved for it
+(22 ms): the cube is lifted 5 cm at 1.9 s and rests in the tray at 5.7 s, 13 mm from
+its centre, judged by the field's goals from body poses; the program completes at
+6.5 s. Moving the cube away before the grasp stops the program at the grasp check
+("Nothing held") and the field reports the placement missed.
+
+Two field changes came from running it. The tray at (0.30, 0.30) was 0.42 m from the
+arm's axis: a level tool 2 cm above its floor was 1.9 cm out of the standard arm's reach
+and 0.8 cm even with the tool free to tilt, so no program could have placed the cube
+level; it is now at (0.20, 0.30), 0.36 m out and clear of the six-wheel rover's
+footprint. And the placement goal first counted the cube as resting in the tray at
+5.0 s, while the closed jaws still held it 1 cm above the floor; the zone now ends 32 mm
+up, so the goal is met at 5.7 s, after the jaws open.
+
+Checks in `tests/test_arm_tasks.py` (18): pose blocks round-trip, mark their program
+version 2 and leave version-1 files unchanged; malformed poses are refused; joints in a
+pose move together (every joint the same fraction of the way at any time), arrive
+together and fail when they never settle; a grasp check fails on nothing held and on
+the wrong object; poses are validated against the design; the tool point is midway
+between the pads and its joints are the arm's four; tool steps forward, sideways, down
+and diagonal are solved to 0.1 mm with the tool's angle held and reached by the servos
+within 4 mm in 1.5 s; a step out of reach changes nothing; a taught pose is the arm's
+targets; the template meets both goals; a missed grasp fails it; and a window test uses
+Tool mode, teaches a pose, builds the template with its button, runs it and reads the
+goals. Full display-enabled suite: **564 passed**.
+
+Not claimed: no path planning or collision avoidance (a straight step into the stand
+hits the stand), no orientation about the tool's axis, kit arms only; the template plans
+once from the state it is made in.

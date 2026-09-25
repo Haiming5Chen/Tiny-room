@@ -52,11 +52,57 @@ class ProgramWorkspace:
         self.form('Program settings',[('Repeat count',str(self.program.repeat)),('Keyboard trigger: F6 / F7 / F8',self.program.trigger)],
             lambda v:self.program_edit(replace(self.program,repeat=int(v[0]),trigger=v[1].upper().strip())),text_input=True)
 
+    def pick_place_program(self):
+        """Pick up the object at the gripper and set it in the field's tray, each waypoint
+        solved for this arm (ADR 0016)."""
+        from little_world.control.tool_motion import pick_and_place
+        if self.tool_motion is None:raise ValueError(self.tool_reason or 'The template needs an arm with a gripper')
+        jaws=self.jaws_action()
+        if jaws is None:raise ValueError('Bind the gripper to a keyboard action first')
+        try:tray=self.model.body('field/tray_base').id
+        except KeyError:raise ValueError('Choose the Pick and place field: its tray is where the template sets the cube down') from None
+        top=float(self.data.xpos[tray][2]+max(self.model.geom_size[g][2] for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==tray))
+        self.program_edit(pick_and_place(self.tool_motion,jaws.id,(float(self.data.xpos[tray][0]),float(self.data.xpos[tray][1]),top)))
+        self.status='Pick and place solved for this arm. Run it: the field judges the result.'
+
+    def pose_form(self,index=None):
+        """A pose step: the arm's joint targets now, or an existing pose's speed and settle time."""
+        old=self.program.blocks[index] if index is not None else None
+        if old is None and self.tool_motion is None:raise ValueError(self.tool_reason or 'Poses need an arm with a tool')
+        def apply(values):
+            speed,settle=(numbers(v,1)[0] for v in values)
+            b=Block('pose',value=speed,duration=settle,angles=old.angles if old else self.tool_motion.teach())
+            blocks=list(self.program.blocks)
+            if index is None:blocks.append(b)
+            else:blocks[index]=b
+            self.program_edit(replace(self.program,blocks=tuple(blocks)))
+            self.program_selected=len(blocks)-1 if index is None else index
+        self.form('Block / pose',[('Speed of the fastest joint (degrees / second)',str(old.value if old else 30)),
+                                  ('Settle time after the move (seconds)',str(old.duration if old else 2))],apply,
+                  'Keeps its taught angles.' if old else 'Teaches the arm\'s current joint targets: jog there first.')
+
+    def grasp_form(self,index=None):
+        old=self.program.blocks[index] if index is not None else None
+        def apply(values):
+            target=values[0].strip()
+            b=Block('grasp',target,duration=numbers(values[1],1)[0])
+            blocks=list(self.program.blocks)
+            if index is None:blocks.append(b)
+            else:blocks[index]=b
+            self.program_edit(replace(self.program,blocks=tuple(blocks)))
+        self.form('Block / grasp check',[('Object to hold (blank: anything)',old.target if old else ''),
+                                         ('Timeout (seconds)',str(old.duration if old else 1))],apply,
+                  'Fails the program if the jaws hold nothing: a missed grasp stops, it is not carried on.',text_input=True)
+
     def block_form(self,index=None):
         old=self.program.blocks[index] if index is not None else None
         def kind_selected(kind):
             if kind in ('contact','distance','if_contact'):
                 self.sensor_block_form(kind,index);return
+            if kind=='pose':
+                self.pose_form(index);return
+            if kind=='grasp':
+                self.grasp_form(index);return
             def target_selected(target=''):
                 if kind=='action':fields=[('Direction: 1 increase / -1 decrease',str(old.value if old else 1)),('Duration (seconds)',str(old.duration if old else 1))]
                 elif kind=='drive':fields=[('Left wheel target (rad/s)',str(old.value if old else 3)),('Right wheel target (rad/s)',str(old.secondary if old else 3)),('Duration (seconds)',str(old.duration if old else 1))]
@@ -77,7 +123,7 @@ class ProgramWorkspace:
                 self.choose('Choose joint action',tuple(labels),lambda label:target_selected(labels[label]))
             else:target_selected()
         if old:kind_selected(old.kind)
-        else:self.choose('Add program block',('action','drive','wait','move','contact','distance','if_contact'),kind_selected)
+        else:self.choose('Add program block',('pose','grasp','action','drive','wait','move','contact','distance','if_contact'),kind_selected)
 
     def sensor_block_form(self,kind,index=None):
         names=tuple(self.observations.indices)
@@ -121,18 +167,14 @@ class ProgramWorkspace:
         elif self.runner.state=='paused':self.start_program()
 
     def tick_program(self):
+        from little_world.programming.execution import apply,joint_angles,needs_grasp
         self.program_keys.clear();self.program_drive=None
         if self.runner.state!='running':return
-        angles={s.id:tuple(self.joint_control.display_position(a)[0] for a in s.actuators) for s in self.joint_control.specs}
         contacts,distances=self.observations.program_inputs(self.program)
-        result=self.runner.tick(self.world.timestep,angles,contacts,distances)
+        held=self.observations.grasped() if needs_grasp(self.program) else frozenset()
+        result=self.runner.tick(self.world.timestep,joint_angles(self.joint_control),contacts,distances,held)
         self.program_drive=result['drive']
-        if result['action']:
-            name,direction=result['action'];spec=next(s for s in self.joint_control.specs if s.id==name)
-            self.program_keys.add(spec.positive_key if direction==1 else spec.negative_key)
-        if result['move']:
-            name,angle=result['move'];spec=next(s for s in self.joint_control.specs if s.id==name)
-            for a in spec.actuators:self.joint_control.set_position_target(a,angle)
+        self.program_keys|=apply(result,self.joint_control)
         if self.runner.state in ('paused','failed'):self.paused=True
         if self.runner.state in ('paused','failed','completed'):self.status='Program: '+self.runner.message
 
@@ -165,7 +207,8 @@ class ProgramWorkspace:
         labels={s.id:s.label for s in self.editor.blueprint.controllers}
         for row,b in enumerate(self.program.blocks[self.program_offset:self.program_offset+rows]):
             i=self.program_offset+row;y=282+row*43
-            names={'wait':'Wait','action':'Joint action','drive':'Drive','move':'Move to angle','contact':'Wait for contact','distance':'Wait for distance','if_contact':'If contact'}
+            names={'wait':'Wait','action':'Joint action','drive':'Drive','move':'Move to angle','contact':'Wait for contact','distance':'Wait for distance','if_contact':'If contact',
+                   'pose':'Move to pose','grasp':'Check grasp'}
             label=f'{i+1}. '+names[b.kind]+(' / '+labels.get(b.target,b.target.split('/')[-1]) if b.target else '')
             active=self.runner.index==i and self.runner.state in ('running','paused')
             button(label,x+16,y,294,lambda i=i:setattr(self,'program_selected',i),active=active or (editing and self.program_selected==i),h=26)
@@ -176,6 +219,8 @@ class ProgramWorkspace:
             elif b.kind=='distance':detail=f'Within {b.value:g} m / timeout {b.duration:g}s'
             elif b.kind=='contact':detail=f'Touch {b.other.split(chr(47))[-1]} / {b.duration:g}s'
             elif b.kind=='if_contact':detail='True: next block / false: skip next'
+            elif b.kind=='pose':detail=f'{len(b.angles)} joints together / up to {b.value:g} deg/s'
+            elif b.kind=='grasp':detail=f'Holding {b.target.split(chr(47))[-1] if b.target else "anything"} / timeout {b.duration:g}s'
             text(detail,x+24,y+28,10,(.6,.74,.77),276)
             self.program_rows.append((i,x+16,y,294,38))
         if not self.program.blocks:text('Add blocks or load an example.',x+16,286,12,(.6,.74,.77),294)
@@ -191,6 +236,10 @@ class ProgramWorkspace:
         button('Delete',x+154,y,70,lambda:self.program_edit(replace(self.program,blocks=tuple(b for i,b in enumerate(self.program.blocks) if i!=self.program_selected))),editing and bool(self.program.blocks),h=28)
         button('Save',x+230,y,80,self.save_program,h=28)
         y+=36
-        button('Joint motion example' if getattr(self,'factory_mode',False) else 'Pickup template',x+16,y,294,self.joint_example if getattr(self,'factory_mode',False) else self.pickup_program,editing,h=28)
+        if getattr(self,'factory_mode',False):
+            button('Joint motion example',x+16,y,294,self.joint_example,editing,h=28)
+        else:
+            button('Pickup template',x+16,y,143,self.pickup_program,editing,h=28)
+            button('Pick and place',x+167,y,143,self.pick_place_program,editing and self.tool_motion is not None,h=28)
         button('Step',x+16,wh-110,294,lambda:self.start_program(True),self.runner.state!='running' and bool(self.program.blocks),h=28)
         text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)

@@ -38,6 +38,7 @@ class RunRecord:
     summary: RunSummary
     goals: tuple = ()           # fields.goals.Result
     limit: tuple | None = None  # DriveTelemetry.speed_limit() at the end, for a vehicle
+    anchored: bool = False      # bolted to the world: an arm's run, with no vehicle metrics
 
 
 class TestDrive:
@@ -103,7 +104,8 @@ class TestDrive:
             goals = self.goal_tracker.results(finished=True) if self.goal_tracker else ()
             self.run_count += 1
             record = RunRecord(self.run_count, self.field_id, self.run_log.summary(), goals,
-                               self.telemetry.speed_limit() if self.telemetry.channels else None)
+                               self.telemetry.speed_limit() if self.telemetry.channels else None,
+                               anchored=self.telemetry.anchored)
             self.runs = (self.runs + [record])[-HISTORY:]
             self.run_report = record
             self.last_goals = goals
@@ -320,19 +322,29 @@ class TestDrive:
         manipulator in a field with goals still shows its goals and its arm."""
         s = self.drive_sample
         drive = bool(self.telemetry and self.telemetry.channels)
+        anchored = bool(self.telemetry and self.telemetry.anchored)
         arm = tuple(self.joint_control.specs) if hasattr(self.joint_control, 'specs') else ()
         bottom = wh - 92
         top = 120
-        section('TEST DRIVE' if drive else 'RUNNING', top)
+        section('TEST DRIVE' if drive else 'ARM RUN' if anchored else 'RUNNING', top)
         elapsed = 0. if s is None else s.time
         text(f'{elapsed:.1f} s  /  ideal sensors' + ('  /  paused' if self.paused else ''), 16, top + 18, 12, MUTED)
         speed = 0. if s is None else s.speed
-        number = f'{abs(speed):.2f}'
-        text(number, 16, top + 36, 30)
-        text('m/s', 22 + ui.width(number, 30), top + 50, 14, MUTED)
         summary = self.run_log.summary() if self.run_log is not None else None
+        if anchored:
+            # Bolted to the world: speed, distance and stance say nothing about an arm.
+            number = f'{elapsed:.1f}'
+            text(number, 16, top + 36, 30)
+            text('s', 22 + ui.width(number, 30), top + 50, 14, MUTED)
+            text('anchored base', 16, top + 78, 12, MUTED)
+            y = top + 98
+            summary = None
+        else:
+            number = f'{abs(speed):.2f}'
+            text(number, 16, top + 36, 30)
+            text('m/s', 22 + ui.width(number, 30), top + 50, 14, MUTED)
+            y = top + 78
         heading = 'forward' if speed > .05 else 'reverse' if speed < -.05 else 'standing'
-        y = top + 78
         if summary is not None:
             tilt = 0. if s is None else s.tilt
             text(f'{heading}  /  top {summary.top_speed:.2f} m/s  /  tilt {tilt:.0f} deg', 16, y, 12,
@@ -344,7 +356,9 @@ class TestDrive:
                  WARN if stance is not None and stance < .01 else (.86, .90, .93), 256)
             y += 40
         touching = ', '.join(sorted(self.drive_touching))
-        text('touching: ' + touching if touching else 'touching nothing', 16, y, 12, WARN if touching else MUTED, 256)
+        # A vehicle touching things is news; an arm touching things is its job.
+        text('touching: ' + touching if touching else 'touching nothing', 16, y, 12,
+             WARN if touching and not anchored else (.86, .90, .93) if touching else MUTED, 256)
         y += 28
         if self.goal_tracker is not None:
             section('GOALS  /  ' + self.field_title(), y)
@@ -433,20 +447,26 @@ class TestDrive:
         r = record.summary
         title = FIELDS[record.field].title if record.field in FIELDS else record.field
         section(f'RUN {record.number} REPORT  /  {title}', 120)
-        text(f'{r.duration:.1f} s  /  {r.distance:.2f} m driven', 16, 140, 16, max_width=256)
-        text(f'top speed {r.top_speed:.2f} m/s  /  average {r.average_speed:.2f}', 16, 166, 12, max_width=256)
-        text(f'max tilt {r.max_tilt:.0f} deg  /  motors at their limit {100 * r.saturated_share:.0f} %',
-             16, 186, 12, WARN if r.tipped else (.86, .90, .93), 256)
-        text(f'wheels slipping {100 * r.slip_share:.0f} % of the time', 16, 206, 12,
-             WARN if r.slip_share > .1 else (.86, .90, .93), 256)
-        y = 226
-        if r.min_margin is not None:
-            text(f'lowest stance margin {100 * r.min_margin:.1f} cm' + ('  (near tipping)' if r.min_margin < .01 else ''),
-                 16, y, 12, WARN if r.min_margin < .01 else (.86, .90, .93), 256)
-            y += 20
+        if record.anchored:
+            met = sum(g.status in ('met', 'kept') for g in record.goals)
+            text(f'{r.duration:.1f} s' + (f'  /  {met} of {len(record.goals)} goals' if record.goals else '  /  anchored arm'),
+                 16, 140, 16, max_width=256)
+            y = 166
+        else:
+            text(f'{r.duration:.1f} s  /  {r.distance:.2f} m driven', 16, 140, 16, max_width=256)
+            text(f'top speed {r.top_speed:.2f} m/s  /  average {r.average_speed:.2f}', 16, 166, 12, max_width=256)
+            text(f'max tilt {r.max_tilt:.0f} deg  /  motors at their limit {100 * r.saturated_share:.0f} %',
+                 16, 186, 12, WARN if r.tipped else (.86, .90, .93), 256)
+            text(f'wheels slipping {100 * r.slip_share:.0f} % of the time', 16, 206, 12,
+                 WARN if r.slip_share > .1 else (.86, .90, .93), 256)
+            y = 226
+            if r.min_margin is not None:
+                text(f'lowest stance margin {100 * r.min_margin:.1f} cm' + ('  (near tipping)' if r.min_margin < .01 else ''),
+                     16, y, 12, WARN if r.min_margin < .01 else (.86, .90, .93), 256)
+                y += 20
         touched = ', '.join(r.touched)
         text('touched: ' + touched if touched else 'touched nothing', 16, y, 12,
-             WARN if touched else MUTED, 256)
+             WARN if touched and not record.anchored else (.86, .90, .93) if touched else MUTED, 256)
         y += 22
         if r.tipped:
             text('It tipped over.', 16, y, 12, WARN)
@@ -460,8 +480,11 @@ class TestDrive:
             met = sum(g.status in ('met', 'kept') for g in record.goals)
             was = sum(g.status in ('met', 'kept') for g in before.goals)
             goals = f', goals {met - was:+d}' if record.goals else ''
-            text(f'vs run {before.number}: {delta["distance"]:+.2f} m, top {delta["top_speed"]:+.2f} m/s{goals}',
-                 16, y, 12, max_width=256)
+            if record.anchored:
+                line = f'vs run {before.number}: {delta["duration"]:+.1f} s{goals}'
+            else:
+                line = f'vs run {before.number}: {delta["distance"]:+.2f} m, top {delta["top_speed"]:+.2f} m/s{goals}'
+            text(line, 16, y, 12, max_width=256)
             y += 20
         y += 8
         button('Redesign in Build stage', 12, y, 264, self.stop_and_redesign, h=36, tone='primary')
@@ -480,7 +503,11 @@ class TestDrive:
             if y + 20 + i * 19 > wh - 52:
                 break
             where = FIELDS[run.field].title if run.field in FIELDS else run.field
-            line = f'Run {run.number}  {where}  {run.summary.distance:.2f} m  {run.summary.duration:.1f} s'
+            if run.anchored and run.goals:
+                met = sum(g.status in ('met', 'kept') for g in run.goals)
+                line = f'Run {run.number}  {where}  {met}/{len(run.goals)} goals  {run.summary.duration:.1f} s'
+            else:
+                line = f'Run {run.number}  {where}  {run.summary.distance:.2f} m  {run.summary.duration:.1f} s'
             text(line, 16, y + 20 + i * 19, 12, (.86, .90, .93) if run is record else MUTED, 256)
 
     def last_run_line(self):
