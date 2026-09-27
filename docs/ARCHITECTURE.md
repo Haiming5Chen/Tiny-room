@@ -146,6 +146,24 @@ rate (standard library; `BasePose` reads the pose from MuJoCo as an ideal observ
 and those into wheel speeds for the same drive controller the keyboard uses. The runner
 owns one controller per `goto` block, so its hysteresis lives with the block.
 
+A field can move and can be fitted to the machine (ADR 0020). `Field.actuate` maps a
+`State` to torque commands for the field's own motors - the tilt table's hinge - which
+the loop steps beside the machine's; `Field.fitted` hands `build` the machine's
+Blueprint, so the table's trip rail is set against whatever the machine has lowest on its
+right. Tip angles are the stance module's own rocking on a tilted floor
+(`construction/structure.py`, `_rest` with gravity leaning off the floor's normal), found
+by bisection per side.
+
+## Frontier radar
+
+`little_world/radar/` (ADR 0021, standard library) is not part of the simulator: it reads
+the project's documents, never its designs. `items.py` parses each feed into one `Item`
+shape; `profile.py` makes topics of the decision records, the roadmap's next steps and
+`docs/radar/profile.md`; `score.py` files items under topics by tf-idf cosine over stems
+and word pairs, with the matched words as the reason; `store.py` keeps items and verdicts
+in one SQLite file; `digest.py` writes the Markdown page; `fetch.py` holds the feeds and
+the polite HTTP client. See docs/RADAR.md.
+
 ## Interactive construction
 
 `construction.AssemblyEditor` owns immutable Blueprint revisions, selection and

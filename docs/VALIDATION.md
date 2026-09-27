@@ -717,3 +717,45 @@ Panda's and UR5e's tool points move 5 cm down in one step and their servos follo
 1.2 cm. Full display-enabled suite: **582 passed**; headless 546 (36 need a display).
 
 Not claimed: the feeder is a teleport; one product type per run; six slots per tray.
+
+## Doorway and tilt table — 2026-09-27
+
+See ADR 0020. The mobile platform's three-stop doorway program completes with all four
+goals: through the 50 cm door, parked in the bay, frame untouched (posts within 1 cm and
+5 degrees), upright. A four-wheel skid-steer rover turns under 15 degrees in 3 s on concrete
+where the platform turns over 90. Predicted tip angles: a box's equal its static stability
+factor's to 0.02 degrees; a machine that rocks onto a caster tips past 55 degrees, not at
+6. The mobile manipulator: 54.3 degrees to either side (55.8 about the trip rail's edge),
+61.4 forward, 50.7 back; on the table it goes over at 54.2 degrees - one caster, loaded
+and pushed sideways, swivels 86 degrees as the table rises. The platform (predicted 70.1)
+holds to 60. With the rail at the table's edge instead of at its wheels, the manipulator
+slid from 16 degrees and flipped over the rail at 30.
+
+Checks in `tests/test_more_fields.py` (9): held and missed goals with the angle it went
+over at, and the lean measured against the table; the table's schedule; tip angles of a
+box and of a rocking machine; the trip rail set against the machine; the table follows
+its schedule under a machine; the manipulator tips within 3 degrees of its rail-corrected
+prediction while the platform holds; a skid-steer rover cannot turn on the spot; the
+doorway program. `tests/test_fields.py`: fields keep clear of each body of the machine at
+the start (a trip rail may sit under a chassis, not in a wheel). Full display-enabled
+suite, with the radar's 13: **604 passed**; headless 568 (36 need a display).
+
+Not claimed: side slopes only (ends predicted, not measured); a rigid prediction (casters,
+tyres and joint compliance are worth about 2 degrees here); the doorway's stops are given.
+
+## Frontier radar — 2026-09-27
+
+See ADR 0021 and docs/RADAR.md. Parsers checked on invented documents in each feed's shape
+and, for MuJoCo's changelog, on the real text from 3.4.0 to 3.14.0: every version's entry
+count matches the changelog's own numbering (198 entries, 51 under Breaking API changes).
+First run: 302 items, 48 filed under a topic, 23 judged. Trial of MuJoCo 3.14.0 (the
+project stays on 3.3.7): the headless suite passes 565 of 568; the three that move all
+involve a cylinder wheel in contact - the caster at a 20 mm curb climbs (stops with
+multiccd off), the manipulator tips at 52.4 degrees instead of 54.2 (53.0 with multiccd
+off), and its measured stance margin reads 2.6 cm instead of 3.4 with the tilt unchanged.
+
+Checks in `tests/test_radar.py` (13), listed in ADR 0021.
+
+Not claimed: the radar ranks and files; it does not read papers or decide. The fetcher has
+not been run against the live feeds from the build machine; the first run's items were
+gathered through a browsing tool.

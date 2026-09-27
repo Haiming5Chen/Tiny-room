@@ -21,9 +21,10 @@ change the design, try again.** A desktop robotics sandbox on
   test panel (contact, tilt, joint error, torque) and side-by-side trials of saved
   versions. Simulating a vehicle is a **test drive**: a chase camera, live motor and
   slip telemetry, the path on the floor and a run report compared with the last run
-  ([ADR 0012](docs/adr/0012-test-drive.md)), in one of eight **test fields** whose
+  ([ADR 0012](docs/adr/0012-test-drive.md)), in one of ten **test fields** whose
   goals the physics decides: a sprint, a slalom, ramps, curbs, a crate to push, a
-  pick-and-place table and a fetch-and-return ([ADR 0013](docs/adr/0013-test-fields.md)).
+  pick-and-place table, a fetch-and-return, a doorway and a tilt table
+  ([ADR 0013](docs/adr/0013-test-fields.md)).
 - **A pick-and-place cell** where the Panda plans with damped-least-squares IK and
   lifts by real finger contact - a missed grasp is a failure, not an animation. A
   production run places six parts one after another into slots, counting parts placed,
@@ -60,7 +61,22 @@ change the design, try again.** A desktop robotics sandbox on
   iterations stop that without touching real sliding, which also corrected a curb result
   and freed a Menagerie arm grinding against its own base
   ([ADR 0017](docs/adr/0017-friction-that-holds.md)).
-- **582 automated tests**, including OpenGL window tests that drive the interface
+- **How steep before it tips, predicted and then measured.** The build stage predicts the
+  slope each side of a machine can take by rocking it, quasi-statically, on a tilted
+  floor - a machine that rocks onto a caster has not tipped. On the tilt table, with a
+  trip rail set against its wheels, the mobile manipulator goes over at 54 degrees where
+  its design says 54.3 (55.8 about the rail's edge); without the rail it slides from 16,
+  because only its drive wheels resist a side load. A doorway field checks turning through
+  a 50 cm door without touching the frame
+  ([ADR 0020](docs/adr/0020-doorway-and-tilt-table.md)).
+- **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
+  models, repositories and MuJoCo's own changelog are scored against this project's
+  decision records and roadmap and filed under the decision each could change, with the
+  words that matched; a triage (adopt, learn, watch, skip) is kept. Its first run found the
+  project eleven MuJoCo releases behind, and running the suite on the newest showed which
+  three wheel-contact results would move and why
+  ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)).
+- **604 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
