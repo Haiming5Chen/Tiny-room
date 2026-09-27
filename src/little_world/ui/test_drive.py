@@ -178,6 +178,11 @@ class TestDrive:
     def field_title(self):
         return FIELDS[self.field_id].title
 
+    def field_commands(self):
+        """The field's own motors, for a field that moves - a tilt table (ADR 0020)."""
+        field = FIELDS.get(getattr(self, 'field_id', 'workshop'))
+        return field.commands(self.state) if field is not None and not self.building else {}
+
     def choose_field(self):
         if not self.building:
             self.status = 'Stop the run before changing the test field.'

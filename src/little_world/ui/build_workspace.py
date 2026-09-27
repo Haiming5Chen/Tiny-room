@@ -573,7 +573,11 @@ class BuildWorkspace(DragDocking):
         feet=' and '.join(f'{on[r]} {names[r][on[r]>1]}' if r!='base' else 'its base' for r in order if on[r])
         tilt=f', tilted {stance.tilt:.1f} deg' if stance.tilt>=.1 else ''
         rock='  (rocks easily)' if stance.margin<.01 else ''
-        return f'rests on {feet}{tilt}; centre of mass {100*stance.margin:.1f} cm inside{rock}'
+        # Static stability: the floor tilt each way that would tip it (ADR 0020).
+        side=min((a for s,a in stance.tips if s in ('left','right')),default=None)
+        ends=min((a for s,a in stance.tips if s in ('forward','back')),default=None)
+        tips=f'; tips on a {side:.0f} deg side slope, {ends:.0f} deg end on' if side is not None and ends is not None else ''
+        return f'rests on {feet}{tilt}; centre of mass {100*stance.margin:.1f} cm inside{rock}{tips}'
 
     def draw_assembly_tree(self,ui,button,text,left,width,wh):
         button('Modules',left,140,125,lambda:setattr(self,'assembly_view','Modules'),active=self.assembly_view=='Modules',h=30)

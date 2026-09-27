@@ -9,7 +9,9 @@ files, so it is reported as unknown here rather than guessed.
 
 How it stands is found the way a rigid machine settles on a level floor: it rests on
 its lowest points, and while its centre of mass is outside the polygon they make it
-tips about the nearest edge of that polygon until another point meets the floor.
+tips about the nearest edge of that polygon until another point meets the floor. The
+same rocking on a tilted floor - gravity leaning off the floor's normal - finds the
+slope each side can take before nothing catches it (ADR 0020).
 """
 from dataclasses import dataclass
 from math import acos, atan2, cos, degrees, pi, sin
@@ -224,6 +226,60 @@ class Stance:
     centre: tuple           # the centre of mass, projected into that frame
     touching: tuple         # bodies that carry it
     tips_over: bool = False  # it rolls past TIPS_OVER, or onto nothing at all
+    height: float = 0.      # m of the centre of mass above the floor it rests on
+    # Static stability (ADR 0020): how far the floor could tilt, lowering each side of the
+    # machine in turn, before its centre of mass passes over that edge of its supports -
+    # ('forward', degrees), ('back', ...), ('left', ...), ('right', ...). A tilt-table angle.
+    tips: tuple = ()
+
+    def tip(self, side):
+        return dict(self.tips).get(side)
+
+
+def exit_distance(polygon, point, direction):
+    """How far a point inside a convex (anticlockwise) polygon can move along a unit
+    direction before it leaves it."""
+    best = float('inf')
+    for (x0, y0), (x1, y1) in zip(polygon, polygon[1:] + polygon[:1]):
+        ex, ey = x1 - x0, y1 - y0
+        length = (ex * ex + ey * ey) ** .5
+        if length < 1e-12:
+            continue
+        nx, ny = ey / length, -ex / length               # outward, for an anticlockwise edge
+        rate = direction[0] * nx + direction[1] * ny
+        if rate > 1e-12:
+            best = min(best, ((x0 - point[0]) * nx + (y0 - point[1]) * ny) / rate)
+    return best
+
+
+SIDES = (('forward', (1., 0., 0.)), ('back', (-1., 0., 0.)), ('left', (0., 1., 0.)), ('right', (0., -1., 0.)))
+
+
+def _tips(points, centre, up):
+    """Tilt angles, degrees, at which the machine rolls over as the floor under it is
+    tilted, lowering each side in turn: the smallest slope at which rocking about its
+    downhill edge finds no further point to catch it. A machine that rocks onto a caster
+    has not tipped; with a single support polygon this is atan(reach / height), the
+    static stability factor's angle."""
+    out = []
+    for side, direction in SIDES:
+        along = _dot(direction, up)
+        downhill = tuple(direction[i] - along * up[i] for i in range(3))
+        norm = _dot(downhill, downhill) ** .5
+        if norm < 1e-9:
+            continue
+        downhill = tuple(c / norm for c in downhill)
+        lo, hi = 0., 89.
+        if _rest(points, centre, up, downhill, hi)[0] == 'rests':
+            continue
+        for _ in range(14):
+            mid = (lo + hi) / 2
+            if _rest(points, centre, up, downhill, mid)[0] == 'rests':
+                lo = mid
+            else:
+                hi = mid
+        out.append((side, round((lo + hi) / 2, 2)))
+    return tuple(out)
 
 
 def _dot(a, b):
@@ -258,33 +314,35 @@ def _nearest_on_boundary(polygon, point):
     return found
 
 
-def settle(points, centre, owners=None):
-    """Where a rigid body resting on a level floor comes to rest (quasi-statically).
+def _rest(points, centre, up, downhill=None, slope=0.):
+    """Rock a rigid body to rest on a floor normal to `up` (both in the body's frame).
+    Gravity leans `slope` degrees from the floor's normal towards `downhill`, a unit
+    vector along the floor: 0 for a level floor. While the centre of mass, projected
+    along gravity, lies outside the polygon of the lowest points, the body tips about
+    the nearest point of that polygon's boundary until the next point meets the floor.
 
-    `points` outline the body; `centre` is its centre of mass; `owners[i]` names the
-    body point i belongs to. It rests on the points lowest along the current up
-    direction; while the centre of mass lies outside the polygon they make it tips
-    about the nearest point of that polygon's boundary, towards the centre of mass,
-    until the next point meets the floor."""
-    up = (0., 0., 1.)
+    Returns (outcome, up, polygon, centre in the floor's 2-D frame, touching indices,
+    floor height, how far outside) with outcome 'rests', 'balanced' or 'tips'."""
+    shear = 0. if slope <= 0. else sin(slope * pi / 180.) / cos(slope * pi / 180.)
+    start = up
     for _ in range(24):
         heights = [_dot(p, up) for p in points]
         floor = min(heights)
         touching = [i for i, h in enumerate(heights) if h <= floor + TOUCH]
         u, v = _plane(up)
         flat = {(round(_dot(points[i], u), 7), round(_dot(points[i], v), 7)) for i in touching}
+        lift = (_dot(centre, up) - floor) * shear
         c = (_dot(centre, u), _dot(centre, v))
+        if downhill is not None and lift:
+            c = (c[0] + lift * _dot(downhill, u), c[1] + lift * _dot(downhill, v))
         polygon = hull(list(flat))
-        tilt = degrees(acos(max(-1., min(1., up[2]))))
-        bodies = tuple(sorted({owners[i] for i in touching})) if owners else ()
-        standing = len(polygon) >= 3 and area(polygon) > 1e-8
-        if standing and margin(polygon, c) >= 0:
-            return Stance(margin(polygon, c), tilt, tuple(polygon), c, bodies)
+        if len(polygon) >= 3 and area(polygon) > 1e-8 and margin(polygon, c) >= 0:
+            return 'rests', up, polygon, c, touching, floor, 0.
         q = _nearest_on_boundary(polygon, c)
         away = (c[0] - q[0], c[1] - q[1])
         length = (away[0] ** 2 + away[1] ** 2) ** .5
         if length < 1e-9:   # balanced exactly over a line or a point: no margin either way
-            return Stance(0., tilt, tuple(polygon), c, bodies)
+            return 'balanced', up, polygon, c, touching, floor, 0.
         m2 = (away[0] / length, away[1] / length)
         towards = tuple(m2[0] * u[i] + m2[1] * v[i] for i in range(3))
         pivot = tuple(q[0] * u[i] + q[1] * v[i] + floor * up[i] for i in range(3))
@@ -296,10 +354,34 @@ def settle(points, centre, owners=None):
                 a = atan2(max(_dot(d, up), 0.), x)
                 if a > 1e-9 and (angle is None or a < angle):
                     angle = a
-        if angle is None or tilt + degrees(angle) > TIPS_OVER:
-            return Stance(-length, tilt, tuple(polygon), c, bodies, True)
+        rolled = degrees(acos(max(-1., min(1., _dot(start, up)))))
+        if angle is None or rolled + degrees(angle) > TIPS_OVER:
+            return 'tips', up, polygon, c, touching, floor, length
+        if downhill is not None:   # the floor turns with the body's rocking: so does downhill
+            along = _dot(downhill, towards)
+            downhill = tuple(downhill[i] + along * ((cos(angle) - 1.) * towards[i] + sin(angle) * up[i])
+                             for i in range(3))
         up = tuple(cos(angle) * up[i] - sin(angle) * towards[i] for i in range(3))
-    return Stance(-length, tilt, tuple(polygon), c, bodies, True)
+    return 'tips', up, polygon, c, touching, floor, length
+
+
+def settle(points, centre, owners=None):
+    """Where a rigid body resting on a level floor comes to rest (quasi-statically).
+
+    `points` outline the body; `centre` is its centre of mass; `owners[i]` names the
+    body point i belongs to. It rests on the points lowest along the current up
+    direction; while the centre of mass lies outside the polygon they make it tips
+    about the nearest point of that polygon's boundary, towards the centre of mass,
+    until the next point meets the floor."""
+    outcome, up, polygon, c, touching, floor, outside = _rest(points, centre, (0., 0., 1.))
+    tilt = degrees(acos(max(-1., min(1., up[2]))))
+    bodies = tuple(sorted({owners[i] for i in touching})) if owners else ()
+    if outcome == 'rests':
+        return Stance(margin(polygon, c), tilt, tuple(polygon), c, bodies, False,
+                      _dot(centre, up) - floor, _tips(points, centre, up))
+    if outcome == 'balanced':
+        return Stance(0., tilt, tuple(polygon), c, bodies)
+    return Stance(-outside, tilt, tuple(polygon), c, bodies, True)
 
 
 def outline(blueprint):

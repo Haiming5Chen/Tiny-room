@@ -1,11 +1,11 @@
-"""Driving a differential base to a point (ADR 0017).
+"""Driving a differential base to a point (ADR 0018).
 
 `drive_to` is standard library: from the base's pose - where its drive axle's midpoint
 is and which way it faces - to a forward speed and a turn rate, then to wheel speeds.
 The pose is an ideal observation (exact simulator state), as every program sensor here
 is; there is no odometry drift or localisation. `BasePose` reads it from MuJoCo.
 """
-from math import atan2, cos, degrees, pi, radians
+from math import atan2, cos, degrees, pi, radians, sin
 
 TURN_FIRST = radians(35.)   # further off the bearing than this, turn on the spot first
 SPEED = .22                 # m/s cruising: under the drive assist's 0.425 m/s, to stop well
@@ -21,6 +21,8 @@ def wrap(angle):
 
 
 TURN_MIN = .3               # rad/s: slower, a turn on the spot stalls against caster scrub
+NEAR = .08                  # m: this close, no more turning on the spot - drive along the heading
+CROSS = 3.                  # near the goal, a sideways error this many tolerances is accepted
 RESUME = 4.                 # a reached goal is left again only past this many tolerances
 BACK_UP = .5                # m: a goal behind and closer than this is reached in reverse
 
@@ -34,6 +36,18 @@ def approach(pose, goal, tolerance):
     distance = (dx * dx + dy * dy) ** .5
     if distance <= tolerance:
         return 0., 0., True
+    if distance < NEAR:
+        # Close in, a differential base that keeps turning towards a point a few
+        # centimetres to its side circles it. Drive along the heading instead, forward or
+        # back, and accept a small sideways error: a non-holonomic base cannot close it
+        # without backing away and coming in again.
+        along = dx * cos(yaw) + dy * sin(yaw)
+        cross = -dx * sin(yaw) + dy * cos(yaw)
+        if abs(along) <= tolerance and abs(cross) <= CROSS * tolerance:
+            return 0., 0., True
+        speed = max(CREEP, min(SPEED, GAIN * abs(along)))
+        steer = max(-.5, min(.5, TURN * wrap(atan2(dy, dx) - yaw))) if along > 0 else 0.
+        return (speed if along > 0 else -speed), steer, False
     alpha = wrap(atan2(dy, dx) - yaw)
     reverse = distance < BACK_UP and abs(alpha) > pi / 2
     if reverse:

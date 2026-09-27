@@ -16,6 +16,18 @@ def tilt(quaternion):
     return degrees(acos(max(-1., min(1., 1. - 2. * (x * x + y * y)))))
 
 
+def up(quaternion):
+    """A body's +Z axis in the world."""
+    w, x, y, z = quaternion
+    return (2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y))
+
+
+def between(a, b):
+    """Degrees between two bodies' +Z axes."""
+    u, v = up(a), up(b)
+    return degrees(acos(max(-1., min(1., sum(p * q for p, q in zip(u, v))))))
+
+
 @dataclass(frozen=True)
 class Line:
     """Met when the machine gets past a segment: any body of it (the nose), or all of it
@@ -91,6 +103,20 @@ class Undisturbed:
 
 
 @dataclass(frozen=True)
+class TiltHold:
+    """Met when a tilting table (a body of the field) passes `angle` degrees with the
+    machine still standing on it - its base within `lean` degrees of the table's own
+    up. Missed, with the angle it went over at, once the machine has tipped past
+    `tipped` degrees relative to the table (ADR 0020)."""
+    id: str
+    label: str
+    table: str
+    angle: float
+    lean: float = 10.
+    tipped: float = 25.
+
+
+@dataclass(frozen=True)
 class Result:
     id: str
     label: str
@@ -110,6 +136,7 @@ class GoalTracker:
         self.failed = {}
         self.disturbed = {}                         # goal id -> names moved so far
         self.origins = {}
+        self.tipped_at = None                       # table angle when the machine went over
 
     def update(self, state):
         if self.start is None:
@@ -132,6 +159,15 @@ class GoalTracker:
                     if dist(body.position[:2], pose.position[:2]) > goal.shift or \
                             tilt(body.quaternion) > goal.lean:
                         self.disturbed[goal.id].add(name)
+            elif isinstance(goal, TiltHold):
+                table = state.bodies[goal.table].pose.quaternion
+                angle = tilt(table)
+                lean = between(state.bodies[self.root].pose.quaternion, table)
+                if lean > goal.tipped:
+                    self.failed[goal.id] = now
+                    self.tipped_at = self.tipped_at or angle
+                elif angle >= goal.angle and lean <= goal.lean:
+                    self.met[goal.id] = now
             elif (goal.after is None or goal.after in self.met) and goal.check(machine, state):
                 self.met[goal.id] = now
 
@@ -149,11 +185,15 @@ class GoalTracker:
                 total = len(goal.bodies)
                 out.append(Result(goal.id, goal.label, 'failed' if moved else 'kept', None,
                                   f'{moved} of {total} moved'))
+            elif isinstance(goal, TiltHold) and goal.id in self.failed:
+                out.append(Result(goal.id, goal.label, 'missed', self.failed[goal.id],
+                                  f'tipped over at {self.tipped_at:.0f} deg'))
             elif goal.id in self.met:
                 time = self.met[goal.id]
                 detail = ''
-                if goal.since is not None and goal.since in self.met:
-                    detail = f'{time - self.met[goal.since]:.1f} s after {self._label(goal.since).lower()}'
+                since = getattr(goal, 'since', None)
+                if since is not None and since in self.met:
+                    detail = f'{time - self.met[since]:.1f} s after {self._label(since).lower()}'
                 out.append(Result(goal.id, goal.label, 'met', time, detail))
             else:
                 out.append(Result(goal.id, goal.label, 'missed' if finished else 'open'))

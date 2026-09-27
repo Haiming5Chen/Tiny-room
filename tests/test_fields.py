@@ -102,24 +102,30 @@ def test_every_field_is_labelled_and_its_goals_name_real_bodies():
 
 
 def test_fields_keep_clear_of_the_machine_at_the_start():
-    """Every field is authored around the machine's start: nothing may overlap it."""
+    """Every field is authored around the machine's start: nothing may overlap any of its
+    bodies - a tilt table's trip rail may sit under a chassis, not in a wheel."""
     from little_world import Entity
     from little_world.construction.docking import world_bounds
     from little_world.robots.mobile_platform import mobile_platform_blueprint
     from little_world.assets.catalog import BY_ID
     machines = (mobile_platform_blueprint(), BY_ID['ready_rover_6'].blueprint())
-    for field in FIELDS.values():
-        for bp in machines:
-            (mx0, my0, _), (mx1, my1, _) = world_bounds(bp)
+    for bp in machines:
+        boxes = [world_bounds(bp, {b.id}) for b in bp.components if getattr(b, 'geometry', None) is not None]
+        for field in FIELDS.values():
             for entity in field.scene(Entity('machine', bp)).entities:
                 if entity.id == 'machine':
                     continue
                 for part in entity.blueprint.components:
-                    if 'floor' in part.id:
+                    if 'floor' in part.id or not hasattr(part, 'geometry'):
                         continue
-                    (x0, y0, z0), (x1, y1, _) = world_bounds(entity.blueprint, {part.id})
-                    overlap = x0 < mx1 and mx0 < x1 and y0 < my1 and my0 < y1 and z0 < .5
-                    assert not overlap, (field.id, part.id)
+                    (x0, y0, z0), (x1, y1, z1) = world_bounds(entity.blueprint, {part.id})
+                    # What the machine stands on (the tilt table's top is at floor level) is
+                    # not in its way; anything reaching above the floor into one of its bodies is.
+                    if z1 <= .001:
+                        continue
+                    for (mx0, my0, mz0), (mx1, my1, mz1) in boxes:
+                        overlap = x0 < mx1 and mx0 < x1 and y0 < my1 and my0 < y1 and z0 < mz1 and mz0 < z1
+                        assert not overlap, (field.id, part.id)
 
 
 mujoco = pytest.importorskip('mujoco')

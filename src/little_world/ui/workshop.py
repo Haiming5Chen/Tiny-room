@@ -858,6 +858,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                         commands={}
                         commands.update(active.drive_control.step_commands(active.program_drive if active.program_drive is not None else active.controls.targets(),active.world.timestep,angular=active.program_drive is not None))
                         commands.update(active.joint_commands())
+                        commands.update(active.field_commands())
                         if active.motor_test is not None:
                             name,torque,until=active.motor_test
                             if active.state.time < until:
