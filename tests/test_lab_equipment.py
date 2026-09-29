@@ -38,7 +38,6 @@ def test_mobile_lab_base_moves(item,wheels):
     from little_world.core.entity import Entity
     from little_world.scenes.room import room_entity
     from little_world.control.mujoco_drive import MujocoDrive
-    from little_world.construction.docking import grounded
     bp=BY_ID[item].blueprint()
     backend=MujocoBackend();backend.compile(Scene((room_entity(),Entity('machine',bp))),.002)
     drive=MujocoDrive(backend,bp);assert len(drive.channels)==wheels

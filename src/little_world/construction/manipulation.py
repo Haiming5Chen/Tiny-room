@@ -1,6 +1,6 @@
 """Module-level gripper edits expressed entirely as ordinary Blueprint data."""
 from dataclasses import replace
-from little_world.core.component import Body,Geometry,Transform,Motor,positive
+from little_world.core.component import Body,Geometry,Motor,positive
 from little_world.materials import RUBBER,METAL,PLASTIC,WOOD,unsourced
 
 MATERIALS={m.id:m for m in (RUBBER,METAL,PLASTIC,WOOD)}

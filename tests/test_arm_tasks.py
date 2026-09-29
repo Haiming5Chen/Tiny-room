@@ -6,7 +6,6 @@ turn while the tool swept an arc, and a program had no way to notice that the
 gripper had closed on nothing. The Pick and place field's goals had no program
 that met them.
 """
-from math import isclose
 import pytest
 
 from little_world.programming.program import Block, Program, Runner, smoothstep

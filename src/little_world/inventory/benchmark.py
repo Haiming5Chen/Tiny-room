@@ -1,7 +1,7 @@
 """Isolated reproducible trials; never touches the interactive world."""
 from dataclasses import asdict
 from datetime import datetime,timezone
-from math import degrees,radians,acos,hypot
+from math import degrees,acos,hypot
 import hashlib,json
 from .store import fingerprint
 
@@ -17,7 +17,6 @@ def environment_fingerprint():
 
 def compare_trials(left,right,program,mode='hold_drive',seconds=5.,dt=.002):
     import mujoco
-    from little_world.scenes.workshop import workshop_entities
     if mode not in ('hold_drive','program'):raise ValueError('Unknown trial')
     if not 0<seconds<=10 or dt!=.002:raise ValueError('Trial requires at most 10 seconds and 0.002s steps')
     if mode=='program' and not program.blocks:raise ValueError('The current program is empty')

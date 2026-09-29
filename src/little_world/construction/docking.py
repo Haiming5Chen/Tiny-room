@@ -2,7 +2,6 @@
 from dataclasses import dataclass, replace
 from math import sqrt
 from little_world.core.component import Body, Transform, Hinge, Motor, Geometry, Attachment
-from little_world.core.blueprint import Blueprint
 from .connections import frames, mate, multiply, rotate, module_bounds, conjugate
 
 FACES=('Top','Bottom','Left','Right','Front','Back')

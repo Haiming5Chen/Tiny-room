@@ -6,7 +6,7 @@ waypoint planner is not a general obstacle-avoidance or grasp-planning system.
 from dataclasses import dataclass
 import numpy as np
 import mujoco as mj
-from .scene import BINS,TABLE
+from .scene import TABLE
 from little_world.programming.observations import Observations
 
 @dataclass

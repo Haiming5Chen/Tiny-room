@@ -1,8 +1,6 @@
 """In-app multiline Python authoring with asynchronous, atomic build application."""
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
-import time
 import glfw
 
 TEMPLATES={

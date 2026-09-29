@@ -1,4 +1,3 @@
-from dataclasses import replace
 import pytest
 from little_world.assets.catalog import BY_ID
 from little_world.construction.editor import AssemblyEditor

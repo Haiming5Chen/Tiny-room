@@ -5,7 +5,7 @@ only by timed wheel speeds, so a program could not bring the base to a table, an
 field asked a machine to fetch anything: drive somewhere, pick something up, bring it
 back and put it down.
 """
-from math import degrees, pi, radians
+from math import degrees, radians
 import pytest
 
 from little_world.control.navigation import GoTo, wheel_targets

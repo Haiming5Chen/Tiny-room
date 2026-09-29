@@ -1,5 +1,5 @@
 """Construction suggestions and missing-input checks, not mechanical certification."""
-from little_world.core.component import Body,Hinge,Motor,RobotServo
+from little_world.core.component import Body,Motor,RobotServo
 
 
 def build_checks(blueprint):

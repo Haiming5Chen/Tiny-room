@@ -108,8 +108,6 @@ import os
 @pytest.mark.skipif(os.environ.get('LITTLE_WORLD_TEST_RENDER')!='1',reason='requires OpenGL')
 def test_robot_ui_mesh_resources_save_undo_and_controls(tmp_path):
     import glfw
-    import mujoco as mj
-    import numpy as np
     from little_world.ui.workshop import Workshop
     app=Workshop(tmp_path/'panda.json');app.open_bench();original_draw=app.draw
     tick=0;old_context=None;canvas=None

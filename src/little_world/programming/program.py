@@ -77,7 +77,7 @@ class Program:
         if any(b.kind in VERSION_2_KINDS for b in self.blocks):object.__setattr__(self,'version',2)
 
     def validate(self,blueprint,body_names=()):
-        from little_world.core.component import Hinge,Motor,RobotServo
+        from little_world.core.component import RobotServo
         specs={c.id:c for c in blueprint.controllers}
         parts={c.id:c for c in blueprint.components}
 

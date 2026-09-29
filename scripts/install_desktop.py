@@ -2,7 +2,6 @@
 from pathlib import Path
 import plistlib
 import shlex
-import shutil
 import subprocess
 
 repo=Path(__file__).resolve().parents[1]

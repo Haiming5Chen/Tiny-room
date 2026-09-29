@@ -147,7 +147,6 @@ def test_rolling_resistance_is_the_lever_arm_times_the_load_on_that_wheel():
 
 def test_a_swivel_gets_no_rolling_torque_and_its_wheel_does():
     from little_world.assets.catalog import BY_ID
-    from little_world.construction.editor import AssemblyEditor
     caster = BY_ID["swivel_caster"].blueprint()
     caster = replace(caster, components=tuple(
         replace(c, dynamic=True, transform=Transform((0, 0, .08))) if getattr(c, "parent", 1) is None else c

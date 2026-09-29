@@ -4,7 +4,7 @@ Original geometry and estimated parameters; no vendor specifications are implied
 """
 from dataclasses import replace
 from math import sqrt
-from little_world.core.component import Body,Geometry,Transform,Attachment,Hinge,Motor,Camera
+from little_world.core.component import Body,Geometry,Transform,Hinge,Motor,Camera
 from little_world.core.blueprint import Blueprint
 from little_world.materials import METAL,RUBBER,PLASTIC,WOOD
 

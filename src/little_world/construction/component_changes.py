@@ -2,8 +2,8 @@
 from dataclasses import replace
 from little_world.assets.catalog import BY_ID,CATALOG
 from little_world.core.component import Body,Hinge,Motor,Camera
-from .docking import catalog_id,subtree,grounded,placement,SIDE_MOUNTS,WHEELS,sockets
-from .connections import frames,mate,rotate
+from .docking import catalog_id,grounded,placement,SIDE_MOUNTS,WHEELS,sockets
+from .connections import frames,mate
 
 
 def family(item):

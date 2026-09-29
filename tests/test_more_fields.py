@@ -5,7 +5,7 @@ crate - so nothing tested turning where turning matters, or how steep a side slo
 machine stands on; and ADR 0015's stance, predicted from the design, was checked only
 standing still on the level.
 """
-from math import atan2, cos, degrees, pi, radians, sin
+from math import atan2, cos, degrees, radians, sin
 import pytest
 
 from little_world.components import Transform
@@ -72,7 +72,6 @@ def test_rocking_onto_a_caster_is_not_tipping_over():
 # -- in the simulator ---------------------------------------------------------------------------
 
 mujoco = pytest.importorskip('mujoco')
-import numpy as np  # noqa: E402
 from little_world import Entity, World  # noqa: E402
 from little_world.construction.structure import standing  # noqa: E402
 from little_world.control.mujoco_drive import MujocoDrive  # noqa: E402

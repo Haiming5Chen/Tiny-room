@@ -1,4 +1,3 @@
-from dataclasses import replace
 import pytest
 from little_world.construction.editor import AssemblyEditor, starter_blueprint
 from little_world.core.component import Body, Hinge, Motor

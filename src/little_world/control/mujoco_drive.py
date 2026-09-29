@@ -1,7 +1,7 @@
 """Bind portable drive assistance to native wheel speed and base velocity."""
 import mujoco as mj
 import numpy as np
-from little_world.core.component import Body,Hinge,Motor
+from little_world.core.component import Body
 from little_world.assets.catalog import BY_ID
 from little_world.construction.docking import subtree
 from .drive_assist import DriveAssist

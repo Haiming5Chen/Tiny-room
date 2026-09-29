@@ -2,7 +2,6 @@
 from dataclasses import replace
 import pytest
 from little_world.construction.editor import AssemblyEditor, starter_blueprint
-from little_world.core.component import Body
 from little_world.robots.arm_lab import arm_lab_blueprint
 
 
@@ -247,7 +246,6 @@ def test_drag_both_wheels_from_cards_without_inspector(monkeypatch,tmp_path):
             start()
             # Crossing the newly installed wheel must not replace the chassis
             # target with a wheel which has no compatible side sockets.
-            import numpy as np
             name=app.editor.selection
             center=app.data.body('machine/'+name).xpos
             crossing=None

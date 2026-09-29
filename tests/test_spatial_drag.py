@@ -1,7 +1,6 @@
-from dataclasses import replace
 import os
 import pytest
-from little_world.assets.robot_models import blueprint,model_path,metadata
+from little_world.assets.robot_models import blueprint,model_path
 from little_world.assets.catalog import CATALOG
 from little_world.core.scene import Scene
 from little_world.core.entity import Entity
@@ -31,7 +30,6 @@ def test_sourced_arm_keeps_mechanics_and_moves(asset):
 @pytest.mark.skipif(os.environ.get('LITTLE_WORLD_TEST_RENDER')!='1',reason='requires OpenGL')
 def test_mesh_ghost_follows_cursor_places_exactly_and_cancels(tmp_path):
     import glfw
-    import numpy as np
     from little_world.ui.workshop import Workshop
     from little_world.construction.editor import starter_blueprint
     app=Workshop(tmp_path/'drag.json',starter_blueprint());app.open_bench();draw=app.draw

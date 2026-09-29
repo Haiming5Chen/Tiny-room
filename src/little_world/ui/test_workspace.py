@@ -1,7 +1,6 @@
 """Live ideal sensor readouts and bounded diagnostic observations."""
 from math import degrees,acos
 import json
-from pathlib import Path
 
 
 class TestWorkspace:

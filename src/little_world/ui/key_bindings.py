@@ -1,5 +1,4 @@
 """Saved keyboard action editor and native address binding for position control."""
-from math import degrees
 import glfw
 from little_world.core.component import Motor,RobotServo
 from little_world.control.keyboard import KeyboardPositionControl

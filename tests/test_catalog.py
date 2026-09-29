@@ -2,7 +2,7 @@ import pytest
 from little_world.assets.catalog import CATALOG
 from little_world.construction.editor import AssemblyEditor, starter_blueprint
 from little_world.core.blueprint import Blueprint
-from little_world.core.component import Body, Camera, Hinge, Motor
+from little_world.core.component import Camera
 
 
 @pytest.mark.parametrize('item',CATALOG,ids=lambda p:p.id)

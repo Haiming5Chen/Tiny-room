@@ -1,5 +1,5 @@
 import pytest
-from little_world.factory.scene import factory_scene,robot_blueprint,BINS,TABLE
+from little_world.factory.scene import factory_scene,BINS,TABLE
 from little_world.core.blueprint import Blueprint
 
 def test_factory_scene_is_portable():
@@ -113,7 +113,6 @@ def test_a_stocked_cell_is_portable_and_its_parts_wait_on_the_shelf():
 
 def test_a_production_run_places_part_after_part_in_its_own_slot():
     pytest.importorskip('mujoco')
-    import numpy as np
     from little_world.physics.mujoco_backend import MujocoBackend
     from little_world.factory.controller import FactoryCycle, SLOTS
     from little_world.factory.scene import stock_name

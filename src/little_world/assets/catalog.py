@@ -7,7 +7,7 @@ Dimensions are metres. Module detail contributes ordinary rigid-body mass/inerti
 from dataclasses import dataclass, replace
 from math import pi, sin, cos, sqrt
 from little_world.core.blueprint import Blueprint
-from little_world.core.component import Body, Geometry, Transform, Hinge, Motor, Camera, Attachment
+from little_world.core.component import Body, Geometry, Transform, Hinge, Camera, Attachment
 from little_world.materials import METAL, RUBBER, WOOD, SKID, PLASTIC
 
 PALETTE=(METAL,RUBBER,WOOD,SKID,PLASTIC)

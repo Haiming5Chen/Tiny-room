@@ -1,10 +1,9 @@
-from dataclasses import replace
 import pytest
 from little_world.assets.catalog import BY_ID
 from little_world.construction.editor import AssemblyEditor,starter_blueprint
-from little_world.construction.docking import dock,sockets,poses
+from little_world.construction.docking import dock,sockets
 from little_world.construction.connections import rotate
-from little_world.core.component import Body,Hinge,Motor
+from little_world.core.component import Hinge,Motor
 
 
 def test_four_wheel_mounts_orientation_and_drive_pairs():

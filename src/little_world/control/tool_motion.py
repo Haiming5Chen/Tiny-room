@@ -7,7 +7,7 @@ controller as joint targets. The servos then move the arm, so torque limits, con
 and gravity still decide what actually happens; the solution is only where the joints
 are asked to go.
 """
-from math import degrees, radians
+from math import degrees
 import mujoco as mj
 import numpy as np
 from little_world.construction.structure import modules

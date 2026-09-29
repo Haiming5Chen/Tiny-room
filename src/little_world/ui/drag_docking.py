@@ -4,7 +4,7 @@ import numpy as np
 import mujoco as mj
 from little_world.assets.catalog import BY_ID
 from little_world.construction.docking import sockets, dock, poses, catalog_id, prepare_base
-from little_world.construction.connections import rotate, multiply
+from little_world.construction.connections import rotate
 
 
 from .spatial_drag import SpatialDrag

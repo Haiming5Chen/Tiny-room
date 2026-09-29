@@ -52,7 +52,6 @@ import numpy as np  # noqa: E402
 from little_world import Entity, World  # noqa: E402
 from little_world.control.mujoco_drive import MujocoDrive  # noqa: E402
 from little_world.control.mujoco_keyboard import MujocoKeyboardControl  # noqa: E402
-from little_world.core.component import Body  # noqa: E402
 from little_world.fields import field_scene  # noqa: E402
 from little_world.physics.mujoco_backend import MujocoBackend  # noqa: E402
 from little_world.robots.arm_family import arm_family_blueprint  # noqa: E402

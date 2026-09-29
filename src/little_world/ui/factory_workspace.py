@@ -10,7 +10,7 @@ from .factory_authoring import FactoryAuthoring,tray_label
 from dataclasses import replace
 from little_world.factory.recipe import TRAYS
 from little_world.core.entity import Entity
-from little_world.factory.scene import factory_scene,robot_blueprint,PRODUCTS,BINS,TABLE
+from little_world.factory.scene import factory_scene,robot_blueprint,PRODUCTS,TABLE
 from little_world.factory.controller import FactoryCycle
 
 class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):

@@ -1,6 +1,6 @@
 from little_world.construction.editor import AssemblyEditor
 from little_world.robots.mobile_platform import mobile_platform_blueprint
-from little_world.core.component import Body, Hinge, Motor, Camera, Transform
+from little_world.core.component import Motor, Camera
 from little_world.core.blueprint import Blueprint
 import pytest
 

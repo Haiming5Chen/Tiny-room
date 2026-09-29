@@ -5,7 +5,6 @@ pytestmark=pytest.mark.skipif(os.environ.get('LITTLE_WORLD_TEST_RENDER')!='1',re
 
 def test_one_window_retains_both_workspaces_and_supports_real_arms(tmp_path,monkeypatch):
     import glfw
-    from dataclasses import replace
     from little_world.ui.workshop import Workshop
     from little_world.construction.editor import starter_blueprint
     from little_world.programming.program import Program,Block
