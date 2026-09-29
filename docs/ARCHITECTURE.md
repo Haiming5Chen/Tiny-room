@@ -152,7 +152,9 @@ the loop steps beside the machine's; `Field.fitted` hands `build` the machine's
 Blueprint, so the table's trip rail is set against whatever the machine has lowest on its
 right. Tip angles are the stance module's own rocking on a tilted floor
 (`construction/structure.py`, `_rest` with gravity leaning off the floor's normal), found
-by bisection per side.
+by bisection per side. A field with a `reading` (State -> degrees, up to `gauge_top`) is a
+static test: the test drive shows the reading on a gauge against the stance's prediction
+for the field's `side`, and `ground` names the field bodies telemetry treats as floor.
 
 ## Frontier radar
 

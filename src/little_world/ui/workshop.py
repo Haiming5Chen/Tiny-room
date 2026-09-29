@@ -8,12 +8,10 @@ import glfw
 import mujoco as mj
 import numpy as np
 from little_world import Blueprint, Entity, World
-from little_world.core.component import Motor
 from little_world.core.world import Mode
 from little_world.construction.editor import AssemblyEditor, starter_blueprint
 from little_world.physics.mujoco_backend import MujocoBackend
 from little_world.robots.two_wheel import two_wheel_blueprint
-from little_world.scenes.workshop import workshop_scene
 from .controls import DriveInput
 from .canvas import Canvas
 from .inspector import PrecisionInspector
@@ -224,6 +222,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                 self.status='Base is anchored. Return to Build and click Free base + ground to enable movement.'
             elif wheels and not self.channels:
                 self.status='No paired drive control. Passive wheels need motors; add left and right powered wheel modules for WASD.'
+            elif self.static is not None:self.status='The table tilts by itself; the machine only has to stay on its wheels.'
             else:self.status = 'Physics is running. Hold WASD to drive; release to brake.' if self.channels else 'Physics is running. Stop to return to the saved design.'
         else:
             self.stop_test_drive()
@@ -701,6 +700,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         button('Undo',ww-166,72,68,lambda:self.edit(self.editor.undo),self.building and bool(self.editor.past),h=26)
         button('Redo',ww-92,72,68,lambda:self.edit(self.editor.redo),self.building and bool(self.editor.future),h=26)
         help_text=('Click a part to select. Drag to orbit. Right-drag to pan. Scroll to zoom.' if self.building else
+                   'A static test: hands off. P pauses. F chase or room view. Enter returns to build.' if self.static is not None else
                    'Hold WASD to drive. Release to brake. P pauses. F chase or room view. Enter returns to build.')
         if self.control_panel:help_text='Drag to orbit. Right-drag to pan. Scroll to zoom.'
         help_width=min(ui.width(help_text,12),ww-self.PANEL-35-(338 if self.control_panel else 0))

@@ -36,6 +36,14 @@ motor, as a vehicle tilt table is (a stiff servo whose damping the solver integr
   off the floor's normal, the machine rocks about its downhill edge until another point
   catches it, and the tip angle is the smallest slope, found by bisection, at which nothing
   does. The build workspace reads "tips on a 54 deg side slope, 51 deg end on".
+- *A static test looks like one.* The drive panel's speed, distance, motors and top-speed
+  sections say nothing on a tilt table, and its report counted the fall as distance driven.
+  A field with a `reading` (the table's angle) is now shown as a static test: the angle on a
+  gauge with a tick at the design's predicted tipping angle and one where the machine went
+  over, how far the machine leans off the table, and the goals as a row of angle chips. The
+  report leads with the result ("Tipped over at 54 deg"), the prediction beside it and the
+  difference; the table counts as ground, so standing on it is not reported as touching.
+  The Doorway field has a program template, like Fetch: line up, drive through, park.
 
 **Blueprint and builder.** Nothing saved changes. Fields without a machine-fitted part
 build as before; a field's motor is the field's, not the machine's.

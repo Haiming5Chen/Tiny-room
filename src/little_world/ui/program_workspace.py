@@ -1,6 +1,5 @@
 """Visual sequence editor; programs are data and run on simulation time."""
 from dataclasses import replace
-from math import degrees,radians
 import glfw
 from little_world.programming.program import Program,Block,Runner
 from .inspector import numbers
@@ -89,10 +88,28 @@ class ProgramWorkspace:
         self.program_edit(fetch(self.tool_motion,self.base_pose,jaws.id,'objects/fetch_cube',place,reach_in=BIN_SIZE/2-.045))
         self.status='Fetch solved for this machine: drive, pick, bring back, set down. Run it: the field judges it.'
 
+    def doorway_program(self):
+        """Line up 0.7 m before the Doorway field's door, drive through it and park in the
+        bay beyond: three stops for the base's axle midpoint (ADR 0020)."""
+        from little_world.fields import BAY, DOOR_Y, WALL_X
+        if getattr(self,'base_pose',None) is None:raise ValueError('The Doorway program needs a left and a right drive wheel')
+        (x0,y0),(x1,y1)=BAY
+        stops=((WALL_X-.7,DOOR_Y,0.),(WALL_X+.6,DOOR_Y,0.),((x0+x1)/2,(y0+y1)/2,0.))
+        self.program_edit(Program(tuple(Block('goto',value=.02,duration=40.,point=p) for p in stops)))
+        self.status='Doorway: line up before the door, drive through, park in the bay. Run it: the field judges it.'
+
+    FIELD_TASKS={'pick_place':'Pick and place','fetch':'Fetch program','doorway':'Doorway program'}
+
+    def field_task_ready(self,field):
+        """Whether this machine can use the chosen field's program template."""
+        if field in ('fetch','pick_place'):return self.tool_motion is not None
+        return field=='doorway' and getattr(self,'base_pose',None) is not None
+
     def field_program(self):
         """The template for the chosen field's task."""
-        task={'pick_place':self.pick_place_program,'fetch':self.fetch_program}.get(getattr(self,'field_id',None))
-        if task is None:raise ValueError('Choose the Pick and place or Fetch field: their goals have a program template')
+        task={'pick_place':self.pick_place_program,'fetch':self.fetch_program,
+              'doorway':self.doorway_program}.get(getattr(self,'field_id',None))
+        if task is None:raise ValueError('Choose the Pick and place, Fetch or Doorway field: their goals have a program template')
         task()
 
     def goto_form(self,index=None):
@@ -300,7 +317,7 @@ class ProgramWorkspace:
         else:
             button('Pickup template',x+16,y,143,self.pickup_program,editing,h=28)
             field=getattr(self,'field_id',None)
-            button({'fetch':'Fetch program','pick_place':'Pick and place'}.get(field,'Field task'),x+167,y,143,self.field_program,
-                   editing and self.tool_motion is not None and field in ('fetch','pick_place'),h=28)
+            button(self.FIELD_TASKS.get(field,'Field task'),x+167,y,143,self.field_program,
+                   editing and self.field_task_ready(field),h=28)
         button('Step',x+16,wh-110,294,lambda:self.start_program(True),self.runner.state!='running' and bool(self.program.blocks),h=28)
         text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)

@@ -8,10 +8,11 @@ from dataclasses import dataclass
 from math import cos, radians, sin
 import mujoco as mj
 import numpy as np
+from little_world.construction.structure import standing
 from little_world.control.drive_telemetry import DriveTelemetry, display_name
 from little_world.control.run_log import RunLog, RunSummary
-from little_world.fields import FIELDS
-from little_world.fields.goals import GoalTracker, Line, Zone
+from little_world.fields import FIELDS, railed
+from little_world.fields.goals import GoalTracker, Line, TiltHold, Zone, between
 from .chase_camera import ChaseCamera
 
 MUTED = (.49, .57, .63)
@@ -28,6 +29,24 @@ _MARK = {'open': (.93, .93, .89, .85), 'met': (.37, .83, .69, 1.), 'kept': (.37,
          'missed': (.96, .50, .36, 1.), 'failed': (.96, .50, .36, 1.), 'lane': (.93, .93, .89, .45)}
 _MARK = {k: np.array(v, dtype=np.float32) for k, v in _MARK.items()}
 GOAL_WORDS = {'met': 'done', 'kept': 'kept', 'open': 'to do', 'missed': 'missed', 'failed': 'failed'}
+LIGHT = (.86, .90, .93)
+
+
+def static_verdict(peak, over, top):
+    """A static test's result as a headline and a tone ('warn', 'ok' or 'muted'): where it
+    went over, that it held to the top, or where the run was stopped."""
+    if over is not None:
+        return f'Tipped over at {over:.0f} deg', 'warn'
+    if peak >= top - .5:
+        return f'Held to {top:.0f} deg', 'ok'
+    return f'Stopped at {peak:.0f} deg', 'muted'
+
+
+def prediction_words(predicted, at_rail):
+    """What the design predicted for a static test, in words."""
+    if predicted is None:
+        return 'No prediction: the design does not stand by itself'
+    return f'Predicted {predicted:.0f} deg, {at_rail:.0f} at the rail'
 
 
 @dataclass(frozen=True)
@@ -39,6 +58,9 @@ class RunRecord:
     goals: tuple = ()           # fields.goals.Result
     limit: tuple | None = None  # DriveTelemetry.speed_limit() at the end, for a vehicle
     anchored: bool = False      # bolted to the world: an arm's run, with no vehicle metrics
+    # A static test (ADR 0020): (highest reading, where it went over or None, predicted,
+    # predicted at the trip rail, the gauge's top), in degrees.
+    static: tuple | None = None
 
 
 class TestDrive:
@@ -62,6 +84,7 @@ class TestDrive:
         self.onboard = -1           # the machine's first camera, shown as an inset while driving
         self.inset_camera = None
         self.inset_rect = None      # window coordinates of the inset, for its frame and label
+        self.static = None          # a static test's live reading: [peak, predicted, at the rail]
 
     def drivable(self):
         """A machine the chase view suits: a drive to steer and a free base to move."""
@@ -73,7 +96,13 @@ class TestDrive:
         self.build_camera = (camera.type, tuple(camera.lookat), camera.distance,
                              camera.azimuth, camera.elevation, self.follow)
         self.run_report = None
-        self.telemetry = DriveTelemetry(self.backend, self.editor.blueprint, self.drive_control)
+        field = FIELDS[self.field_id]
+        self.telemetry = DriveTelemetry(self.backend, self.editor.blueprint, self.drive_control, ground=field.ground)
+        self.static = None
+        if field.reading is not None:
+            stance = standing(self.editor.blueprint)
+            tip = stance.tip(field.side) if stance is not None and field.side else None
+            self.static = [0., tip, None if tip is None else railed(tip, stance.height)]
         self.run_log = RunLog()
         self.drive_sample = None
         self.drive_touching = set()
@@ -81,7 +110,6 @@ class TestDrive:
         self.trail = []
         self.trail_height = self.floor_top() + .003
         self.last_goals = ()
-        field = FIELDS[self.field_id]
         root = next((b.id for b in self.editor.bodies if b.parent is None), None)
         self.goal_tracker = GoalTracker(field.goals, 'machine/' + root) if field.goals and root else None
         self.onboard = next((i for i in range(self.model.ncam)
@@ -103,9 +131,14 @@ class TestDrive:
         if self.run_log is not None and self.run_log.samples > 1:
             goals = self.goal_tracker.results(finished=True) if self.goal_tracker else ()
             self.run_count += 1
+            static = None
+            if self.static is not None:
+                peak, predicted, at_rail = self.static
+                over = self.goal_tracker.tipped_at if self.goal_tracker is not None else None
+                static = (peak, over, predicted, at_rail, FIELDS[self.field_id].gauge_top)
             record = RunRecord(self.run_count, self.field_id, self.run_log.summary(), goals,
                                self.telemetry.speed_limit() if self.telemetry.channels else None,
-                               anchored=self.telemetry.anchored)
+                               anchored=self.telemetry.anchored, static=static)
             self.runs = (self.runs + [record])[-HISTORY:]
             self.run_report = record
             self.last_goals = goals
@@ -128,7 +161,9 @@ class TestDrive:
         self.run_log.add(self.drive_sample, self.drive_touching)
         if self.goal_tracker is not None and self.state is not None:
             self.goal_tracker.update(self.state)
-        if self.telemetry.channels:
+        if self.static is not None and self.state is not None:
+            self.static[0] = max(self.static[0], FIELDS[self.field_id].reading(self.state))
+        if self.telemetry.channels and self.static is None:
             self.extend_trail(self.drive_sample.position[:2])
 
     def extend_trail(self, point):
@@ -325,6 +360,9 @@ class TestDrive:
         """The Drive tab while physics runs, below the tab row. Sections are laid out
         top to bottom and a section that would not fit is left out, so a mobile
         manipulator in a field with goals still shows its goals and its arm."""
+        if self.static is not None:
+            self.draw_static_test_panel(ui, button, text, section, ww, wh)
+            return
         s = self.drive_sample
         drive = bool(self.telemetry and self.telemetry.channels)
         anchored = bool(self.telemetry and self.telemetry.anchored)
@@ -355,10 +393,10 @@ class TestDrive:
             text(f'{heading}  /  top {summary.top_speed:.2f} m/s  /  tilt {tilt:.0f} deg', 16, y, 12,
                  WARN if tilt > 20 else (.86, .90, .93), 256)
             stance = None if s is None else s.margin
-            stance_text = ('stance: rocking on one line of support' if stance is None else
+            stance_text = ('rocking on one support line' if stance is None else
                            f'stance margin {100 * stance:.1f} cm' + ('  (tipping)' if stance < 0 else ''))
-            text(f'{summary.distance:.2f} m driven  /  ' + stance_text, 16, y + 20, 12,
-                 WARN if stance is not None and stance < .01 else (.86, .90, .93), 256)
+            text(f'{summary.distance:.2f} m  /  ' + stance_text, 16, y + 20, 12,
+                 WARN if stance is not None and stance < .01 else LIGHT, 256)
             y += 40
         # What the gripper holds is not a collision: name it apart from what is touched.
         observations = getattr(self, 'observations', None)
@@ -455,6 +493,9 @@ class TestDrive:
 
     def draw_run_report(self, ui, button, text, section, ww, wh):
         record = self.run_report
+        if record.static is not None:
+            self.draw_static_report(ui, button, text, section, ww, wh)
+            return
         r = record.summary
         title = FIELDS[record.field].title if record.field in FIELDS else record.field
         section(f'RUN {record.number} REPORT  /  {title}', 120)
@@ -497,11 +538,7 @@ class TestDrive:
                 line = f'vs run {before.number}: {delta["distance"]:+.2f} m, top {delta["top_speed"]:+.2f} m/s{goals}'
             text(line, 16, y, 12, max_width=256)
             y += 20
-        y += 8
-        button('Redesign in Build stage', 12, y, 264, self.stop_and_redesign, h=36, tone='primary')
-        button('Run again', 12, y + 44, 264, self.run_again, h=32)
-        button('Back to editing', 12, y + 84, 264, lambda: setattr(self, 'run_report', None), h=28)
-        y += 122
+        y = self.draw_report_actions(button, y + 8)
         if record.limit is not None and record.limit[0] is not None:
             limit, source, alone = record.limit
             text(f'Top speed set by the {source}: {limit:.2f} m/s', 16, y, 12, max_width=256)
@@ -509,17 +546,122 @@ class TestDrive:
                 button('Adjust drive assist', 12, y + 20, 264, self.drive_settings_form, h=26)
                 y += 28
             y += 26
+        self.draw_session_runs(text, section, record, y, wh)
+
+    def draw_report_actions(self, button, y):
+        button('Redesign in Build stage', 12, y, 264, self.stop_and_redesign, h=36, tone='primary')
+        button('Run again', 12, y + 44, 264, self.run_again, h=32)
+        button('Back to editing', 12, y + 84, 264, lambda: setattr(self, 'run_report', None), h=28)
+        return y + 122
+
+    def draw_session_runs(self, text, section, record, y, wh):
         section('THIS SESSION', y)
         for i, run in enumerate(self.runs):
             if y + 20 + i * 19 > wh - 52:
                 break
-            where = FIELDS[run.field].title if run.field in FIELDS else run.field
-            if run.anchored and run.goals:
-                met = sum(g.status in ('met', 'kept') for g in run.goals)
-                line = f'Run {run.number}  {where}  {met}/{len(run.goals)} goals  {run.summary.duration:.1f} s'
-            else:
-                line = f'Run {run.number}  {where}  {run.summary.distance:.2f} m  {run.summary.duration:.1f} s'
-            text(line, 16, y + 20 + i * 19, 12, (.86, .90, .93) if run is record else MUTED, 256)
+            text(self.run_line(run), 16, y + 20 + i * 19, 12, LIGHT if run is record else MUTED, 256)
+
+    @staticmethod
+    def run_line(run):
+        """One run in the session list."""
+        where = FIELDS[run.field].title if run.field in FIELDS else run.field
+        if run.static is not None:
+            peak, over, *_ = run.static
+            return f'Run {run.number}  {where}  ' + (f'over at {over:.0f} deg' if over is not None else f'{peak:.0f} deg held')
+        if run.anchored and run.goals:
+            met = sum(g.status in ('met', 'kept') for g in run.goals)
+            return f'Run {run.number}  {where}  {met}/{len(run.goals)} goals  {run.summary.duration:.1f} s'
+        return f'Run {run.number}  {where}  {run.summary.distance:.2f} m  {run.summary.duration:.1f} s'
+
+    # -- a static test: the machine holds still while the field moves (ADR 0020) --------
+
+    def draw_gauge(self, ui, text, y, value, top, predicted=None, over=None):
+        """A 0-to-top bar filled to `value`, a light tick where the design predicts the
+        machine goes over and a warm one where it did; their labels on rows below."""
+        x0, width = 16, 256
+        ui.rect(x0, y, width, 8, (.14, .19, .23))
+        ui.rect(x0, y, width * max(0., min(1., value / top)), 8, WARN if over is not None else ACCENT)
+        row = y + 16
+        for angle, colour, label in ((predicted, LIGHT, 'predicted {:.0f}'), (over, WARN, 'went over at {:.0f}')):
+            if angle is None:
+                continue
+            px = x0 + width * max(0., min(1., angle / top))
+            ui.rect(px - 1, y - 5, 2, 18, colour)
+            words = label.format(angle)
+            wide = ui.width(words, 11)
+            text(words, max(x0, min(x0 + width - wide, px - wide / 2)), row, 11, colour)
+            row += 16
+        text(f'0 to {top:.0f} deg', x0, row, 10, MUTED)
+        return row + 18
+
+    def draw_hold_chips(self, ui, text, field, results, y):
+        """A tilt test's goals as a row of chips, one per angle: held, missed or to come."""
+        holds = [(g, r) for g, r in zip(field.goals, results) if isinstance(g, TiltHold)]
+        if not holds:
+            return y
+        gap = 6
+        w = (256 - gap * (len(holds) - 1)) / len(holds)
+        for i, (goal, result) in enumerate(holds):
+            x = 16 + i * (w + gap)
+            colour = ACCENT if result.status == 'met' else WARN if result.status == 'missed' else (.30, .36, .41)
+            ui.rect(x, y, w, 28, (.10, .14, .17))
+            ui.rect(x, y + 25, w, 3, colour)
+            label = f'{goal.angle:.0f}'
+            text(label, x + (w - ui.width(label, 13)) / 2, y + 5, 13, LIGHT if result.status != 'open' else MUTED)
+        text('held: still on its wheels as the table passed it', 16, y + 36, 11, MUTED, 256)
+        return y + 56
+
+    def draw_static_test_panel(self, ui, button, text, section, ww, wh):
+        field = FIELDS[self.field_id]
+        s = self.drive_sample
+        peak, predicted, at_rail = self.static
+        section(f'{field.title.upper()}  /  where it tips', 120)
+        text(f'{0. if s is None else s.time:.1f} s  /  ideal sensors' + ('  /  paused' if self.paused else ''),
+             16, 138, 12, MUTED)
+        angle = field.reading(self.state) if self.state is not None else 0.
+        number = f'{angle:.0f}'
+        text(number, 16, 156, 30)
+        text('deg, table angle', 22 + ui.width(number, 30), 170, 14, MUTED)
+        over = self.goal_tracker.tipped_at if self.goal_tracker is not None else None
+        y = self.draw_gauge(ui, text, 206, angle, field.gauge_top, at_rail, over)
+        table = next((g.table for g in field.goals if isinstance(g, TiltHold)), None)
+        root = self.telemetry.root if self.telemetry is not None else -1
+        if table is not None and root >= 0 and self.state is not None:
+            # Leaning off the table, not off the vertical: a machine on a 50 degree table
+            # that still stands on all its wheels leans a few degrees at most.
+            lean = between(tuple(float(v) for v in self.data.xquat[root]), self.state.bodies[table].pose.quaternion)
+            text(f'leaning {lean:.0f} deg off the table', 16, y, 12, WARN if lean > 6. else LIGHT, 256)
+            y += 20
+        against = ', '.join(sorted(self.drive_touching))
+        text('against: ' + against if against else 'against nothing but the table', 16, y, 12, MUTED, 256)
+        y += 30
+        if self.goal_tracker is not None:
+            section('GOALS  /  held at each angle', y)
+            y = self.draw_hold_chips(ui, text, field, self.goal_tracker.results(), y + 20)
+        text('P pause    Enter stop', 16, y, 12, MUTED)
+        button('Stop and redesign', 12, wh - 78, 264, self.stop_and_redesign, tone='danger')
+
+    def draw_static_report(self, ui, button, text, section, ww, wh):
+        record = self.run_report
+        field = FIELDS[record.field]
+        peak, over, predicted, at_rail, top = record.static
+        section(f'RUN {record.number} REPORT  /  {field.title}', 120)
+        headline, tone = static_verdict(peak, over, top)
+        text(headline, 16, 140, 18, WARN if tone == 'warn' else ACCENT if tone == 'ok' else MUTED, 256)
+        text(prediction_words(predicted, at_rail), 16, 168, 12, LIGHT, 256)
+        y = 188
+        if over is not None and at_rail is not None:
+            text(f'{over - at_rail:+.1f} deg from the prediction at the rail', 16, y, 12, MUTED, 256)
+            y += 18
+        # The table goes on to its top after a machine has gone over: the gauge stops where it did.
+        y = self.draw_gauge(ui, text, y + 14, peak if over is None else over, top, at_rail, over)
+        y = self.draw_hold_chips(ui, text, field, record.goals, y + 4)
+        earlier = [run for run in self.runs if run.field == record.field and run.number < record.number]
+        if earlier:
+            text('vs ' + self.run_line(earlier[-1]), 16, y, 12, MUTED, 256)
+            y += 20
+        y = self.draw_report_actions(button, y + 6)
+        self.draw_session_runs(text, section, record, y, wh)
 
     def last_run_line(self):
         """One line for the Build stage, so the last result stays in view while redesigning."""
@@ -527,6 +669,12 @@ class TestDrive:
             return None
         record = self.runs[-1]
         r = record.summary
+        if record.static is not None:
+            peak, over, predicted, at_rail, top = record.static
+            where = FIELDS[record.field].title if record.field in FIELDS else record.field
+            headline, _ = static_verdict(peak, over, top)
+            return f'Last run on the {where.lower()}: {headline.lower()}' + (
+                f', predicted {at_rail:.0f}' if at_rail is not None else '')
         if record.goals:
             met = sum(g.status in ('met', 'kept') for g in record.goals)
             where = FIELDS[record.field].title if record.field in FIELDS else record.field
@@ -539,6 +687,8 @@ class TestDrive:
         if not self.runs:
             return False
         record = self.runs[-1]
+        if record.static is not None:     # tipping is what a static test is for, not a trouble
+            return False
         return bool(record.summary.touched) or record.summary.tipped or any(
             g.status in ('missed', 'failed') for g in record.goals)
 

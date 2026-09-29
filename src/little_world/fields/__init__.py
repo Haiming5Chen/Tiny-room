@@ -6,14 +6,16 @@ bodies with sourced surfaces (ADR 0010); nothing here is simulated specially.
 Standard library only.
 """
 from dataclasses import dataclass
-from math import cos, radians, sin
+from math import atan2, cos, degrees, radians, sin, tan
 from little_world.components import Transform, box
+from little_world.construction.structure import outline
 from little_world.core.blueprint import Blueprint
-from little_world.core.component import Body, Geometry
+from little_world.core.command import Torque
+from little_world.core.component import Body, Geometry, Hinge, Motor
 from little_world.core.entity import Entity
 from little_world.core.material import Material
 from little_world.core.scene import Scene
-from .goals import Line, Undisturbed, Upright, Zone
+from .goals import Line, TiltHold, Undisturbed, Upright, Zone
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,13 @@ class Field:
     # A field fitted to the machine (ADR 0020): `build` takes the machine's Blueprint, as
     # a tilt table's trip rail is set against the wheels of whatever stands on it.
     fitted: bool = False
+    # A static test (ADR 0020): State -> degrees the field has reached, read on a gauge
+    # instead of the drive telemetry; `side` is the tipping side of the machine it tests,
+    # compared with the stance's prediction; `ground` are field bodies the machine stands on.
+    reading: object = None
+    gauge_top: float = 90.
+    side: str | None = None
+    ground: tuple = ()
 
     def scene(self, machine):
         parts = self.build(machine.blueprint) if self.fitted else self.build()
@@ -336,7 +345,6 @@ def trip_rail(blueprint):
     the lowest parts on its right-hand side, so that it stops a slide before it starts.
     It is low because a machine pressed against it tips about the rail's top edge rather
     than its wheels' own, which raises the tipping angle (see `railed`)."""
-    from little_world.construction.structure import outline
     half = TILT_TABLE[1] / 2 - RAIL
     points, _ = outline(blueprint) if blueprint is not None else ((), ())
     if not points:
@@ -350,23 +358,25 @@ def railed(tip, height):
     """A tipping angle, degrees, predicted about the wheels' own edge, moved up to the top
     edge of the trip rail they rest against: atan(reach / (height - rail)). For the mobile
     manipulator, 54.3 degrees becomes 55.8."""
-    from math import atan2, degrees, radians, tan
     return degrees(atan2(height * tan(radians(tip)), height - RAIL))
 
 
 def tilt_entities(machine=None):
     """A tilt table: the machine starts on a plywood table that turns about its long
-    centre line, left side up. A 2 cm trip rail stands against its right-hand wheels, as
+    centre line, left side up. A 5 mm trip rail stands against its right-hand wheels, as
     on a vehicle tilt table, so it cannot slide: what is measured is where it tips. The
     floor is 0.6 m below."""
-    from little_world.core.component import Hinge, Motor
     length, width, thick = TILT_TABLE
     rail = trip_rail(machine)
+    post = length / 2 - .06
     parts = [fixed('floor', (6., 6., .08), 'slab', (1., 0., -.64)),
-             # The stand stops 12 cm under the table: MuJoCo does not filter a child against a
-             # parent welded to the world, so the turning table must not reach it (to 65 deg).
-             Body('tilt_stand', Geometry('box', (length, .08, .44)), 'stand', transform=Transform((0., 0., -.38))),
-             Body('tilt_table', Geometry('box', TILT_TABLE), 'plywood', transform=Transform((0., 0., .36)),
+             # Two posts carry the hinge line, a beam joins them on the floor. They stop 12 cm
+             # under the table: MuJoCo does not filter a child against a parent welded to the
+             # world, so the turning table must not reach them (to 65 deg).
+             Body('tilt_stand', Geometry('box', (.08, .08, .44)), 'stand', transform=Transform((-post, 0., -.38))),
+             fixed('tilt_post', (.08, .08, .44), 'stand', (post, 0., -.38)),
+             fixed('tilt_beam', (length, .08, .06), 'stand', (0., 0., -.57)),
+             Body('tilt_table', Geometry('box', TILT_TABLE), 'plywood', transform=Transform((post, 0., .36)),
                   parent='tilt_stand'),
              Body('tilt_rail', Geometry('box', (length, RAIL, RAIL)), 'plywood',
                   transform=Transform((0., rail - RAIL / 2, (thick + RAIL) / 2)), parent='tilt_table'),
@@ -381,22 +391,23 @@ def tilt_target(time):
     return max(0., min(TILT_MAX, (time - TILT_START) * TILT_RATE))
 
 
+def table_angle(state):
+    """The tilt table's roll about its hinge line, degrees, left side up positive."""
+    w, x, y, z = state.bodies['field/tilt_table'].pose.quaternion
+    return degrees(atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)))
+
+
 def tilt_actuate(state):
     """Hold the table on its schedule: a stiff servo whose damping the solver integrates."""
-    from math import atan2, radians as rad
-    from little_world.core.command import Torque
-    table = state.bodies['field/tilt_table']
-    w, x, y, z = table.pose.quaternion
-    angle = atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))   # roll about X
     kp, kd = TILT_GAINS
-    torque = kp * (rad(tilt_target(state.time)) - angle) - kd * table.angular_velocity[0]
+    rate = state.bodies['field/tilt_table'].angular_velocity[0]
+    torque = kp * radians(tilt_target(state.time) - table_angle(state)) - kd * rate
     if abs(torque) >= TILT_TORQUE:
         return {'field/tilt_motor': TILT_TORQUE if torque > 0 else -TILT_TORQUE}
     return {'field/tilt_motor': Torque(torque, -kd)}
 
 
 def tilt_goals():
-    from .goals import TiltHold
     return tuple(TiltHold(f'held_{a}', f'Held at {a} deg', 'field/tilt_table', float(a)) for a in (20, 30, 40, 50)) + \
         (TiltHold('held_60', 'Held at 60 deg', 'field/tilt_table', TILT_MAX - .5),)
 
@@ -405,7 +416,8 @@ TILT = Field(
     'tilt', 'Tilt table',
     f'The machine stands on a table that tilts, left side up, {TILT_RATE:g} deg/s to {TILT_MAX:g} deg, a 5 mm trip '
     'rail against its right-hand wheels. Where it tips over is its static stability.',
-    tilt_entities, goals=tilt_goals(), actuate=tilt_actuate, home=((0., 0., .1), 2.6, 90., -12.), fitted=True)
+    tilt_entities, goals=tilt_goals(), actuate=tilt_actuate, home=((0., 0., .1), 2.6, 90., -12.), fitted=True,
+    reading=table_angle, gauge_top=TILT_MAX, side='right', ground=('field/tilt_table',))
 
 
 FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE, FETCH, DOORWAY, TILT)}

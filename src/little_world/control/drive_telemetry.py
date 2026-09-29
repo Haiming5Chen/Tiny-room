@@ -20,7 +20,7 @@ def display_name(body_name):
 
 
 class DriveTelemetry:
-    def __init__(self, backend, blueprint, drive, prefix='machine/'):
+    def __init__(self, backend, blueprint, drive, prefix='machine/', ground=()):
         m = backend.model
         self.backend = backend
         motors = {c.id: c for c in blueprint.components if isinstance(c, Motor)}
@@ -49,6 +49,9 @@ class DriveTelemetry:
             m.jnt_type[m.body_jntadr[self.root] + k] == mj.mjtJoint.mjJNT_FREE
             for k in range(m.body_jntnum[self.root]))
         self._names = [display_name(m.body(i).name) for i in range(m.nbody)]
+        # What the machine stands on is not news: the floor, and a field's own ground such
+        # as the top of a tilt table (ADR 0020).
+        self._ground = {i for i in range(m.nbody) if m.body(i).name in set(ground)}
 
     def sample(self):
         m, d = self.backend.model, self.backend.data
@@ -151,7 +154,8 @@ class DriveTelemetry:
             a, b = int(m.geom_bodyid[contact.geom1]), int(m.geom_bodyid[contact.geom2])
             if self._machine[a] == self._machine[b]:
                 continue
-            name = self._names[b if self._machine[a] else a]
-            if name and 'floor' not in name and name != 'world':
+            other = b if self._machine[a] else a
+            name = self._names[other]
+            if name and 'floor' not in name and name != 'world' and other not in self._ground:
                 names.add(name)
         return names
