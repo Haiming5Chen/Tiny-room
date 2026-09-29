@@ -759,3 +759,22 @@ Checks in `tests/test_radar.py` (13), listed in ADR 0021.
 Not claimed: the radar ranks and files; it does not read papers or decide. The fetcher has
 not been run against the live feeds from the build machine; the first run's items were
 gathered through a browsing tool.
+
+## Static tests shown as static tests; radar page; handoff files — 2026-09-29
+
+See ADR 0020 (A static test looks like one) and ADR 0021 (Short, then complete). On the
+tilt table the mobile manipulator still goes over at 54.2 degrees with the table on two
+posts and a beam instead of one block; the report reads "Tipped over at 54 deg, predicted
+54, 56 at the rail". The Doorway program template, run by the mobile platform: through
+the door at 14.5 s, in the bay at 16.7 s, frame untouched, upright.
+
+Checks: `tests/test_radar.py` (14) now also renders the page from a digest holding a title
+with a script tag, a `javascript:` link and a note with markup, and finds all three escaped
+and no link made; `tests/test_agent_docs.py` (4) keeps the handoff files present, the
+backlog a well-formed table with unique task numbers and known statuses, the log newest
+first, and the status script running. Unused imports found by a linter were removed
+across the tree (54). Full display-enabled suite: **609 passed**; headless 573 (36 need a
+display).
+
+Not claimed: the page's fonts come from Google Fonts and fall back to the system's
+offline; the handoff files are kept by agents, not generated.
