@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from pathlib import Path
 import sys
 
-from .digest import digest
+from .digest import markdown, plan
+from .page import html
 from .fetch import fetch, pinned_mujoco, sources
 from .items import PARSERS
 from .profile import project_root, topics
@@ -27,6 +28,8 @@ def main(argv=None, out=sys.stdout):
     show.add_argument('--days', type=int, default=7)
     show.add_argument('--least', type=float, default=LEAST, help='the cosine an item needs to match a topic')
     show.add_argument('--out', default=None, help='a Markdown file (default: print it)')
+    show.add_argument('--html', default=None, help='also write the digest as a self-contained page')
+    show.add_argument('--fragment', action='store_true', help='the page without its own document skeleton')
     rate = commands.add_parser('rate', help='record a verdict on an item')
     rate.add_argument('id')
     rate.add_argument('verdict', choices=VERDICTS)
@@ -55,13 +58,17 @@ def main(argv=None, out=sys.stdout):
             print(f'{store.add(found)} new of {len(found)} items; {store.count()} in the radar.', file=out)
         elif args.command == 'digest':
             since = (date.today() - timedelta(days=args.days)).isoformat()
-            page = digest(match(store.items(since), topics(root), args.least), store.verdicts(),
-                          date.today().isoformat(), since, pinned_mujoco(root))
+            found = plan(match(store.items(since), topics(root), args.least), store.verdicts(),
+                         date.today().isoformat(), since, pinned_mujoco(root))
+            text = markdown(found)
+            if args.html:
+                Path(args.html).write_text(html(found, fragment=args.fragment), encoding='utf-8')
+                print(f'wrote {args.html}', file=out)
             if args.out:
-                Path(args.out).write_text(page, encoding='utf-8')
+                Path(args.out).write_text(text, encoding='utf-8')
                 print(f'wrote {args.out}', file=out)
-            else:
-                print(page, file=out, end='')
+            elif not args.html:
+                print(text, file=out, end='')
         elif args.command == 'rate':
             store.rate(args.id, args.verdict, ' '.join(args.note))
             print(f'{args.id}: {args.verdict}', file=out)

@@ -37,6 +37,10 @@ question.
   under a Breaking API changes admonition, and filed under the decisions it touches.
 - *What is loud but unasked.* Items with much attention elsewhere (upvotes, stars, likes)
   and no topic here are listed apart: a gap in the profile, or noise, for a person to say.
+- *Short, then complete.* The Markdown digest leads with verdicts and their reasons, three
+  items a topic; `digest --html` writes one self-contained page with everything, the
+  details behind disclosures and a filter by verdict. Everything from a feed is escaped on
+  the page, and only http(s) addresses become links.
 - *A triage, kept.* The digest ends in a list to judge - adopt (change the project), learn
   (study it), watch (look again later), skip - and verdicts are kept with the item, so the
   next digest shows what was already judged and a decision record can cite what it

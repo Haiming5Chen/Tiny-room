@@ -9,7 +9,6 @@ import json
 
 import pytest
 
-from little_world.radar.digest import digest
 from little_world.radar.fetch import Source, fetch, pinned_mujoco, request, sources
 from little_world.radar.items import (Item, arxiv_api, arxiv_rss, github_releases, github_search, hf_models,
                                       hf_papers, jsonl, mujoco_changelog)
@@ -259,20 +258,48 @@ def test_the_same_paper_from_two_feeds_is_one_item_seen_once():
             store.rate('arxiv:2609.99999', 'skip')
 
 
-def test_the_digest_files_items_by_topic_and_leaves_a_triage():
-    found = arxiv_rss(RSS) + hf_papers(HF_PAPERS) + github_search(GITHUB) + mujoco_changelog(CHANGELOG, '3.3.7')
+def digest_of(found, rated=()):
+    from little_world.radar.digest import plan
     with Store(':memory:') as store:
         store.add(found)
-        store.rate('arxiv:2609.00002', 'learn')
-        page = digest(match(store.items(), topics()), store.verdicts(), '2026-09-27', '2026-09-20', '3.3.7')
-    assert page.startswith('# Frontier radar, 2026-09-27')
-    assert '## Decisions it could change' in page and '### ADR 0017: Friction that holds' in page
-    assert '## Under the simulator: MuJoCo 3.3.7 -> 3.4.0' in page and '5 changes in 1 releases' in page
-    assert '## Much attention, no topic here' in page and 'A Giant Video World Model' in page
-    assert '1,234 stars' in page and '41 upvotes' in page
-    assert '· **learn**' in page
-    triage = page.split('## Triage', 1)[1]
-    assert '`arxiv:2609.00001`' in triage and 'arxiv:2609.00002' not in triage
+        for item_id, verdict, note in rated:
+            store.rate(item_id, verdict, note)
+        return plan(match(store.items(), topics()), store.verdicts(), '2026-09-27', '2026-09-20', '3.3.7')
+
+
+def test_the_digest_files_items_by_topic_leads_with_verdicts_and_leaves_the_rest_to_judge():
+    from little_world.radar.digest import markdown
+    found = arxiv_rss(RSS) + hf_papers(HF_PAPERS) + github_search(GITHUB) + mujoco_changelog(CHANGELOG, '3.3.7')
+    d = digest_of(found, [('arxiv:2609.00002', 'learn', 'how a tilt table is predicted')])
+    page = markdown(d)
+    assert page.startswith('# Frontier radar · 2026-09-27')
+    assert '9 new since 2026-09-20: ' in page and '1 judged (1 learn)' in page
+    assert '### ADR 0017 · Friction that holds' in page
+    assert '- **learn** [Tip-Over Margins' in page and 'how a tilt table is predicted' in page   # the reason, not the words
+    assert '## Under the simulator: MuJoCo 3.3.7 → 3.4.0' in page and '5 changes in 1 releases, 2 breaking' in page
+    assert '## Much attention, no topic here' in page and 'A Giant Video World Model' in page and '250 upvotes' in page
+    judge = page.split('## To judge', 1)[1]
+    assert '`arxiv:2609.00001`' in judge and 'arxiv:2609.00002' not in judge
+    (release,) = d.releases
+    assert (release.version, release.changes, release.breaking) == ('3.4.0', 5, 2)
+
+
+def test_the_page_shows_the_same_digest_and_trusts_nothing_it_was_fed():
+    """Titles, summaries and links come from feeds: all of it is escaped, and only http(s)
+    addresses become links."""
+    from little_world.radar.page import html
+    hostile = Item('web:x', 'gathered', 'Grasp slip <script>alert(1)</script> and creep',
+                   'friction cone creep grasp slip under soft contact "quoted"', 'javascript:alert(1)')
+    d = digest_of(arxiv_rss(RSS) + mujoco_changelog(CHANGELOG, '3.3.7') + [hostile],
+                  [('arxiv:2609.00001', 'adopt', 'noslip <b>already</b> does this')])
+    page = html(d)
+    assert page.startswith('<!doctype html>') and '<title>Frontier radar</title>' in page
+    assert '<script>alert(1)</script>' not in page and '&lt;script&gt;alert(1)&lt;/script&gt;' in page
+    assert 'javascript:' not in page and '&lt;b&gt;already&lt;/b&gt;' in page
+    assert page.count('data-verdict="adopt"') == 1 and 'data-show="open"' in page
+    assert 'MuJoCo 3.3.7 → 3.4.0' in page and page.count('class="brk"') == 2     # one bar, one legend key
+    fragment = html(d, fragment=True)
+    assert not fragment.startswith('<!doctype') and '<body>' not in fragment and '<title>' in fragment
 
 
 # -- fetching and the command line -----------------------------------------------------------------
@@ -316,9 +343,10 @@ def test_the_command_line_ingests_digests_and_rates(tmp_path):
                                     'summary': 'friction cone creep grasp slip', 'kind': 'paper'}) + '\n')
     out = io.StringIO()
     assert main(['--db', str(db), 'ingest', str(gathered)], out) == 0
-    assert main(['--db', str(db), 'digest', '--out', str(page)], out) == 0
+    assert main(['--db', str(db), 'digest', '--out', str(page), '--html', str(tmp_path / 'digest.html')], out) == 0
     assert main(['--db', str(db), 'rate', 'web:grip', 'watch', 'too', 'early'], out) == 0
     assert main(['--db', str(db), 'topics'], out) == 0
     text = out.getvalue()
     assert '1 new of 1 items' in text and 'web:grip: watch' in text and 'ADR 0017' in text
     assert 'Grasp slip and creep' in page.read_text()
+    assert 'Grasp slip and creep' in (tmp_path / 'digest.html').read_text()

@@ -218,7 +218,7 @@ def mujoco_changelog(text, since='0'):
         if not words:
             return
         version = state['version']
-        first = re.split(r'(?<=\.)\s', words, 1)[0]
+        first = re.split(r'(?<=\.)\s', words, maxsplit=1)[0]
         first = first if len(first) <= 140 else first[:139].rsplit(' ', 1)[0] + '...'
         n = sum(1 for i in items if i.id.startswith(f'mujoco:{version}#'))
         tags = tuple(t for t in (state['section'], 'breaking' if state['breaking'] else '') if t)

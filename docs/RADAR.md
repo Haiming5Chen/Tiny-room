@@ -7,11 +7,15 @@ only; the store is one SQLite file outside the repository.
 
 ```
 python -m little_world.radar fetch                 # the feeds, into ~/.little_world/radar.sqlite
-python -m little_world.radar digest --days 7 --out digest.md
+python -m little_world.radar digest --days 7 --out digest.md --html digest.html
 python -m little_world.radar rate <id> adopt|learn|watch|skip "why"
 python -m little_world.radar ingest found.jsonl    # items gathered by hand or by an assistant
 python -m little_world.radar topics                # what it looks for (docs/radar/profile.md)
 ```
+
+The Markdown digest is short - verdicts and their reasons first, three items a topic. The
+page (`--html`) holds everything: counts and verdicts at a glance, a filter by verdict, a
+chart of the simulator's releases, and each item's summary and matched words on demand.
 
 The loop it is for: a digest arrives; a person (or an assistant) judges the top of it;
 an *adopt* becomes a trial on a branch, and a trial that holds becomes a decision record
