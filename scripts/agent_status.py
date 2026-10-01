@@ -1,8 +1,8 @@
-"""Where the work stands, for an agent picking it up: python scripts/agent_status.py
+"""Where the work stands: python scripts/agent_status.py
 
-Prints the branch, the commits it has beyond main, uncommitted files, the tasks that are
-open, claimed or blocked in docs/agents/BACKLOG.md, and the newest entry of
-docs/agents/LOG.md. Standard library only; reads git, never writes.
+Prints the branch, the commits it has beyond main, uncommitted files, the items still
+open in docs/agents/OPEN.md and the newest entry of docs/agents/REPORTS.md. Standard
+library only; reads git, never writes.
 """
 from pathlib import Path
 import re
@@ -11,7 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENTS = ROOT / 'docs' / 'agents'
-STATUSES = ('open', 'claimed', 'blocked', 'done', 'dropped')
+STATUSES = ('open', 'done', 'dropped')
 
 
 def git(*args):
@@ -21,8 +21,8 @@ def git(*args):
         return ''
 
 
-def backlog(text):
-    """[(id, status, owner, task, done when, source)] from the backlog's table."""
+def open_items(text):
+    """[(id, opened, by, what is open, context, status)] from the table in OPEN.md."""
     rows = []
     for line in text.splitlines():
         cells = [c.strip() for c in line.strip().strip('|').split('|')]
@@ -31,9 +31,9 @@ def backlog(text):
     return rows
 
 
-def log_entries(text):
-    """[(date, heading)] of the log's entries, in the order written (newest first); the
-    template in the log's fenced example is not an entry."""
+def reports(text):
+    """[(date, heading)] of the reports, in the order written (newest first); the template
+    in the file's fenced example is not a report."""
     text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
     return [(m.group(1), m.group(0)[3:]) for m in re.finditer(r'^## (\S+) · .+$', text, re.MULTILINE)]
 
@@ -50,15 +50,15 @@ def main(out=sys.stdout):
         print(f'         {line.strip()}', file=out)
     if len(dirty) > 10:
         print(f'         and {len(dirty) - 10} more', file=out)
-    rows = backlog((AGENTS / 'BACKLOG.md').read_text(encoding='utf-8'))
-    live = [r for r in rows if r[1] in ('open', 'claimed', 'blocked')]
-    print(f'\nbacklog  {len(live)} live of {len(rows)} tasks', file=out)
-    for task_id, status, owner, task, *_ in live:
-        print(f'  {task_id}  {status:8} {owner[:18]:18} {task[:80]}', file=out)
-    entries = log_entries((AGENTS / 'LOG.md').read_text(encoding='utf-8'))
-    if entries:
-        print(f'\nlast log {entries[0][1]}', file=out)
-    print('\nRead AGENTS.md, then docs/agents/STATE.md and the newest docs/agents/LOG.md entry.', file=out)
+    rows = open_items((AGENTS / 'OPEN.md').read_text(encoding='utf-8'))
+    still = [r for r in rows if r[5] == 'open']
+    print(f'\nopen     {len(still)} of {len(rows)} items', file=out)
+    for item_id, opened, by, what, *_ in still:
+        print(f'  {item_id}  {opened}  {what[:86]}', file=out)
+    found = reports((AGENTS / 'REPORTS.md').read_text(encoding='utf-8'))
+    if found:
+        print(f'\nlast report  {found[0][1]}', file=out)
+    print('\nThe owner decides what is worked on; reports and open items are in docs/agents/.', file=out)
     return 0
 
 

@@ -1,9 +1,9 @@
-"""The handoff files agents rely on stay readable (AGENTS.md, docs/agents/).
+"""The notes agents keep for the owner stay readable (AGENTS.md, docs/agents/).
 
-An agent starting here reads AGENTS.md, the state, the newest log entry and the backlog;
-these checks keep that path from rotting: every file is there, the backlog's table parses
-with unique task numbers and known statuses, a claimed task names its owner, and the log
-keeps its newest entry first.
+Agents report what they did and what is unfinished; the owner decides what happens next.
+These checks keep that record usable: every file is there, the open items form a table
+with unique numbers, known statuses and who found each, and the reports keep the newest
+first.
 """
 from importlib import util
 from pathlib import Path
@@ -18,34 +18,33 @@ def status_module():
     return module
 
 
-def test_the_guide_points_to_every_handoff_file_and_they_exist():
-    guide = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
-    for name in ('docs/agents/STATE.md', 'docs/agents/LOG.md', 'docs/agents/BACKLOG.md', 'scripts/agent_status.py'):
-        assert name in guide and (ROOT / name).exists(), name
+def test_the_notes_point_to_every_file_and_they_exist():
+    notes = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
+    for name in ('docs/agents/STATE.md', 'docs/agents/REPORTS.md', 'docs/agents/OPEN.md', 'scripts/agent_status.py'):
+        assert name in notes and (ROOT / name).exists(), name
     assert '@AGENTS.md' in (ROOT / 'CLAUDE.md').read_text(encoding='utf-8')
 
 
-def test_the_backlog_is_a_well_formed_table():
+def test_the_open_items_are_a_well_formed_table():
     status = status_module()
-    rows = status.backlog((ROOT / 'docs' / 'agents' / 'BACKLOG.md').read_text(encoding='utf-8'))
-    assert rows, 'no tasks parsed'
+    rows = status.open_items((ROOT / 'docs' / 'agents' / 'OPEN.md').read_text(encoding='utf-8'))
+    assert rows, 'no items parsed'
     ids = [r[0] for r in rows]
     assert len(ids) == len(set(ids)) and ids == sorted(ids)
-    for task_id, state, owner, task, done_when, _source in rows:
-        assert state in status.STATUSES, (task_id, state)
-        assert task and done_when, task_id
-        assert state != 'claimed' or owner, f'{task_id} is claimed by nobody'
+    for item_id, opened, by, what, _context, state in rows:
+        assert state in status.STATUSES, (item_id, state)
+        assert opened[:2] == '20' and by and what, item_id
 
 
-def test_the_log_keeps_its_newest_entry_first():
+def test_the_reports_keep_the_newest_first():
     status = status_module()
-    entries = status.log_entries((ROOT / 'docs' / 'agents' / 'LOG.md').read_text(encoding='utf-8'))
-    assert entries and not entries[0][0].startswith('YYYY'), 'the template is not an entry'
-    dated = [d for d, _ in entries if d[:1].isdigit()]
+    found = status.reports((ROOT / 'docs' / 'agents' / 'REPORTS.md').read_text(encoding='utf-8'))
+    assert found and not found[0][0].startswith('YYYY'), 'the template is not a report'
+    dated = [d for d, _ in found if d[:1].isdigit()]
     assert len(dated) >= 2 and dated == sorted(dated, reverse=True)
 
 
-def test_the_status_script_runs_without_git_state_to_rely_on(capsys):
+def test_the_status_script_prints_open_items_and_the_last_report(capsys):
     assert status_module().main() == 0
     printed = capsys.readouterr().out
-    assert 'backlog' in printed and 'LW-001' in printed and 'last log' in printed
+    assert 'open' in printed and 'LW-001' in printed and 'last report' in printed

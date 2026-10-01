@@ -1,14 +1,32 @@
-# Little World: guide for agents
+# Little World: notes for agents
 
-This file is read first by any agent working here (Codex reads `AGENTS.md`; Claude Code
-reads `CLAUDE.md`, which imports this file). Then read, in order:
+The owner decides what is worked on and where the project goes. Agents report to the
+owner; none of them directs or overrides another. This file holds the project's rules and
+the facts needed to work here (Codex reads `AGENTS.md`; Claude Code reads `CLAUDE.md`,
+which imports it).
 
-1. `docs/agents/STATE.md` - where the work stands: branch, tests, what is in flight.
-2. The newest entry of `docs/agents/LOG.md` - what the last agent did and left open.
-3. `docs/agents/BACKLOG.md` - the tasks, who holds them, and when each is done.
+What agents have done and left open:
 
-`python scripts/agent_status.py` prints the live version of all three: branch, commits
-ahead of `main`, uncommitted files, open and claimed tasks, and the newest log entry.
+- `docs/agents/REPORTS.md` - each agent's report, newest first: what it did, what it
+  measured, what is unfinished.
+- `docs/agents/OPEN.md` - unfinished work and problems found but not fixed, with who
+  found them and when.
+- `docs/agents/STATE.md` - the branch, the tests and what is uncommitted.
+
+`python scripts/agent_status.py` prints the branch, the tree, the open items and the
+newest report.
+
+## Working alongside other agents
+
+- Take your tasks from the owner.
+- Report when you stop, even mid-task: a new entry at the top of `docs/agents/REPORTS.md`
+  with what you did (commits), what you measured, and what is unfinished or doubtful.
+  Write it for the owner; do not write instructions for other agents.
+- Leave other agents' work as it is. If you think something in it is wrong, put it in your
+  report with the evidence; whether to change it is the owner's call.
+- Add what you leave unfinished, or found and did not fix, to `docs/agents/OPEN.md`. Mark
+  an item done only when you finished it.
+- The owner publishes the branch to GitHub.
 
 ## Rules
 
@@ -37,41 +55,25 @@ python3 -m venv .venv && .venv/bin/python -m pip install -e '.[workshop,dev]'
 LITTLE_WORLD_TEST_RENDER=1 xvfb-run -a -s "-screen 0 1600x1000x24" \
     .venv/bin/python -m pytest -q                     # adds the OpenGL window tests (Linux)
 .venv/bin/python examples/workshop.py                 # the app, in Anime (builder) mode
-python scripts/agent_status.py                        # the handoff state, live
+python scripts/agent_status.py                        # branch, tree, open items, last report
 ruff check --select F src tests scripts               # optional; not a project dependency
 ```
 
-MuJoCo is pinned to 3.3.7 (`pyproject.toml`); do not upgrade it inside another task - it
-moves physics results (see docs/RADAR.md and BACKLOG LW-004). The full headless suite takes
-about six minutes on two cores; run the files you touched first, the whole suite before a
-commit.
+MuJoCo is pinned to 3.3.7 (`pyproject.toml`); a newer version moves physics results
+(docs/RADAR.md, OPEN LW-004). The headless suite takes about six minutes on two cores.
 
-## How a change is made
+## Conventions
 
-1. **Claim** a task in `docs/agents/BACKLOG.md`: status `claimed`, your name, the date.
-   One agent per task; if a claim is older than a week with no log entry, ask the owner.
-2. **Decide** in a decision record when behaviour changes: `docs/adr/NNNN-short-title.md`,
-   numbered after the last one, with these parts:
-   *Problem* (what was wrong, measured) · *Does an existing simulator solve it? Can we wrap
-   it?* · *Unique contribution* (what is ours, as bullets) · *Blueprint and builder* (what
-   saved designs see) · *Result* (numbers, and the tests that hold them) · *Boundaries*
-   (what is not claimed).
-3. **Test** first: a contract test that fails, then the change, then an integration check in
-   the simulator. A physical claim needs a number, a reason and a test that holds it.
-4. **Document** what users and later agents need: a `README.md` bullet for a user-visible
-   feature, a dated section in `docs/VALIDATION.md` (what is checked, test counts, what is
-   not claimed), `docs/ARCHITECTURE.md` for a new module, the `docs/ROADMAP.md` paragraph,
-   and extra words for the new record in `docs/radar/profile.md` if papers name its subject
-   differently.
-5. **Commit** one decision per commit. Subject: `Topic: what changed` (e.g. "Friction that
-   holds: noslip, and no self-contact between robot links"); body: what was measured before
-   and after. Never commit a failing suite; never rewrite published history.
-6. **Hand off** before you stop, even mid-task: add an entry at the top of
-   `docs/agents/LOG.md`, update `docs/agents/STATE.md`, and set the task's status. If work
-   is unfinished, say exactly where it stopped and what is uncommitted.
-
-Agents do not publish. The owner moves the branch to GitHub; an agent's work ends in
-commits on the working branch and an up-to-date handoff.
+- A change in behaviour has a decision record, `docs/adr/NNNN-short-title.md`, numbered
+  after the last, with these parts: *Problem* (measured) · *Does an existing simulator
+  solve it? Can we wrap it?* · *Unique contribution* · *Blueprint and builder* · *Result*
+  (numbers, and the tests that hold them) · *Boundaries* (what is not claimed).
+- A physical claim has a number, a reason and a test that holds it.
+- Documents that follow a change: a `README.md` bullet for what users see, a dated section
+  in `docs/VALIDATION.md` (what is checked, test counts, what is not claimed),
+  `docs/ARCHITECTURE.md` for a new module, the `docs/ROADMAP.md` paragraph.
+- Commits: one decision each; subject `Topic: what changed`; the body says what was measured
+  before and after. Both suites pass at every commit.
 
 ## Map
 
@@ -97,5 +99,5 @@ commits on the working branch and an up-to-date handoff.
 - MuJoCo does not filter contacts between a child and a parent welded to the world: moving
   field parts must clear their stands (ADR 0020).
 - Window tests must wait on simulated progress, never on the wall clock.
-- The repository is public: no personal data, keys or paths in code, docs or logs; third-party
-  assets are listed with their licences in `THIRD_PARTY.md`.
+- The repository is public: no personal data, keys or paths in code, docs or reports;
+  third-party assets are listed with their licences in `THIRD_PARTY.md`.
