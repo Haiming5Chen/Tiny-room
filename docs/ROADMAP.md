@@ -81,6 +81,9 @@ predicts (ADR 0020). A frontier radar files new papers, models and MuJoCo's own 
 under the decisions they could change (ADR 0021, docs/RADAR.md); its first run found this
 project eleven MuJoCo releases behind, and a trial of the newest moved three wheel-contact
 results; the three are understood (ADR 0022) and the suite passes on the newest release.
+The example machines now start on the floor instead of falling 4.3 cm as a run begins, which
+was the source of one of those results, and the build stage warns about a design built in
+the air (ADR 0023).
 Next, if the owner chooses: upgrade MuJoCo and adopt its conveyor surfaces for the factory's
 feeder and its PID and DC-motor actuators for the kit's servos and gearmotors; calibrate one real
 servo with its system identification toolbox; run the fields with perturbations; and grasp

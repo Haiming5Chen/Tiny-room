@@ -8,8 +8,10 @@ from little_world.materials import METAL, RUBBER, SKID, WOOD, PLASTIC
 
 
 def starter_blueprint():
+    # A block resting on the floor, 2 mm clear: a run starts a design where it was built
+    # (ADR 0023). Wheels added to it raise it as far as they need.
     return Blueprint((Body('base', Geometry('box', (.32, .24, .09)), 'metal',
-                           Transform((0, 0, .13)), dynamic=True),), (METAL, RUBBER, SKID, WOOD, PLASTIC))
+                           Transform((0, 0, .047)), dynamic=True),), (METAL, RUBBER, SKID, WOOD, PLASTIC))
 
 
 def multiply(a, b):

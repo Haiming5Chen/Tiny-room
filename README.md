@@ -68,7 +68,10 @@ change the design, try again.** A desktop robotics sandbox on
   its design says 54.3 (55.8 about the rail's edge); without the rail it slides from 16,
   because only its drive wheels resist a side load. A doorway field checks turning through
   a 50 cm door without touching the frame
-  ([ADR 0020](docs/adr/0020-doorway-and-tilt-table.md)).
+  ([ADR 0020](docs/adr/0020-doorway-and-tilt-table.md)). The build stage also warns when a
+  design starts in the air, since a run starts it where it was built: the examples used to
+  fall 4.3 cm, and landing with the wheels driven left a caster swivelled 37 degrees by the
+  second curb ([ADR 0023](docs/adr/0023-machines-start-on-the-floor.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -76,7 +79,7 @@ change the design, try again.** A desktop robotics sandbox on
   project eleven MuJoCo releases behind, and running the suite on the newest showed which
   three wheel-contact results would move and why
   ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)).
-- **610 automated tests**, including OpenGL window tests that drive the interface
+- **613 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

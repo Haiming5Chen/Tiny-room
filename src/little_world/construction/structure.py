@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from math import acos, atan2, cos, degrees, pi, sin
 from little_world.core.component import Body, Camera, Motor, RobotServo, Hinge
 from .connections import rotate
-from .docking import catalog_id, poses
+from .docking import catalog_id, poses, subtree, world_bounds
 
 ROLES = ('base', 'drive', 'wheel', 'support', 'arm', 'tool', 'sensor', 'mount', 'actuator',
          'structure', 'hardware', 'part')
@@ -36,6 +36,7 @@ CATEGORY_ROLES = {'Hardware': 'hardware', 'Structure': 'structure', 'Housing': '
                   'Sensors': 'sensor', 'Driven parts': 'part'}
 TOUCH = .0005       # m: a point this close to the floor carries load
 TIPS_OVER = 45.     # degrees: rolled this far, a machine lies on parts not made to carry it
+AIRBORNE = .005     # m: a design starting higher than this above the floor falls at the start
 _DIRECTIONS = tuple((i, j, k) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1) if (i, j, k) != (0, 0, 0))
 
 
@@ -394,6 +395,18 @@ def outline(blueprint):
             points.extend(found)
             owners.extend([b.id] * len(found))
     return points, owners
+
+
+def clearance(blueprint):
+    """How high, m, the lowest point of the design's free parts starts above the floor
+    (z = 0), or None when nothing in it stands free. A run starts the design where it was
+    built, so one built in the air falls - and lands with its wheels already driven, which
+    moved the curb results of ADR 0022 (ADR 0023)."""
+    roots = [b.id for b in blueprint.components if isinstance(b, Body) and b.parent is None and b.dynamic]
+    if not roots:
+        return None
+    low, _ = world_bounds(blueprint, set().union(*(subtree(blueprint, r) for r in roots)))
+    return low[2]
 
 
 def standing(blueprint):

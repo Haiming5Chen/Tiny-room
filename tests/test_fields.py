@@ -191,18 +191,19 @@ def climbed(heights, before=()):
 def test_a_pushed_caster_climbs_a_curb_below_its_radius_and_not_one_well_above():
     """The platform's swivel casters have 40 mm wheels. Pushed at the axle, a free wheel
     climbs a step lower than its radius - the edge's reaction points above the axle - and
-    not one taller. Driven at 0.4 m/s it gets a little past the radius on momentum, so the
+    not one taller. How close to the radius it gets depends on the engine's contacts: driven
+    at 0.4 m/s it stops at 20 mm on MuJoCo 3.3.7 and climbs 22 on 3.14 (ADR 0023), so the
     check is 18 mm against 24, clear of the limit on both sides."""
     assert climbed((18, 24)) == [True, False]
 
 
-@pytest.mark.xfail(tuple(int(v) for v in mujoco.__version__.split('.')[:2]) < (3, 8), strict=True,
-                   reason='MuJoCo before 3.8 makes one contact per convex pair: a caster against a curb edge '
-                          'depends on what it met before (ADR 0022, OPEN LW-001)')
 def test_whether_a_curb_is_climbed_does_not_depend_on_the_curb_before_it():
     """The same curbs, alone and after a 10 mm one, must give the same answers, and a
-    curb that is cleared must leave every lower one cleared. On MuJoCo 3.3.7 a 10 mm curb
-    first turned 18 and 20 mm into stops and 22 and 24 mm into climbs."""
+    curb that is cleared must leave every lower one cleared. While the platform started
+    4.3 cm in the air, a 10 mm curb first turned 18 and 20 mm into stops and 22 and 24 mm
+    into climbs on MuJoCo 3.3.7 (ADR 0022): landing with its wheels driven left a caster
+    swivelled, 37 degrees by the second curb. Started on its wheels, every release answers
+    the same both ways (ADR 0023)."""
     heights = (18, 22, 24)
     alone, after = climbed(heights), climbed(heights, before=(10,))
     assert alone == after, (alone, after)

@@ -113,8 +113,8 @@ def test_the_mobile_manipulator_tips_where_its_stance_says_and_the_platform_hold
     goes over near 54 degrees - 56 about the trip rail's edge. It goes at 54 on MuJoCo
     3.3.7: one caster, loaded and pushed sideways, swivels 86 degrees as the table rises
     and its wheel's contact moves, which the rigid prediction does not know. MuJoCo's own
-    releases move it by up to 1.8 degrees more, through the box-box collisions of the tread
-    blocks and the caster's cylinder contacts (ADR 0022): 52.4 on 3.14. The bare platform's
+    releases move it by about 2 degrees more, through the box-box collisions of the tread
+    blocks and the caster's cylinder contacts (ADR 0022): 52.6 on 3.14. The bare platform's
     centre of mass is 4 cm lower: past the table's 60 degrees. The rail keeps both from
     sliding."""
     from little_world.fields import railed

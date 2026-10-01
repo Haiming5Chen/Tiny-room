@@ -798,3 +798,26 @@ and 1 expected failure; on 3.14 the headless suite: **574 passed**.
 
 Not claimed: which release is right near the caster's radius; that needs a real caster and
 curb.
+
+## Machines start on the floor — 2026-10-01
+
+See ADR 0023. The mobile platform and the arm on a cart started with their wheels 4.35 cm
+above the floor and fell 44 mm as each run began; the two-wheel example fell 10.5 mm and the
+bare block started 8.5 cm up. Set down after assembly, the examples settle 2.5 to 2.9 mm as a
+run starts. With the platform started on its wheels, the caster gives the same answers alone
+and after a 10 mm curb on MuJoCo 3.3.7 and 3.14, with multiccd on and off: 18 mm climbed
+everywhere, 20 and 22 mm only on 3.14 as released, 24 mm nowhere. The fall had left a caster
+swivelled 6 degrees at the lone curb and 37 degrees at the curb after the 10 mm one. The
+manipulator's stance margin: 3.34 cm on 3.3.7 and 3.35 on 3.14, predicted 3.37. On the tilt
+table: 54.5 degrees on 3.3.7 and 52.6 on 3.14, predicted 54.3 (55.8 at the rail); the loaded
+caster still swivels 86 degrees before it goes.
+
+Checks: `tests/test_structure.py` - the four examples start within 5 mm of the floor, the
+platform lifted 4 cm reads 4 cm higher, an arm bolted to its pedestal has nothing standing
+free; the platform and the manipulator settle less than 3 mm as a run starts.
+`tests/test_fields.py` - whether a curb is climbed does not depend on the curb before it, no
+longer marked as expected to fail. On MuJoCo 3.3.7: **613 passed** with a display, 577
+headless; on 3.14 the headless suite: 577 passed.
+
+Not claimed: a run does not set a design down; one built in the air still falls, and the
+build stage says so. Designs saved before this change keep their heights.

@@ -9,8 +9,10 @@ from little_world.materials import METAL, RUBBER, SKID
 def two_wheel_blueprint():
     axle = (sqrt(.5), -sqrt(.5), 0, 0)  # wheel local Z points along world +Y
     return Blueprint((
+        # The wheels hang 3.5 cm below the chassis centre: at 12.2 cm they start 2 mm above
+        # the floor rather than falling 1 cm as a run begins (ADR 0023).
         box("chassis", (.32, .24, .09), "metal", dynamic=True,
-            transform=Transform((0, 0, .13))),
+            transform=Transform((0, 0, .122))),
         wheel("left_wheel", .085, .035, "rubber", parent="chassis",
               transform=Transform((0, .145, -.035), axle)),
         wheel("right_wheel", .085, .035, "rubber", parent="chassis",

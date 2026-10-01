@@ -62,6 +62,25 @@ def test_an_arm_on_a_pedestal_and_a_bare_cart():
     assert roles(mobile_platform_blueprint()) == ['base', 'drive', 'wheel', 'drive', 'wheel', 'support', 'support']
 
 
+def test_the_example_designs_start_on_the_floor_and_one_built_in_the_air_reads_how_high():
+    """A run starts a design where it was built (ADR 0023). The examples rest on their
+    lowest point, 2 mm up; the same platform lifted 4 cm reads 4 cm higher; an arm bolted
+    to its pedestal has nothing standing free."""
+    from dataclasses import replace
+    from little_world.construction.editor import starter_blueprint
+    from little_world.construction.structure import AIRBORNE, clearance
+    from little_world.core.component import Body
+    from little_world.robots.two_wheel import two_wheel_blueprint
+    for factory in (starter_blueprint, two_wheel_blueprint, mobile_platform_blueprint, mobile_manipulator_blueprint):
+        assert 0 < clearance(factory()) <= AIRBORNE, factory.__name__
+    bp = mobile_platform_blueprint()
+    lifted = replace(bp, components=tuple(
+        replace(c, transform=replace(c.transform, position=(*c.transform.position[:2], c.transform.position[2] + .04)))
+        if isinstance(c, Body) and c.parent is None else c for c in bp.components))
+    assert clearance(lifted) == pytest.approx(clearance(bp) + .04)
+    assert clearance(arm_lab_blueprint()) is None
+
+
 # -- mass and stance against the simulator ------------------------------------------------
 
 mujoco = pytest.importorskip('mujoco')
@@ -86,6 +105,20 @@ def test_module_masses_add_up_to_what_the_simulator_weighs(factory):
         simulated = sum(float(m.body_subtreemass[i]) * d.subtree_com[i] for i in roots) / weighed
         assert total == pytest.approx(weighed, rel=1e-9)
         assert com == pytest.approx(tuple(simulated), abs=1e-9)
+
+
+@pytest.mark.parametrize('factory', [mobile_platform_blueprint, mobile_manipulator_blueprint])
+def test_a_run_starts_the_platforms_on_their_wheels(factory):
+    """Built with its wheels 4.3 cm up, the platform fell as every run began (OPEN LW-014),
+    and a field that drives from the first step landed it with its wheels already turning.
+    Now it starts on them and settles less than 3 mm."""
+    backend = MujocoBackend()
+    with World(backend, field_scene('sprint', Entity('machine', factory()))) as world:
+        world.start()
+        start = float(backend.data.body('machine/root').xpos[2])
+        for _ in range(250):
+            world.step({})
+        assert start - float(backend.data.body('machine/root').xpos[2]) < .003
 
 
 def test_a_box_stands_flat_and_a_tall_leaning_one_tips_over():

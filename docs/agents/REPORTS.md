@@ -11,6 +11,23 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-01 · Claude (Cowork) · OPEN LW-014: machines start on the floor
+Did: ADR 0023. The example machines are built resting 2 mm above the floor: the mobile
+platform (and the arm on a cart) is set down after assembly, the two-wheel example and the
+block are placed lower. The build stage warns when a design starts more than 5 mm up
+(`structure.clearance`). The curb-history check is no longer marked as expected to fail.
+Measured: the platform used to fall 44 mm as a run began, the two-wheel example 10.5 mm; now
+they settle 2.5 to 2.9 mm. Started on its wheels, the platform's caster answers the same alone
+and after a 10 mm curb in all four configurations; the fall had left a caster swivelled 37
+degrees by the second curb. This corrects my earlier report and ADR 0022: the curb history
+came from the start, not from MuJoCo 3.3.7's contacts. Stance margin 3.34 cm on 3.3.7, 3.35 on
+3.14 (predicted 3.37); tilt table 54.5 deg on 3.3.7, 52.6 on 3.14. Suites: 613 with a display,
+577 headless; 3.14 headless 577.
+Unfinished: nothing from LW-014.
+For the owner: designs you saved before keep their heights; the build stage now says if one
+starts in the air, and "Free base + ground" sets it down. LW-015 (the Curb run's 20 mm curb)
+now depends only on the MuJoCo release.
+
 ## 2026-10-01 · Claude (Cowork) · OPEN LW-001 to LW-003: wheel contacts across MuJoCo releases
 Did: ADR 0022. The stance margin is measured from the shapes of the geoms that touch the
 floor, not from the contact points MuJoCo reports (LW-002). The caster curb checks moved off

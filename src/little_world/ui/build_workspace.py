@@ -350,8 +350,12 @@ class BuildWorkspace(DragDocking):
             found,stance,_=self.machine_modules()
             line=self.stance_words(found,stance)
             text(line[0].upper()+line[1:],left+16,185,11,(.96,.72,.38) if 'tips over' in line or 'rocks' in line else (.52,.67,.72),width-32)
+            y=206
+            airborne=self.airborne_line()
+            if airborne:
+                text(airborne,left+16,y,11,(.96,.72,.38),width-32);y+=21
             last=self.last_run_line()
-            if last:text(last,left+16,206,11,(.96,.72,.38) if self.last_run_troubled() else (.52,.67,.72),width-32)
+            if last:text(last,left+16,y,11,(.96,.72,.38) if self.last_run_troubled() else (.52,.67,.72),width-32)
         text('10 cm grid',ww-106,wh-176,10,(.49,.64,.69))
         self.draw_docking(ui,text,ww,wh)
 
@@ -553,6 +557,18 @@ class BuildWorkspace(DragDocking):
                'tool':('tool','tools'),'sensor':('sensor','sensors')}
         parts=['base']+[f'{n} {words[r][n>1]}' if n>1 else words[r][0] for r,n in counts.items()]
         return ' + '.join(parts)+f' / {mass:.2f} kg'
+
+    def airborne_line(self):
+        """A warning when the design starts in the air: a run starts it where it was built,
+        so it falls first (ADR 0023). None when it starts on the floor or is anchored."""
+        bp=self.editor.blueprint
+        if getattr(self,'_clearance',(None,))[0] is not bp:
+            from little_world.construction.structure import clearance
+            self._clearance=(bp,clearance(bp))
+        lift=self._clearance[1]
+        from little_world.construction.structure import AIRBORNE
+        if lift is None or lift<=AIRBORNE:return None
+        return f'Starts {100*lift:.1f} cm above the floor and falls when a run starts: Free base + ground sets it down'
 
     def stance_words(self,found,stance):
         """How the design settles on a level floor, in words (ADR 0015)."""

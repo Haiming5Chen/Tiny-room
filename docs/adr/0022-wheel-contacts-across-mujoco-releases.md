@@ -31,6 +31,9 @@ candidates; running each release decides.
   | 3.14 as released (multiccd, cylinder multicontact) | climb / climb / climb / stop | climb / climb / climb / stop |
   | 3.14 without multiccd | climb / stop / stop / stop | climb / climb / stop / stop |
 
+  (Corrected by ADR 0023: the platform started 4.3 cm in the air and landed with its wheels
+  driven, which left a caster swivelled; started on its wheels, all four configurations
+  answer the same alone and after a 10 mm curb. What follows was the reading at the time.)
   On 3.3.7 as used, the answer depends on the curb before it and is not monotonic in
   height: a caster that cannot climb 18 mm climbs 24. That is the engine. The Curb run's
   "20 mm, missed" for the platform (ADR 0017) is one such answer, not the geometric limit it
@@ -62,7 +65,8 @@ curbs; `curb_run(heights)` builds it with others.
 **Result.** The measured stance margin of the settled manipulator: 3.39 cm on 3.3.7, 3.40 cm
 on 3.14, predicted 3.37. The suite on MuJoCo 3.14 passes in full (the curb-history check
 included), so these three no longer stand in the way of an upgrade (OPEN LW-004, the
-owner's decision). On 3.3.7 the curb-history check fails, as expected and recorded.
+owner's decision). On 3.3.7 the curb-history check fails, as expected and recorded (it
+passes since ADR 0023, with the machine started on its wheels).
 
 **Boundaries.** Which release is right near a caster's radius is not settled here: that
 needs a real caster and curb. The rigid prediction still knows nothing of a swivelling
