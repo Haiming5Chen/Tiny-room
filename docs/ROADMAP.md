@@ -80,8 +80,8 @@ turn where it matters, and a tilt table measures where it tips against the angle
 predicts (ADR 0020). A frontier radar files new papers, models and MuJoCo's own changes
 under the decisions they could change (ADR 0021, docs/RADAR.md); its first run found this
 project eleven MuJoCo releases behind, and a trial of the newest moved three wheel-contact
-results. Next: move the curb check off its geometric limit and measure stance from wheel
-geometry, then upgrade MuJoCo and adopt its conveyor surfaces for the factory's feeder and
-its PID and DC-motor actuators for the kit's servos and gearmotors; calibrate one real
+results; the three are understood (ADR 0022) and the suite passes on the newest release.
+Next, if the owner chooses: upgrade MuJoCo and adopt its conveyor surfaces for the factory's
+feeder and its PID and DC-motor actuators for the kit's servos and gearmotors; calibrate one real
 servo with its system identification toolbox; run the fields with perturbations; and grasp
 from the cell's camera instead of known positions.

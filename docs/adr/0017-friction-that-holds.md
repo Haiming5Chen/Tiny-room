@@ -37,7 +37,9 @@ g (sin a - mu cos a) within 5 %, with and without noslip: real sliding is untouc
 whole test-field matrix of ADR 0013 was re-run: every ramp and curb result is the same and
 every sprint and crate time within 0.2 s, except the platform's 20 mm curb, now missed,
 as a pushed caster of 20 mm radius should. The six-wheel rover still clears 10 mm only; the four-wheel rover,
-driven through all its wheels, still clears 35 mm.
+driven through all its wheels, still clears 35 mm. (Later, ADR 0022: on MuJoCo 3.3.7 the
+caster's answer near its radius depends on the curb before it, so the 20 mm stop is not the
+geometric limit it was read as here; the check is now 18 mm against 24.)
 
 Turning noslip on also exposed a defect in a robot model: the Kinova Gen3's first joint
 would not move at all. Its shoulder link overlaps its base by 12 mm at its home pose and

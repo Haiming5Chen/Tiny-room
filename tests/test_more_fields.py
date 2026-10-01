@@ -110,17 +110,20 @@ def test_the_tilt_table_turns_on_schedule_under_a_machine():
 def test_the_mobile_manipulator_tips_where_its_stance_says_and_the_platform_holds():
     """Predicted from the rigid design: the arm lifts the manipulator's centre of mass to
     9.8 cm over the table with its wheels' outer edges 13.7 cm to the side of it, so it
-    goes over near 54 degrees - 56 about the trip rail's edge. It goes at 54: one caster,
-    loaded and pushed sideways, swivels 86 degrees as the table rises and its wheel's
-    contact moves, which the rigid prediction does not know. The bare platform's centre
-    of mass is 4 cm lower: past the table's 60 degrees. The rail keeps both from sliding."""
+    goes over near 54 degrees - 56 about the trip rail's edge. It goes at 54 on MuJoCo
+    3.3.7: one caster, loaded and pushed sideways, swivels 86 degrees as the table rises
+    and its wheel's contact moves, which the rigid prediction does not know. MuJoCo's own
+    releases move it by up to 1.8 degrees more, through the box-box collisions of the tread
+    blocks and the caster's cylinder contacts (ADR 0022): 52.4 on 3.14. The bare platform's
+    centre of mass is 4 cm lower: past the table's 60 degrees. The rail keeps both from
+    sliding."""
     from little_world.fields import railed
     manipulator = mobile_manipulator_blueprint()
     stance = standing(manipulator)
     predicted = railed(stance.tip('right'), stance.height)
     assert 1. < predicted - stance.tip('right') < 2.
     results, tipped, _ = on_the_tilt_table(manipulator)
-    assert tipped is not None and abs(tipped - predicted) < 3., (tipped, predicted)
+    assert tipped is not None and abs(tipped - predicted) < 4., (tipped, predicted)
     assert results['held_50'].status == 'met' and results['held_60'].status == 'missed'
     platform = mobile_platform_blueprint()
     assert standing(platform).tip('right') > TILT_MAX

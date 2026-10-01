@@ -191,30 +191,38 @@ RAMPS = Field('ramps', 'Ramps',
               ramps_entities, goals=ramps_goals(), home=((2.0, 0., .3), 5.5, -35., -25.))
 
 
-CURBS = ((1.2, .010), (2.6, .020), (4.0, .035))   # centre along X, height
+CURB_HEIGHTS = (.010, .020, .035)                  # m, in the order met
+CURB_FIRST, CURB_STEP = 1.2, 1.4                   # m along X to the first curb's centre, between curbs
 CURB_DEPTH, CURB_WIDTH = .2, 1.8
 
 
-def curbs_entities():
+def curbs_entities(heights=CURB_HEIGHTS):
     parts = slab()
-    for x, h in CURBS:
-        parts.append(fixed(f'curb_{round(h * 1000)}mm', (CURB_DEPTH, CURB_WIDTH, h), 'curb', (x, 0., h / 2)))
+    for i, h in enumerate(heights):
+        parts.append(fixed(f'curb_{round(h * 1000)}mm', (CURB_DEPTH, CURB_WIDTH, h), 'curb',
+                           (CURB_FIRST + i * CURB_STEP, 0., h / 2)))
     return field_entities(parts)
 
 
-def curbs_goals():
+def curbs_goals(heights=CURB_HEIGHTS):
     goals = []
-    for x, h in CURBS:
-        line = x + CURB_DEPTH / 2 + .02
+    for i, h in enumerate(heights):
+        line = CURB_FIRST + i * CURB_STEP + CURB_DEPTH / 2 + .02
         goals.append(Line(f'curb_{round(h * 1000)}', f'Cleared {round(h * 1000)} mm curb',
                           (line, -CURB_WIDTH / 2), (line, CURB_WIDTH / 2), whole=True))
     goals.append(Upright('upright', 'Stayed upright'))
     return tuple(goals)
 
 
-CURB_RUN = Field('curbs', 'Curb run',
-                 'Concrete curbs 10, 20 and 35 mm high across the lane. Cleared means all of the machine is over.',
-                 curbs_entities, goals=curbs_goals())
+def curb_run(heights=CURB_HEIGHTS):
+    """The Curb run with curbs of other heights, for a check that needs them (ADR 0013)."""
+    words = ', '.join(f'{round(h * 1000)}' for h in heights[:-1]) + f' and {round(heights[-1] * 1000)}'
+    return Field('curbs', 'Curb run',
+                 f'Concrete curbs {words} mm high across the lane. Cleared means all of the machine is over.',
+                 lambda: curbs_entities(heights), goals=curbs_goals(heights))
+
+
+CURB_RUN = curb_run()
 
 
 def push_entities():

@@ -45,6 +45,10 @@ def test_the_reports_keep_the_newest_first():
 
 
 def test_the_status_script_prints_open_items_and_the_last_report(capsys):
-    assert status_module().main() == 0
+    status = status_module()
+    rows = status.open_items((ROOT / 'docs' / 'agents' / 'OPEN.md').read_text(encoding='utf-8'))
+    assert status.main() == 0
     printed = capsys.readouterr().out
-    assert 'open' in printed and 'LW-001' in printed and 'last report' in printed
+    listed = {line.split()[0] for line in printed.splitlines() if line.startswith('  LW-')}
+    assert listed == {item_id for item_id, *_, state in rows if state == 'open'}
+    assert 'last report' in printed

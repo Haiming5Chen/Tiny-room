@@ -86,6 +86,12 @@ machine. Decision for now: stay on 3.3.7; next, move the curb check off the limi
 stance from the wheel geometry rather than from reported contact points, find the rest of
 the tilt difference, then upgrade and adopt the actuators and the conveyor.
 
+Settled on 2026-10-01 (ADR 0022): the margin is now measured from wheel shapes and agrees on
+both releases; the curb answers on 3.3.7 turned out to depend on the curb before them (on
+3.14 they do not); and the tilt difference is the box-box collider changes (the tread
+blocks are boxes) and multicontact for the caster's cylinder. The headless suite passes in
+full on 3.14.
+
 ## Topics
 
 `docs/radar/profile.md` lists the extra words per decision, the planned steps and the

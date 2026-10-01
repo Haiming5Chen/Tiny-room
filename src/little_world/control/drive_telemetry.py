@@ -19,6 +19,40 @@ def display_name(body_name):
     return body_name.rsplit('/', 1)[-1].replace('_', ' ').strip()
 
 
+TOUCHING = .0015   # m: a geom's points within this of its lowest along the support's normal carry load
+
+
+def lowest_points(m, d, geom, down):
+    """[(x, y)] of a geom's points that reach furthest along `down` (a unit vector into what
+    holds it up), within TOUCHING: its share of the support polygon, from its shape."""
+    centre, axes = d.geom_xpos[geom], d.geom_xmat[geom].reshape(3, 3)
+    size, kind = m.geom_size[geom], m.geom_type[geom]
+    if kind == mj.mjtGeom.mjGEOM_CYLINDER:
+        r, h = float(size[0]), float(size[1])
+        axis = axes[:, 2]
+        radial = down - float(down @ axis) * axis
+        if np.linalg.norm(radial) < 1e-6:    # standing on an end face: its rim
+            end = centre + h * axis * (1. if float(down @ axis) > 0 else -1.)
+            u, v = axes[:, 0], axes[:, 1]
+            candidates = [end + r * (np.cos(k * pi / 8) * u + np.sin(k * pi / 8) * v) for k in range(16)]
+        else:
+            radial /= np.linalg.norm(radial)
+            candidates = [centre + side * h * axis + r * radial for side in (-1., 1.)]
+    elif kind == mj.mjtGeom.mjGEOM_BOX:
+        candidates = [centre + axes @ (np.array((sx, sy, sz)) * size[:3])
+                      for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
+    elif kind == mj.mjtGeom.mjGEOM_SPHERE:
+        candidates = [centre + float(size[0]) * down]
+    elif kind == mj.mjtGeom.mjGEOM_CAPSULE:
+        candidates = [centre + side * float(size[1]) * axes[:, 2] + float(size[0]) * down for side in (-1., 1.)]
+    else:                                    # a mesh or another shape: its contacts' own points
+        return [(float(d.contact[i].pos[0]), float(d.contact[i].pos[1])) for i in range(d.ncon)
+                if geom in (d.contact[i].geom1, d.contact[i].geom2)]
+    depth = [float(p @ down) for p in candidates]
+    deepest = max(depth)
+    return [(float(p[0]), float(p[1])) for p, k in zip(candidates, depth) if k >= deepest - TOUCHING]
+
+
 class DriveTelemetry:
     def __init__(self, backend, blueprint, drive, prefix='machine/', ground=()):
         m = backend.model
@@ -93,16 +127,29 @@ class DriveTelemetry:
         return not self._free
 
     def support(self):
-        """Contact points, over the floor plane, where the machine is held up from below."""
+        """Where the machine is held up from below, over the floor plane: for each of its
+        geoms in a supporting contact, the points of that geom's own shape that reach
+        furthest into what holds it up - a wheel's two rim points, a box's lowest corners,
+        a sphere's lowest point. Not the contact points the collision pipeline reports:
+        how many it makes for a wheel, and where, changes between MuJoCo versions and
+        options, while the shape does not (ADR 0022)."""
         m, d = self.backend.model, self.backend.data
-        points = []
+        pressing = {}                        # machine geom -> unit vector into its support
         for i in range(d.ncon):
             contact = d.contact[i]
             if contact.dist > 0 or abs(float(contact.frame[2])) < UPWARD:
                 continue
             a, b = int(m.geom_bodyid[contact.geom1]), int(m.geom_bodyid[contact.geom2])
-            if self._machine[a] != self._machine[b]:
-                points.append((float(contact.pos[0]), float(contact.pos[1])))
+            if self._machine[a] == self._machine[b]:
+                continue
+            normal = np.array(contact.frame[:3], dtype=float)      # from geom1 towards geom2
+            if self._machine[a]:
+                pressing.setdefault(int(contact.geom1), normal)
+            else:
+                pressing.setdefault(int(contact.geom2), -normal)
+        points = []
+        for geom, down in pressing.items():
+            points.extend(lowest_points(m, d, geom, down))
         return points
 
     def margin(self, centre):

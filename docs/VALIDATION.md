@@ -778,3 +778,23 @@ headless 573 (36 need a display).
 
 Not claimed: the page's fonts come from Google Fonts and fall back to the system's
 offline; the agents' notes are written by agents, not generated.
+
+## Wheel contacts across MuJoCo releases — 2026-10-01
+
+See ADR 0022. The settled mobile manipulator's stance margin, now measured from the shapes
+of the geoms that touch the floor: 3.39 cm on MuJoCo 3.3.7 and 3.40 cm on 3.14, predicted
+3.37 (from reported contact points it read 3.4 and 2.6). The platform's caster against
+curbs alone and after a 10 mm curb, on both releases with multiccd on and off (table in the
+record): on 3.3.7 as used, the answer near the 20 mm radius depends on the curb before it
+and is not monotonic in height. The tilt table across all twelve releases from 3.4 to
+3.14: the steps from 54.2 to 52.4 degrees match the box-box collider changes (the tread
+blocks are boxes) and cylinder multicontact (the caster), each named in the record.
+
+Checks in `tests/test_fields.py`: the caster climbs 18 mm and not 24 mm, alone; whether a
+curb is climbed does not depend on the curb before it (expected to fail before MuJoCo 3.8,
+and recorded so). `tests/test_more_fields.py`: the manipulator tips within 4 degrees of its
+rail-corrected prediction. On MuJoCo 3.3.7: **609 passed** with a display, 573 headless,
+and 1 expected failure; on 3.14 the headless suite: **574 passed**.
+
+Not claimed: which release is right near the caster's radius; that needs a real caster and
+curb.

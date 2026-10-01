@@ -11,6 +11,25 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-01 · Claude (Cowork) · OPEN LW-001 to LW-003: wheel contacts across MuJoCo releases
+Did: ADR 0022. The stance margin is measured from the shapes of the geoms that touch the
+floor, not from the contact points MuJoCo reports (LW-002). The caster curb checks moved off
+the caster's radius: 18 mm against 24 mm, plus a check that the answer does not depend on
+the curb before it, recorded as expected to fail before MuJoCo 3.8 (LW-001). The tilt-table
+difference named by running all twelve releases from 3.4 to 3.14 (LW-003). `curb_run(heights)`
+builds the Curb run with other heights.
+Measured: margin 3.39 cm on 3.3.7 and 3.40 on 3.14, predicted 3.37. On 3.3.7 a 10 mm curb
+first turns the caster's answers upside down (stops at 18 mm, climbs 24); 3.14, and 3.3.7
+with multiccd, answer consistently. Tilt: the box-box collider changes (the tread blocks
+are boxes) account for -1.3 deg, multicontact for the caster's cylinder -1.0, the multiccd
+default +0.4. On 3.3.7: 609 passed with a display, 573 headless, 1 expected failure; on
+3.14 the headless suite: 574 passed.
+Unfinished: nothing from these three.
+For the owner: the whole headless suite now passes on MuJoCo 3.14, so the upgrade (LW-004)
+is yours to decide. The Curb run's 20 mm curb sits on the caster's radius (LW-015).
+Switching multiccd on in 3.3.7 would make the curb answers consistent but adds 5 % to the
+coast-down test's deceleration, so it stays off.
+
 ## 2026-10-01 · Claude (Cowork) · agent notes reworked
 Did: the agent notes now say that the owner decides and agents report: `AGENTS.md`
 rewritten; the work log became `REPORTS.md` (no instructions for other agents); the
