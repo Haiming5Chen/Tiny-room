@@ -55,7 +55,7 @@ change the design, try again.** A desktop robotics sandbox on
 - **A mobile manipulator that fetches by itself.** Programs can drive the base to a
   point and heading; the Fetch program - solved for the machine you built - drives 1.6 m
   to a table, picks up a cube, backs away, drives to a bin and lets go, and the Fetch
-  field's goals are all met at 33 s
+  field's goals are all met at 34 s
   ([ADR 0018](docs/adr/0018-fetch-drive-to-a-point.md)). Running it exposed that
   MuJoCo's soft friction let a held cube slide out of the jaws at 2 mm/s; two noslip
   iterations stop that without touching real sliding, which also corrected a curb result
@@ -78,8 +78,10 @@ change the design, try again.** A desktop robotics sandbox on
   and shows the spread and what moved it most. The arm on a cart tips between 51.4 and 58.4
   degrees (54.5 as designed); a 3 degree turn on the table moves it most, and with a payload
   aboard the prediction holds within 0.3 degrees. Its Fetch program met every goal in all 20
-  runs, and showed a loaded cart rocking between its casters as the arm lifts
-  ([ADR 0024](docs/adr/0024-runs-under-variation.md)).
+  runs, and showed a loaded cart rocking between its casters under its own arm
+  ([ADR 0024](docs/adr/0024-runs-under-variation.md)) - so a program's arm poses now say
+  what point they were aimed at, and where the tool got to is checked and corrected
+  ([ADR 0025](docs/adr/0025-poses-aimed-at-a-point.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -87,7 +89,7 @@ change the design, try again.** A desktop robotics sandbox on
   project eleven MuJoCo releases behind, and running the suite on the newest showed which
   three wheel-contact results would move and why
   ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)).
-- **626 automated tests**, including OpenGL window tests that drive the interface
+- **632 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

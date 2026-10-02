@@ -7,6 +7,7 @@ KINDS=('wait','action','drive','move','contact','distance','if_contact','pose','
 # which such a reader refuses instead of misreading (ADR 0016).
 VERSION_2_KINDS=('pose','grasp','goto')
 SETTLE=2.   # degrees: a joint this close to its target has arrived
+CORRECTIONS=2   # times an aimed pose is solved again for where the tool actually got to
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,10 @@ class Block:
     # goto: (x, y) in metres in the field's frame, or (x, y, heading in degrees). The
     # base's drive axle midpoint is brought within `value` metres of it (0: 1 cm),
     # then turned to the heading; `duration` is the timeout (ADR 0017).
+    # pose, optionally: (x, y, z), the point in the field's frame its tool was aimed at when
+    # the angles were solved. A runner given an aim moves the joints there, then solves the
+    # pose again for where the machine actually stands until the tool is at the point
+    # (ADR 0025); without an aim, or without a point, the angles are the pose.
     point: tuple = ()
 
     def __post_init__(self):
@@ -57,8 +62,11 @@ class Block:
             if len(point) not in (2,3) or any(not isfinite(v) for v in point):raise ValueError('A goto point is (x, y) or (x, y, heading)')
             if any(abs(v)>100 for v in point[:2]):raise ValueError('A goto point must be within 100 m')
             if self.value and not .002<=self.value<=.5:raise ValueError('Goto tolerance must be 0.002 to 0.5 m (0: 1 cm)')
+        elif self.kind=='pose' and point:
+            if len(point)!=3 or any(not isfinite(v) for v in point):raise ValueError('A pose is aimed at a point (x, y, z)')
+            if any(abs(v)>100 for v in point):raise ValueError('A pose point must be within 100 m')
         elif point:
-            raise ValueError('Only a goto block carries a point')
+            raise ValueError('Only a goto block or a pose carries a point')
 
 
 @dataclass(frozen=True)
@@ -134,12 +142,12 @@ class Runner:
     def __init__(self):self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
-        self.pose_from=None;self.driver=None
+        self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
     def advance(self,skip=1):
-        self.elapsed=0.;self.index+=skip;self.pose_from=None;self.driver=None
+        self.elapsed=0.;self.index+=skip;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
         if self.index>=len(self.program.blocks):
             self.cycle+=1
             if self.cycle>=self.program.repeat:self.state='completed';self.message='Completed';return
@@ -149,11 +157,14 @@ class Runner:
         self.state='failed';self.message=message
     def travel(self,block):
         """Seconds a pose's slowest joint needs at the pose's speed, from where it started."""
-        return max((abs(g-s) for a,goal in block.angles for s,g in zip(self.pose_from[a],goal)),default=0.)/block.value
-    def tick(self,dt,angles=None,contacts=(),distances=None,held=frozenset(),base=None):
+        goal=self.pose_goal or block.angles
+        return max((abs(g-s) for a,target in goal for s,g in zip(self.pose_from[a],target)),default=0.)/block.value
+    def tick(self,dt,angles=None,contacts=(),distances=None,held=frozenset(),base=None,aim=None):
         """One step of simulated time. `angles`: joint action -> current angles (degrees);
         `held`: names of the objects a gripper holds between both jaws; `base`: the drive
-        base's (x, y, yaw radians), for goto blocks."""
+        base's (x, y, yaw radians), for goto blocks; `aim(point, pose)`: for a pose aimed at a
+        point, None when the tool is there, else the pose solved again for where the machine
+        now stands (ADR 0025)."""
         if not isfinite(dt) or dt<=0:raise ValueError('Timestep must be positive')
         output={'action':None,'drive':(0.,0.),'move':None,'pose':None,'base':None}
         if self.state!='running':return output
@@ -167,9 +178,10 @@ class Runner:
                 missing=[a for a,_ in b.angles if a not in angles]
                 if missing:self.fail('Missing joint for pose: '+missing[0]);return output
                 self.pose_from={a:tuple(angles[a])[:len(goal)] for a,goal in b.angles}
+                self.pose_goal=b.angles
             travel=self.travel(b)
             u=smoothstep(self.elapsed/travel) if travel>0 else 1.
-            output['pose']={a:tuple(s+(g-s)*u for s,g in zip(self.pose_from[a],goal)) for a,goal in b.angles}
+            output['pose']={a:tuple(s+(g-s)*u for s,g in zip(self.pose_from[a],goal)) for a,goal in self.pose_goal}
         elif b.kind=='goto':
             if base is None:self.fail('No drive base to drive to a point');return output
             if self.driver is None:
@@ -182,7 +194,7 @@ class Runner:
         if b.kind=='move':condition=bool((angles or {}).get(b.target)) and all(abs(v-b.value)<=SETTLE for v in angles[b.target])
         elif b.kind=='pose':
             condition=self.elapsed+1e-9>=self.travel(b) and all(
-                a in angles and all(abs(v-g)<=SETTLE for v,g in zip(angles[a],goal)) for a,goal in b.angles)
+                a in angles and all(abs(v-g)<=SETTLE for v,g in zip(angles[a],goal)) for a,goal in self.pose_goal)
         elif b.kind in ('contact','if_contact'):condition=frozenset((b.target,b.other)) in contacts
         elif b.kind=='distance':condition=(distances or {}).get((b.target,b.other),float('inf'))<=b.value
         elif b.kind=='grasp':condition=(b.target in held) if b.target else bool(held)
@@ -193,7 +205,17 @@ class Runner:
             elif self.elapsed+1e-9>=b.duration:
                 self.fail('Nothing held: the grasp missed' if b.kind=='grasp' else 'Timed out: '+b.kind+' '+b.target)
         elif b.kind=='pose':
-            if condition:self.advance()
-            elif self.elapsed+1e-9>=self.travel(b)+b.duration:self.fail('Timed out: pose did not settle')
+            if condition:
+                # Aimed at a point: arrived where the joints were sent, is the tool there?
+                better=aim(b.point,self.pose_goal) if b.point and aim is not None and self.corrections<CORRECTIONS else None
+                if better:
+                    self.corrections+=1;self.elapsed=0.;self.pose_goal=tuple(better)
+                    self.pose_from={a:tuple(angles.get(a,goal))[:len(goal)] for a,goal in self.pose_goal}
+                else:self.advance()
+            elif self.elapsed+1e-9>=self.travel(b)+b.duration:
+                # A correction that cannot settle keeps what the joints reached; the pose itself
+                # settled before it, so the program goes on.
+                if self.corrections:self.advance()
+                else:self.fail('Timed out: pose did not settle')
         elif self.elapsed+1e-9>=b.duration:self.advance()
         return output

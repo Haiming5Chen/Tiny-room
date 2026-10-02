@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-02 · Claude (Cowork) · OPEN LW-016: poses aimed at a point
+Did: ADR 0025. A pose can carry the point its tool was aimed at; the runner, given the arm's
+aim (`ToolMotion.aim`), checks where the tool got to once the pose settles and solves it
+again for where the machine now stands, at most twice. The Fetch template aims its poses at
+the stops; the app, the sweeps and the tests pass the aim. Tracing it also refined ADR 0024's
+explanation (edited in place, unpublished): loaded, the jaws had met the cube 28 mm from
+their aim before the lift lost another 12 mm to the rock.
+Measured: as designed each aimed pose settled 10-12 mm off (the base stops within 1 cm of
+its mark) and one correction brought it within 1-3 mm; in the bin at 34.0 s (32.5 before).
+Loaded with 0.5 kg behind the arm: jaws within 3.3 mm of the cube, lifted at 18.2 s (23.7
+before). Suites: 632 with a display, 595 headless; 3.14 headless 595.
+Unfinished: the pick-and-place template's poses are not aimed (its arm stands on a
+pedestal); LW-017 is still open.
+
 ## 2026-10-01 · Claude (Cowork) · OPEN LW-008: runs under variation
 Did: ADR 0024. A field run can be repeated with variations: set down off its mark and
 turned, carrying a steel block, friction across each surface pair's published range

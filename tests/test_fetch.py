@@ -93,7 +93,7 @@ def machine_in(field, bp):
     return world, backend, control, drive, BasePose(backend, drive, bp), state
 
 
-def run(world, backend, control, drive, base, program, goals, seconds, root='machine/root'):
+def run(world, backend, control, drive, base, program, goals, seconds, root='machine/root', aim=None):
     obs = Observations(backend.model, backend.data)
     tracker = GoalTracker(goals, root)
     runner = Runner()
@@ -101,7 +101,7 @@ def run(world, backend, control, drive, base, program, goals, seconds, root='mac
     for _ in range(round(seconds / world.timestep)):
         contacts, distances = obs.program_inputs(program)
         held = obs.grasped() if needs_grasp(program) else frozenset()
-        out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held, base.pose())
+        out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held, base.pose(), aim)
         control.held = apply(out, control)
         commands = dict(drive.step_commands(base_targets(out, base) if out['base'] else out['drive'], world.timestep, angular=True))
         commands.update(control.step_commands(world.timestep))
@@ -150,7 +150,7 @@ def test_the_mobile_manipulator_fetches_the_cube_by_itself():
         program = fetch(motion, base, 'control_jaws', 'objects/fetch_cube', (BIN[0], BIN[1], .006),
                         reach_in=BIN_SIZE / 2 - .045)
         assert [b.kind for b in program.blocks].count('goto') == 3
-        runner, goals = run(world, backend, control, drive, base, program, FIELDS['fetch'].goals, 60.)
+        runner, goals = run(world, backend, control, drive, base, program, FIELDS['fetch'].goals, 60., aim=motion.aim)
         assert runner.state == 'completed', runner.message
         assert {g: r.status for g, r in goals.items()} == {
             'reached': 'met', 'lifted': 'met', 'delivered': 'met', 'upright': 'kept'}

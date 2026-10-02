@@ -7,13 +7,14 @@ controller as joint targets. The servos then move the arm, so torque limits, con
 and gravity still decide what actually happens; the solution is only where the joints
 are asked to go.
 """
-from math import degrees
+from math import degrees, radians
 import mujoco as mj
 import numpy as np
 from little_world.construction.structure import modules
 from little_world.programming.program import Block, Program
 
 REACHED = .002      # m: a solution this close to the goal reaches it
+AIMED = .005        # m: an aimed pose whose tool settles further than this off its point is solved again
 LEVEL = .15         # m of position error that one unit of tool-direction error weighs as
 DAMPING = .01       # damped least squares: keeps steps finite near a stretched-out arm
 
@@ -238,6 +239,32 @@ class ToolMotion:
             by_action.setdefault(action, []).append(round(degrees(float(value)), 3))
         return tuple((action, tuple(values)) for action, values in by_action.items())
 
+    def angles(self, pose):
+        """A program pose as this arm's joint angles, radians; joints it leaves out keep
+        their targets."""
+        given = {action: list(values) for action, values in pose}
+        out, seen = self.targets(), {}
+        for i, (action, *_) in enumerate(self.joints):
+            k = seen.get(action, 0)
+            if k < len(given.get(action, ())):
+                out[i] = radians(given[action][k])
+            seen[action] = k + 1
+        return out
+
+    def aim(self, point, pose, tolerance=AIMED):
+        """For a pose aimed at a world point (ADR 0025): None when the tool is within
+        `tolerance` of it, else the pose that puts it there from where the machine stands now
+        - its base may have rocked onto another caster, or stopped off its mark, since the
+        pose was solved - keeping the tool pointed as the pose points it. Also None when the
+        point is out of reach from here: the pose stands."""
+        now, _ = self.tool()
+        if np.linalg.norm(np.asarray(point, dtype=float) - now) <= tolerance:
+            return None
+        planned = self.angles(pose)
+        _, pointing = self.tool(angles=planned)
+        angles, short = self.solve(point, planned, float(pointing[2]))
+        return self.pose(angles) if short <= tolerance / 2 else None
+
     # -- moving ------------------------------------------------------------------------
 
     def jog(self, forward=0., left=0., up=0., hold_angle=True):
@@ -392,7 +419,7 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
     along = np.array((np.cos(towards), np.sin(towards)))
     goal[:2] -= reach_in * along
     drop = (*(goal[:2] - PLACE_FORWARD * along), towards)
-    poses, seed = {}, start
+    poses, points, seed = {}, {}, start
 
     def reach(label, stand, candidates):
         nonlocal seed
@@ -404,7 +431,7 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
                     if motion.self_collision(angles):
                         blocked = True
                         continue
-                    poses[label], seed = motion.pose(angles), angles
+                    poses[label], points[label], seed = motion.pose(angles), tuple(float(v) for v in point), angles
                     return
         if blocked:
             raise ValueError(f'The arm would hit its own machine reaching the {label} point')
@@ -418,12 +445,17 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
     reach('over', drop, [point + clearance * up for point in lowest])
     reach('down', drop, lowest)
     reach('retract', drop, [goal + clearance * up])
-    pose = lambda label, pace: Block('pose', value=pace, duration=2., angles=poses[label])
+    # Every pose taken at a stop is aimed at its point in the field (ADR 0025): the base
+    # stops within 1 cm of its mark and a cart rocks onto another caster as its arm moves,
+    # so where the tool got to is checked and the pose solved again. 'above' is taken at
+    # the start, far from its point, and is a pose only.
+    pose = lambda label, pace, aimed=True: Block('pose', value=pace, duration=2., angles=poses[label],
+                                                 point=points[label] if aimed else ())
     goto = lambda stop: Block('goto', value=.01, duration=60., point=(stop[0], stop[1], float(np.degrees(stop[2]))))
     # The arm takes its 'above' pose before the drive, so the open jaws arrive over the
     # object instead of pushing it off the table on the way in.
     return Program((
-        Block('action', jaws, -1, .6), pose('above', speed),
+        Block('action', jaws, -1, .6), pose('above', speed, aimed=False),
         goto(pick), pose('at', speed / 2),
         Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5),
         pose('lift', speed / 2),

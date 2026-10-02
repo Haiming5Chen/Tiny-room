@@ -138,7 +138,10 @@ keyboard-bound joints between it and the machine, and a Levenberg-Marquardt solv
 scratch copy of the state whose result becomes joint targets for the same servos.
 Programs carry `pose` and `grasp` blocks as data (`programming/program.py`, version 2
 when used); `programming/execution.py` hands a runner's output to a position controller
-the same way in the window, in inventory trials and headless.
+the same way in the window, in inventory trials and headless. A pose may carry the point
+its tool was aimed at; a runner given the arm's aim (`ToolMotion.aim`) checks where the
+tool got to once the pose settles and solves it again for where the machine now stands
+(ADR 0025).
 
 A base with a left and a right drive wheel can be driven to a point (ADR 0018):
 `control/navigation.py` turns the axle midpoint's pose into a forward speed and a turn

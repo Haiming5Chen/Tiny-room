@@ -115,7 +115,7 @@ class VariedRuns:
             return y + 70
         s = v['result']
         words, tone = headline(s)
-        text(words, 16, y, 13, WARN if tone == 'warn' else ACCENT if tone == 'ok' else LIGHT, 256)
+        text(words, 16, y, 12, WARN if tone == 'warn' else ACCENT if tone == 'ok' else LIGHT, 256)
         y += 22
         ran = [r for r in s.runs if not r.error and r.tipped is not None and r.predicted is not None]
         if ran:

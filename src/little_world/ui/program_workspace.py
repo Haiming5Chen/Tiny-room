@@ -246,8 +246,9 @@ class ProgramWorkspace:
         contacts,distances=self.observations.program_inputs(self.program)
         held=self.observations.grasped() if needs_grasp(self.program) else frozenset()
         base=getattr(self,'base_pose',None)
+        motion=getattr(self,'tool_motion',None)
         result=self.runner.tick(self.world.timestep,joint_angles(self.joint_control),contacts,distances,held,
-                                base.pose() if base is not None else None)
+                                base.pose() if base is not None else None,motion.aim if motion is not None else None)
         self.program_drive=base_targets(result,base) if result['base'] else result['drive']
         self.program_keys|=apply(result,self.joint_control)
         if self.runner.state in ('paused','failed'):self.paused=True
@@ -294,7 +295,10 @@ class ProgramWorkspace:
             elif b.kind=='distance':detail=f'Within {b.value:g} m / timeout {b.duration:g}s'
             elif b.kind=='contact':detail=f'Touch {b.other.split(chr(47))[-1]} / {b.duration:g}s'
             elif b.kind=='if_contact':detail='True: next block / false: skip next'
-            elif b.kind=='pose':detail=f'{len(b.angles)} joints together / up to {b.value:g} deg/s'
+            elif b.kind=='pose':
+                detail=f'{len(b.angles)} joints together / up to {b.value:g} deg/s'
+                # Aimed: where the tool got to is checked and the pose solved again (ADR 0025).
+                if b.point:detail=f'{len(b.angles)} joints / {b.value:g} deg/s / aimed at a point {100*b.point[2]:.0f} cm up'
             elif b.kind=='grasp':detail=f'Holding {b.target.split(chr(47))[-1] if b.target else "anything"} / timeout {b.duration:g}s'
             elif b.kind=='goto':detail=f'x {b.point[0]:.2f}  y {b.point[1]:.2f} m'+(f'  /  {round(b.point[2]):d} deg' if len(b.point)>2 else '')+f'  /  within {100*(b.value or .01):.0f} cm'
             text(detail,x+24,y+28,10,(.6,.74,.77),276)

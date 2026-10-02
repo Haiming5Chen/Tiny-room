@@ -832,9 +832,9 @@ no change (the rail is set against its wheels); friction -0.5 to +0.2; turned 3 
 and -3.1 against a predicted +1.7 and -1.6; carrying 0.5 kg +1.8 to +4.0, each within 0.3
 degrees of its prediction. Fetch, the program solved once for the design on its mark: every
 goal met in all 20 runs, the cube in the bin at 31.9 to 33.6 s; with 0.5 kg on the deck
-behind the arm the cart rides on its rear caster and rocks 5 degrees forward as the arm
-lifts, leaving the cube 12 mm short of the 5 cm line until it rocks back (lifted at 23.7 s
-instead of 16.2).
+behind the arm the cart rides on its rear caster, the jaws meet the cube 28 mm from their
+aim, and the cart rocks 5 degrees forward as the arm lifts, leaving the cube 12 mm short of
+the 5 cm line until it rocks back (lifted at 23.7 s instead of 16.2).
 
 Checks in `tests/test_variation.py` (13): the plan (as designed, each change alone, seeded
 repeats, inside its ranges); refusals; moving and turning a design about its mark; the
@@ -850,3 +850,25 @@ the headless suite: 589 passed.
 Not claimed: the placement and payload ranges are assumptions, stated; eight random repeats
 are a sample, not a distribution; the field, the motors' unit-to-unit spread and sensing
 are not varied.
+
+## Poses aimed at a point — 2026-10-02
+
+See ADR 0025. The Fetch program's poses taken at its stops carry the point their tool was
+aimed at; the runner checks where the tool got to and solves the pose again when it is more
+than 5 mm off. As designed, each settled 10 to 12 mm off its point (the base stopped 1.0 cm
+short of its mark at the table, 0.9 cm off at the bin) and one correction brought the tool
+within 1 to 3 mm; the cube is in the bin at 34.0 s (32.5 before). With 0.5 kg behind the
+arm: the jaws meet the cube within 3.3 mm (28 before), the lift leaves it 11.5 mm over the
+5 cm line, lifted at 18.2 s (23.7 before). Over ADR 0024's 20 variations: every goal in
+every run, lifted at 16.4 to 18.2 s (15.9 to 23.7 before), in the bin at 33.3 to 35.5 s
+(the reports are in `docs/sweeps/`).
+
+Checks in `tests/test_aimed_poses.py` (6): an aimed pose as data and its validation; the
+runner checking, correcting and stopping after two corrections; a correction that cannot
+settle not failing the program; a pose without a point, or a runner without an aim,
+unchanged; the arm aiming a pose from where its machine stands; the loaded cart lifting the
+cube clear. On MuJoCo 3.3.7: **632 passed** with a display, 595 headless; on 3.14 the
+headless suite: 595 passed.
+
+Not claimed: sensing is ideal (the simulator's own tool and base poses); a pose is checked
+once it settles, not tracked while it moves.

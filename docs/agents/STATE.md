@@ -1,13 +1,13 @@
 # State
 
-Updated 2026-10-01 by Claude (Cowork). `python scripts/agent_status.py` prints the live
+Updated 2026-10-02 by Claude (Cowork). `python scripts/agent_status.py` prints the live
 branch, commits and tree; this file says what they mean.
 
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import). Not yet on
   GitHub; the owner publishes it.
-- **Decision records** 0001 to 0024. The newest: 0024 runs under variation.
-- **Tests**: on MuJoCo 3.3.7, 626 pass with a display (`LITTLE_WORLD_TEST_RENDER=1` under
-  Xvfb) and 589 headless. The headless suite also passes in full on MuJoCo 3.14 (589).
+- **Decision records** 0001 to 0025. The newest: 0025 poses aimed at a point.
+- **Tests**: on MuJoCo 3.3.7, 632 pass with a display (`LITTLE_WORLD_TEST_RENDER=1` under
+  Xvfb) and 595 headless. The headless suite also passes in full on MuJoCo 3.14 (595).
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.3.7. Upgrading to 3.14 is the owner's decision
   (OPEN LW-004); nothing in the suite stands in its way.
 - **Uncommitted**: nothing.

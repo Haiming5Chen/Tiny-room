@@ -164,17 +164,22 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None):
             from little_world.programming.execution import apply, base_targets, joint_angles, needs_grasp
             from little_world.programming.observations import Observations
             from little_world.programming.program import Runner
+            from little_world.control.tool_motion import ToolMotion
             for _ in range(SETTLE):
                 state = _hold(world, drive, control, field, state)
             tracker = GoalTracker(field.goals, _root(bp))
             obs = Observations(backend.model, backend.data)
+            try:
+                aim = ToolMotion(backend, bp, control).aim     # aimed poses checked (ADR 0025)
+            except ValueError:
+                aim = None
             runner = Runner()
             runner.start(program)
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
                 held = obs.grasped() if needs_grasp(program) else frozenset()
                 out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held,
-                                  base.pose() if base else None)
+                                  base.pose() if base else None, aim)
                 control.held = apply(out, control)
                 ahead = base_targets(out, base) if out['base'] else out['drive']
                 commands = dict(drive.step_commands(ahead, world.timestep, angular=True))
@@ -335,7 +340,8 @@ def headline(sweep):
     if tipped:
         lo, hi = min(tipped), max(tipped)
         span = f'{lo:.0f} deg' if round(lo) == round(hi) else f'{lo:.0f} to {hi:.0f} deg'
-        return f'Tipped over at {span} in {len(tipped)} of {len(ran)} runs', None
+        runs = f'all {len(ran)} runs' if len(tipped) == len(ran) else f'{len(tipped)} of {len(ran)} runs'
+        return f'Tipped over at {span} in {runs}', None
     whole = sum(1 for r in ran if all(x.status in ('met', 'kept') for x in r.results))
     if whole == len(ran):
         return f'Every goal met in all {len(ran)} runs', 'ok'

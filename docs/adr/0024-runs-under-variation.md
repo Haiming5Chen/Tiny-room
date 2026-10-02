@@ -66,10 +66,12 @@ does not know about gives way first). Fetch, 20 runs of the program solved once:
 met in every run; the cube in the bin at 31.9 to 33.6 s. The one outlier is a lesson in
 stance. With 0.5 kg on the deck behind the arm and the arm tucked for the drive, the cart
 rides on its rear caster (pitch -2.5 degrees; as designed +2.7, on the front one): its
-centre of mass is now behind its drive axle. As the arm lifts the cube the cart rocks 5
-degrees onto its front caster, so the lift solved for the cart as designed leaves the cube
-12 mm short of 5 cm (8.6 mm over as designed) until the cart rocks back on the way to the
-bin - "lifted" at 23.7 s instead of 16.2 (OPEN LW-016). Checks in
+centre of mass is now behind its drive axle. Every pose solved for the cart as designed
+lands elsewhere: the jaws meet the cube 28 mm from where they were aimed, and as the arm
+lifts, the cart rocks 5 degrees onto its front caster; the cube ends 12 mm short of 5 cm
+(8.6 mm over as designed) until the cart rocks back on the way to the bin - "lifted" at
+23.7 s instead of 16.2 (OPEN LW-016; ADR 0025 checks where the tool got to). Every run
+of both sweeps is in `docs/sweeps/`. Checks in
 `tests/test_variation.py` (13): the plan, refusals, moving and loading a design, the
 payload's site and carrier, the friction spreads against their notes, the backend's
 friction condition and its reset, the simulator's weight of the payload, a sweep and its
