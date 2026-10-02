@@ -42,9 +42,10 @@ from .python_workspace import PythonWorkspace
 
 from .app_modes import AppModes
 from .test_drive import TestDrive
+from .varied_runs import VariedRuns
 
 
-class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, TestWorkspace, InventoryWorkspace, TestDrive):
+class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, TestWorkspace, InventoryWorkspace, TestDrive, VariedRuns):
     PANEL = 288
 
     def __init__(self, path, blueprint=None):
@@ -86,6 +87,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.init_inventory()
         self.init_python()
         self.init_test_drive()
+        self.init_varied_runs()
 
     def _scene(self):
         from little_world.fields import field_scene
@@ -526,6 +528,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
 
     def draw(self):
         self.script_poll()
+        self.poll_variations()
         ww,wh=glfw.get_window_size(self.window)
         fw,fh=glfw.get_framebuffer_size(self.window)
         if not fw or not fh:
@@ -885,6 +888,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
 
     def close_resources(self):
         if self.script_process is not None:self.script_cancel()
+        self.stop_variations()
         if self.script_pool is not None:self.script_pool.shutdown(wait=False,cancel_futures=True)
         self.free_drag_preview()
         for backend,scene,camera in self.inventory_previews.values():backend.close()

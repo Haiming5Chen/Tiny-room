@@ -25,17 +25,24 @@ def poses(blueprint):
     return result
 
 
+def body_bounds(body,transform):
+    """The axis-aligned box round one body's shape placed at a world transform."""
+    g=body.geometry;lo=[0.]*3;hi=[0.]*3
+    basis=[rotate(transform.quaternion,tuple(float(i==j) for i in range(3))) for j in range(3)]
+    for axis in range(3):
+        if g.shape=='sphere':extent=g.size[0]
+        elif g.shape=='cylinder':extent=g.size[0]*sqrt(basis[0][axis]**2+basis[1][axis]**2)+g.size[1]/2*abs(basis[2][axis])
+        else:extent=sum(abs(basis[j][axis])*g.size[j]/2 for j in range(3))
+        lo[axis]=transform.position[axis]-extent;hi[axis]=transform.position[axis]+extent
+    return tuple(lo),tuple(hi)
+
+
 def world_bounds(blueprint, names=None):
     transforms=poses(blueprint);lo=[float('inf')]*3;hi=[-float('inf')]*3
     for b in blueprint.components:
         if not isinstance(b,Body) or names is not None and b.id not in names:continue
-        t=transforms[b.id];g=b.geometry
-        basis=[rotate(t.quaternion,tuple(float(i==j) for i in range(3))) for j in range(3)]
-        for axis in range(3):
-            if g.shape=='sphere':extent=g.size[0]
-            elif g.shape=='cylinder':extent=g.size[0]*sqrt(basis[0][axis]**2+basis[1][axis]**2)+g.size[1]/2*abs(basis[2][axis])
-            else:extent=sum(abs(basis[j][axis])*g.size[j]/2 for j in range(3))
-            lo[axis]=min(lo[axis],t.position[axis]-extent);hi[axis]=max(hi[axis],t.position[axis]+extent)
+        low,high=body_bounds(b,transforms[b.id])
+        lo=[min(a,c) for a,c in zip(lo,low)];hi=[max(a,c) for a,c in zip(hi,high)]
     return tuple(lo),tuple(hi)
 
 

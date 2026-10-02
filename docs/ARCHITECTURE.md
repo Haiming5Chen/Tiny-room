@@ -156,6 +156,18 @@ by bisection per side. A field with a `reading` (State -> degrees, up to `gauge_
 static test: the test drive shows the reading on a gauge against the stance's prediction
 for the field's `side`, and `ground` names the field bodies telemetry treats as floor.
 
+A run can be repeated with variations (ADR 0024). `fields/variation.py` (standard library)
+makes them data: the start pose and a payload are Blueprint edits - the payload a steel
+block set down on the highest rigid part of the base under its site and fixed to it - and
+friction is a table of pair coefficients, each sourced pair moved across the range its own
+note cites (`materials/contact_pairs.SPREADS`), which the backend applies as a condition of
+the run, never of the design (`MujocoBackend.vary_pair_friction`). `inventory/sweep.py` runs
+a field over a plan - each variation alone at both ends of its range, then seeded random
+repeats - with one of three protocols (hold still, drive straight ahead, or the field's
+program template solved once for the design on its mark), in worker processes, and reports
+each goal's spread; it is also a command (`python -m little_world.inventory.sweep`). The run
+report starts it in another Python process (`ui/varied_runs.py`), so the window stays live.
+
 ## Frontier radar
 
 `little_world/radar/` (ADR 0021, standard library) is not part of the simulator: it reads

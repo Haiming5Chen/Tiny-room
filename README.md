@@ -72,6 +72,14 @@ change the design, try again.** A desktop robotics sandbox on
   design starts in the air, since a run starts it where it was built: the examples used to
   fall 4.3 cm, and landing with the wheels driven left a caster swivelled 37 degrees by the
   second curb ([ADR 0023](docs/adr/0023-machines-start-on-the-floor.md)).
+- **Results with their spread.** From a run's report, "Repeat with variations" runs the
+  field 20 more times in the background - the machine set down up to 2 cm and 3 degrees off
+  its mark, carrying up to 0.5 kg, on surfaces anywhere in their published friction range -
+  and shows the spread and what moved it most. The arm on a cart tips between 51.4 and 58.4
+  degrees (54.5 as designed); a 3 degree turn on the table moves it most, and with a payload
+  aboard the prediction holds within 0.3 degrees. Its Fetch program met every goal in all 20
+  runs, and showed a loaded cart rocking between its casters as the arm lifts
+  ([ADR 0024](docs/adr/0024-runs-under-variation.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -79,7 +87,7 @@ change the design, try again.** A desktop robotics sandbox on
   project eleven MuJoCo releases behind, and running the suite on the newest showed which
   three wheel-contact results would move and why
   ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)).
-- **613 automated tests**, including OpenGL window tests that drive the interface
+- **626 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

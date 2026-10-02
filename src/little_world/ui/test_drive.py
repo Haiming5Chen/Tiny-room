@@ -539,6 +539,7 @@ class TestDrive:
             text(line, 16, y, 12, max_width=256)
             y += 20
         y = self.draw_report_actions(button, y + 8)
+        y = self.draw_variations(ui, button, text, section, y, wh)
         if record.limit is not None and record.limit[0] is not None:
             limit, source, alone = record.limit
             text(f'Top speed set by the {source}: {limit:.2f} m/s', 16, y, 12, max_width=256)
@@ -661,6 +662,7 @@ class TestDrive:
             text('vs ' + self.run_line(earlier[-1]), 16, y, 12, MUTED, 256)
             y += 20
         y = self.draw_report_actions(button, y + 6)
+        y = self.draw_variations(ui, button, text, section, y, wh)
         self.draw_session_runs(text, section, record, y, wh)
 
     def last_run_line(self):

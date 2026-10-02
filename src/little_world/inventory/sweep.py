@@ -1,0 +1,424 @@
+"""A field run repeated over variations, and the spread of what it measured (ADR 0024).
+
+Never touches the interactive world: every run compiles its own. A protocol says what the
+machine does in the field: holds still (a static test, such as the tilt table); drives
+straight ahead at its full configured speed, as the W key does (sprint, ramps, curbs, push);
+or runs the field's program template - solved once for the machine as designed and set down
+on its mark, then run unchanged on every variation, as a program written in a lab runs
+however the machine was put down that day.
+
+    python -m little_world.inventory.sweep tilt --design mobile_manipulator
+"""
+from dataclasses import dataclass
+from statistics import median
+import time
+
+from little_world.fields import FIELDS
+from little_world.fields.variation import Ranges, Variation, friction, payload_site, plan, varied
+
+# Field -> (protocol, seconds). Fields not listed have no protocol a machine can follow alone.
+PROTOCOLS = {'tilt': ('hold', 33.), 'fetch': ('program', 60.), 'pick_place': ('program', 40.),
+             'doorway': ('program', 45.), 'sprint': ('drive', 20.), 'ramps': ('drive', 12.),
+             'curbs': ('drive', 13.), 'push': ('drive', 12.)}
+AHEAD = (5., 5.)        # both sides full forward, as the W key asks
+SETTLE = 300            # steps a machine stands before its program is solved or started
+AFTER = 1.5             # s held still after a program ends, so resting goals can be judged
+DESIGNS = ('mobile_platform', 'mobile_manipulator', 'two_wheel', 'arm_lab')
+
+
+@dataclass(frozen=True)
+class Run:
+    """One variation's run: its goals' results, or why it could not run."""
+    variation: Variation
+    results: tuple = ()             # fields.goals.Result, one per goal
+    tipped: float | None = None     # a static test's reading when the machine went over
+    predicted: float | None = None  # what the design predicts for it, this variation
+    program: str = ''               # the program's final state, '' when none ran
+    error: str = ''
+    seconds: float = 0.             # wall clock
+
+    def result(self, goal):
+        return next((r for r in self.results if r.id == goal), None)
+
+
+@dataclass(frozen=True)
+class Sweep:
+    field: str
+    design: str
+    protocol: str
+    duration: float
+    site: tuple | None
+    ranges: Ranges
+    runs: tuple
+
+
+def design(name):
+    """An example machine by name, or a saved design from a Blueprint JSON file."""
+    from pathlib import Path
+    from little_world.core.blueprint import Blueprint
+    if name in DESIGNS:
+        module = __import__(f'little_world.robots.{name}', fromlist=['_'])
+        return getattr(module, f'{name}_blueprint')()
+    path = Path(name)
+    if not path.is_file():
+        raise ValueError(f'no example design or file called {name!r}; examples: {", ".join(DESIGNS)}')
+    return Blueprint.from_json(path.read_text(encoding='utf-8'))
+
+
+def _root(bp):
+    from little_world.core.component import Body
+    return 'machine/' + next(b.id for b in bp.components if isinstance(b, Body) and b.parent is None)
+
+
+def _rigs(backend, bp):
+    from little_world.control.mujoco_drive import MujocoDrive
+    from little_world.control.mujoco_keyboard import MujocoKeyboardControl
+    from little_world.control.navigation import BasePose
+    drive, control = MujocoDrive(backend, bp), MujocoKeyboardControl(backend, bp)
+    try:
+        base = BasePose(backend, drive, bp)
+    except ValueError:
+        base = None
+    return drive, control, base
+
+
+def _hold(world, drive, control, field, state):
+    commands = dict(drive.step_commands((0., 0.), world.timestep, angular=True))
+    commands.update(control.step_commands(world.timestep))
+    commands.update(field.commands(state))
+    return world.step(commands)
+
+
+def solve(field_id, blueprint):
+    """The field's program template, solved for the machine as designed on its mark."""
+    from little_world import Entity, World
+    from little_world.physics.mujoco_backend import MujocoBackend
+    from little_world.programming.program import Block, Program
+    import little_world.fields as fields
+    field = FIELDS[field_id]
+    backend = MujocoBackend()
+    with World(backend, field.scene(Entity('machine', blueprint))) as world:
+        state = world.start()
+        drive, control, base = _rigs(backend, blueprint)
+        for _ in range(SETTLE):
+            state = _hold(world, drive, control, field, state)
+        if field_id == 'doorway':
+            if base is None:
+                raise ValueError('the Doorway program needs a left and a right drive wheel')
+            (x0, y0), (x1, y1) = fields.BAY
+            stops = ((fields.WALL_X - .7, fields.DOOR_Y, 0.), (fields.WALL_X + .6, fields.DOOR_Y, 0.),
+                     ((x0 + x1) / 2, (y0 + y1) / 2, 0.))
+            return Program(tuple(Block('goto', value=.02, duration=40., point=p) for p in stops))
+        from little_world.control.tool_motion import ToolMotion, fetch, pick_and_place
+        motion = ToolMotion(backend, blueprint, control)
+        jaws = next((s.id for s in control.specs if s.actuators and set(s.actuators) <= set(motion.jaws)), None)
+        if jaws is None:
+            raise ValueError('the program needs the gripper bound to a keyboard action')
+        model, data = backend.model, backend.data
+
+        def top(body):
+            b = model.body(body).id
+            return float(data.xpos[b][2] + max(model.geom_size[g][2] for g in range(model.ngeom) if model.geom_bodyid[g] == b))
+        if field_id == 'pick_place':
+            tray = model.body('field/tray_base').id
+            return pick_and_place(motion, jaws, (float(data.xpos[tray][0]), float(data.xpos[tray][1]), top('field/tray_base')))
+        if base is None:
+            raise ValueError('the Fetch program needs a left and a right drive wheel')
+        place = (fields.BIN[0], fields.BIN[1], top('field/bin_base'))
+        return fetch(motion, base, jaws, 'objects/fetch_cube', place, reach_in=fields.BIN_SIZE / 2 - .045)
+
+
+def run(field_id, blueprint, variation=Variation(), program=None, site=None):
+    """One run of a field under one variation. A program field's program, when not given,
+    is solved for `blueprint` as designed."""
+    from little_world import Entity, World
+    from little_world.fields.goals import GoalTracker
+    from little_world.physics.mujoco_backend import MujocoBackend
+    started = time.monotonic()
+    field = FIELDS[field_id]
+    protocol, duration = PROTOCOLS[field_id]
+    if protocol == 'program' and program is None:
+        program = solve(field_id, blueprint)
+    try:
+        bp = varied(blueprint, variation, site)
+    except ValueError as error:
+        return Run(variation, error=str(error))
+    predicted = None
+    if field.reading is not None and field.side is not None:
+        from little_world.construction.structure import standing
+        from little_world.fields import railed
+        stance = standing(bp)
+        tip = stance.tip(field.side) if stance is not None else None
+        if tip is not None:
+            predicted = railed(tip, stance.height) if field.fitted else tip
+    backend = MujocoBackend()
+    with World(backend, field.scene(Entity('machine', bp))) as world:
+        state = world.start()
+        table = friction(variation)
+        if table:
+            backend.vary_pair_friction(table)
+        drive, control, base = _rigs(backend, bp)
+        steps = round(duration / world.timestep)
+        runner = None
+        if protocol == 'program':
+            from little_world.programming.execution import apply, base_targets, joint_angles, needs_grasp
+            from little_world.programming.observations import Observations
+            from little_world.programming.program import Runner
+            for _ in range(SETTLE):
+                state = _hold(world, drive, control, field, state)
+            tracker = GoalTracker(field.goals, _root(bp))
+            obs = Observations(backend.model, backend.data)
+            runner = Runner()
+            runner.start(program)
+            for _ in range(steps):
+                contacts, distances = obs.program_inputs(program)
+                held = obs.grasped() if needs_grasp(program) else frozenset()
+                out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held,
+                                  base.pose() if base else None)
+                control.held = apply(out, control)
+                ahead = base_targets(out, base) if out['base'] else out['drive']
+                commands = dict(drive.step_commands(ahead, world.timestep, angular=True))
+                commands.update(control.step_commands(world.timestep))
+                commands.update(field.commands(state))
+                state = world.step(commands)
+                tracker.update(state)
+                if runner.state != 'running':
+                    break
+            control.held = set()
+            for _ in range(round(AFTER / world.timestep)):
+                state = _hold(world, drive, control, field, state)
+                tracker.update(state)
+        else:
+            tracker = GoalTracker(field.goals, _root(bp))
+            tracker.update(state)
+            for _ in range(steps):
+                if protocol == 'drive':
+                    commands = dict(drive.step_commands(AHEAD, world.timestep))
+                    commands.update(control.step_commands(world.timestep))
+                    commands.update(field.commands(state))
+                    state = world.step(commands)
+                else:
+                    state = _hold(world, drive, control, field, state)
+                tracker.update(state)
+        return Run(variation, tracker.results(finished=True), tracker.tipped_at, predicted,
+                   runner.state if runner else '', '', time.monotonic() - started)
+
+
+def _one(args):
+    return run(*args)
+
+
+def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
+          ranges=Ranges()):
+    """Every variation's run of a field (by default the plan for `ranges`);
+    `progress(done, total, run)` after each."""
+    if field_id not in PROTOCOLS:
+        raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
+                         f'fields that do: {", ".join(sorted(PROTOCOLS))}')
+    variations = tuple(variations if variations is not None else plan(ranges))
+    if any(v.payload for v in variations) and site is None:
+        try:
+            site = payload_site(blueprint, max(v.payload for v in variations))
+        except ValueError:
+            site = None     # each loaded run then reports why it could not be loaded
+    protocol, duration = PROTOCOLS[field_id]
+    program = solve(field_id, blueprint) if protocol == 'program' else None
+    work = [(field_id, blueprint, v, program, site) for v in variations]
+    runs = []
+    if jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(jobs) as pool:
+            for r in pool.map(_one, work):
+                runs.append(r)
+                if progress:
+                    progress(len(runs), len(work), r)
+    else:
+        for w in work:
+            runs.append(_one(w))
+            if progress:
+                progress(len(runs), len(work), runs[-1])
+    return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs))
+
+
+def to_json(result):
+    """A sweep as JSON, for the app to read back from a sweep run in another process."""
+    import json
+    from dataclasses import asdict
+    return json.dumps(asdict(result))
+
+
+def from_json(text):
+    import json
+    from little_world.fields.goals import Result
+    d = json.loads(text)
+    runs = tuple(Run(Variation(**{**r['variation'], 'at': tuple(r['variation']['at'])}),
+                     tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'],
+                     r['program'], r['error'], r['seconds']) for r in d['runs'])
+    site = tuple(d['site']) if d['site'] is not None else None
+    return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs)
+
+
+# -- reading a sweep ---------------------------------------------------------------------------
+
+def spread(sweep):
+    """Per goal: (label, met, ran, times of the runs that met it, labels of the runs that did not)."""
+    ran = [r for r in sweep.runs if not r.error]
+    if not ran:
+        return []
+    out = []
+    for first in ran[0].results:
+        got = [(r, r.result(first.id)) for r in ran]
+        good = [x for r, x in got if x and x.status in ('met', 'kept')]
+        times = sorted(x.time for x in good if x.time is not None)
+        bad = [r.variation.label for r, x in got if not x or x.status not in ('met', 'kept')]
+        out.append((first.label, len(good), len(ran), times, bad))
+    return out
+
+
+def _time(t):
+    return '-' if t is None else f'{t:.1f} s'
+
+
+def markdown(sweep):
+    """The sweep as a short report: results first, then each variation."""
+    field = FIELDS[sweep.field]
+    ran = [r for r in sweep.runs if not r.error]
+    skipped = [r for r in sweep.runs if r.error]
+    what = {'hold': f'held still for {sweep.duration:g} s',
+            'drive': f'driven straight ahead at full speed for {sweep.duration:g} s',
+            'program': "running the field's program, solved once for the design on its mark"}[sweep.protocol]
+    lines = [f'# {field.title}, varied: {sweep.design}', '',
+             f'{len(ran)} runs, {what}' + (f'; {len(skipped)} could not run' if skipped else '') + '.']
+    if sweep.site is not None:
+        lines.append(f'Payload site: ({sweep.site[0]:.3f}, {sweep.site[1]:.3f}) m in plan, a steel block of the payload\'s mass.')
+    lines += ['', '| Goal | Met | Times (fastest / median / slowest) | Not met in |', '| --- | --- | --- | --- |']
+    for label, good, total, times, bad in spread(sweep):
+        span = ' / '.join(_time(t) for t in (times[0], median(times), times[-1])) if times else '-'
+        missed = 'every run' if bad and not good else ', '.join(bad) if bad else '-'
+        lines.append(f'| {label} | {good} of {total} | {span} | {missed} |')
+    tipped = [r for r in ran if r.tipped is not None]
+    if tipped:
+        lo, hi = min(tipped, key=lambda r: r.tipped), max(tipped, key=lambda r: r.tipped)
+        lines += ['', f'Tipped over between {lo.tipped:.1f} deg ({lo.variation.label}) and '
+                  f'{hi.tipped:.1f} deg ({hi.variation.label}).']
+        errors = [r.tipped - r.predicted for r in tipped if r.predicted is not None]
+        if errors:
+            worst = max((r for r in tipped if r.predicted is not None), key=lambda r: abs(r.tipped - r.predicted))
+            lines.append(f'Against the design\'s prediction for each variation: {min(errors):+.1f} to '
+                         f'{max(errors):+.1f} deg, the furthest {worst.variation.label}.')
+    nominal = next((r for r in ran if r.variation.nominal), None)
+    lines += ['', '## Each run', '', '| Variation | ' + ('Tipped at | Predicted | ' if tipped else '') + 'Goals | Changed from as designed |',
+              '| --- | ' + ('--- | --- | ' if tipped else '') + '--- | --- |']
+    for r in sweep.runs:
+        v = r.variation
+        name = f'{v.label}: {v.describe()}' if v.label.startswith('repeat') else v.label
+        if r.error:
+            lines.append(f'| {name} | ' + ('- | - | ' if tipped else '') + f'not run: {r.error} | |')
+            continue
+        good = sum(1 for x in r.results if x.status in ('met', 'kept'))
+        cells = [name]
+        if tipped:
+            cells += ['-' if r.tipped is None else f'{r.tipped:.1f}', '-' if r.predicted is None else f'{r.predicted:.1f}']
+        cells += [f'{good} of {len(r.results)}', _changes(r, nominal)]
+        lines.append('| ' + ' | '.join(cells) + ' |')
+    lines += ['', 'Variations: ' + _ranges(sweep), '']
+    return '\n'.join(lines)
+
+
+def headline(sweep):
+    """The sweep in one line, and whether that is good news: ('Tipped over at 51 to 58 deg
+    in 20 runs', None) or ('All goals met in 19 of 20 runs', 'warn')."""
+    ran = [r for r in sweep.runs if not r.error]
+    if not ran:
+        return 'No run could be made', 'warn'
+    tipped = [r.tipped for r in ran if r.tipped is not None]
+    if tipped:
+        lo, hi = min(tipped), max(tipped)
+        span = f'{lo:.0f} deg' if round(lo) == round(hi) else f'{lo:.0f} to {hi:.0f} deg'
+        return f'Tipped over at {span} in {len(tipped)} of {len(ran)} runs', None
+    whole = sum(1 for r in ran if all(x.status in ('met', 'kept') for x in r.results))
+    if whole == len(ran):
+        return f'Every goal met in all {len(ran)} runs', 'ok'
+    return f'Every goal met in {whole} of {len(ran)} runs', 'warn'
+
+
+def moved_most(sweep, count=3):
+    """The one-at-a-time variations that changed the result most, with what they changed:
+    a goal lost or won first, then the size of the change in the tipping angle or in time."""
+    ran = [r for r in sweep.runs if not r.error]
+    nominal = next((r for r in ran if r.variation.nominal), None)
+    if nominal is None:
+        return []
+    scored = []
+    for r in ran:
+        if r is nominal or r.variation.label.startswith('repeat'):
+            continue
+        lost = sum(1 for x in r.results if (nominal.result(x.id) or x).status != x.status)
+        size = abs(r.tipped - nominal.tipped) if r.tipped is not None and nominal.tipped is not None else \
+            sum(abs(x.time - y.time) for x in r.results for y in [nominal.result(x.id)]
+                if y is not None and x.status == y.status == 'met' and x.time is not None and y.time is not None)
+        words = _changes(r, nominal)
+        if words:
+            scored.append((lost, size, r.variation.label, words))
+    scored.sort(key=lambda s: (-s[0], -s[1]))
+    return [(label, words) for _, _, label, words in scored[:count]]
+
+
+def _changes(run, nominal):
+    if nominal is None or run is nominal:
+        return ''
+    out = []
+    for x in run.results:
+        y = nominal.result(x.id)
+        if y is None:
+            continue
+        if x.status != y.status:
+            out.append(f'{x.label.lower()}: {x.status}')
+        elif x.status == 'met' and x.time is not None and y.time is not None and abs(x.time - y.time) >= .5:
+            out.append(f'{x.label.lower()} {x.time - y.time:+.1f} s')
+    if run.tipped is not None and nominal.tipped is not None and abs(run.tipped - nominal.tipped) >= .1:
+        out.append(f'tipped {run.tipped - nominal.tipped:+.1f} deg')
+    return '; '.join(out)
+
+
+def _ranges(sweep):
+    r = sweep.ranges
+    return (f'set down up to {100 * r.place:g} cm and {r.turn:g} deg off its mark; up to {r.payload:g} kg carried, '
+            f'up to {100 * r.shift:g} cm either side of its site; friction across each surface pair\'s published '
+            'range (contact_pairs.SPREADS; a factor of two where a source gives none). The placement and '
+            'payload ranges are assumptions, stated; the friction ranges are the sources\'.')
+
+
+def main(argv=None):
+    import argparse
+    import os
+    parser = argparse.ArgumentParser(prog='python -m little_world.inventory.sweep',
+                                     description='Run a test field over variations and report the spread.')
+    parser.add_argument('field', choices=sorted(PROTOCOLS))
+    parser.add_argument('--design', default='mobile_platform',
+                        help=f'an example ({", ".join(DESIGNS)}) or a saved Blueprint JSON file')
+    parser.add_argument('--samples', type=int, default=8, help='random repeats after the one-at-a-time runs')
+    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--jobs', type=int, default=max(1, min(4, (os.cpu_count() or 2) - 1)))
+    parser.add_argument('--out', help='write the report here as well as printing it')
+    parser.add_argument('--json', help='write the sweep here as JSON')
+    parser.add_argument('--name', help='what to call the design in the report (default: --design)')
+    args = parser.parse_args(argv)
+    bp = design(args.design)
+    variations = plan(samples=args.samples, seed=args.seed)
+
+    def progress(done, total, r):
+        print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
+    result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress)
+    text = markdown(result)
+    print(text)
+    from pathlib import Path
+    if args.out:
+        Path(args.out).write_text(text, encoding='utf-8')
+    if args.json:
+        Path(args.json).write_text(to_json(result), encoding='utf-8')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

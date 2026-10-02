@@ -24,6 +24,7 @@ Standard library only: this module is data and must stay importable without MuJo
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 
 SURFACES = {
     "rubber": "Tread, bumper or pad rubber of the NR/SBR class, roughly 60-70 Shore A",
@@ -204,6 +205,52 @@ PAIRS = dict((
           "Concrete on concrete, sliding. Measured static values run 0.5-0.9 for as-cast "
           "surfaces."),
 ))
+
+
+# The range of the sliding coefficient each note above cites, for runs under variation
+# (ADR 0024): (low, high), each end the value used or a number quoted in that pair's note.
+# A pair whose note cites no range is not here; `spread` gives it the factor of two that
+# published values for one nominal pair routinely span (see the module's docstring).
+SPREADS = dict((
+    (_key("rubber", "concrete"), (.60, 1.07)),   # textbook 0.6-0.85; rough concrete 1.02-1.07
+    (_key("rubber", "aluminium"), (.40, .60)),   # silicone pads on aluminium 0.4-0.6
+    (_key("rubber", "steel"), (.52, .90)),       # five rubbers 0.52; supplier tables 0.6-0.9
+    (_key("rubber", "rubber"), (.30, 1.20)),     # 0.3 at 700 kPa to 1.2 at 35 kPa
+    (_key("ptfe", "steel"), (.10, .13)),         # dynamic 0.10 at 10 fpm, 0.13 at 100 fpm
+    (_key("aluminium", "steel"), (.25, .38)),    # 0.25 or 0.38, as one or the other moves
+    (_key("aluminium", "wood"), (.17, .26)),     # wood on smooth steel 0.17-0.26
+    (_key("steel", "steel"), (.20, .30)),        # as-received surfaces 0.2-0.3
+    (_key("steel", "wood"), (.17, .80)),         # rough steel up to 0.8
+    (_key("steel", "abs"), (.27, .45)),          # kinetic 0.27 (ASM); pin on disc 0.37-0.45
+    (_key("wood", "wood"), (.10, .48)),          # planed faces 0.1-0.3; Morin's oak 0.48
+    (_key("wood", "concrete"), (.40, .55)),      # GDV 0.4; CTU friction factor 0.55
+    (_key("abs", "abs"), (.74, .98)),            # 0.74-0.98 with load and speed
+))
+
+
+def spread(a, b):
+    """(low, high, cited) for a sourced pair: the range its note cites, or - with `cited`
+    False - a factor of two centred on the value used. None for an unsourced pair."""
+    pair = lookup(a, b)
+    if pair is None:
+        return None
+    if _key(a, b) in SPREADS:
+        low, high = SPREADS[_key(a, b)]
+        return low, high, True
+    return pair.kinetic / 2 ** .5, pair.kinetic * 2 ** .5, False
+
+
+def varied(position):
+    """Every sourced pair's kinetic coefficient moved along its spread - -1 its low end,
+    0 the value used, +1 its high end, linearly between - for a run under variation."""
+    if not math.isfinite(position) or not -1. <= position <= 1.:
+        raise ValueError("a friction position runs from -1 (low end) to +1 (high end)")
+    out = {}
+    for key, pair in PAIRS.items():
+        low, high, _ = spread(*key)
+        end = high if position > 0 else low
+        out[key] = pair.kinetic + abs(position) * (end - pair.kinetic)
+    return out
 
 
 def validate_surface(name):

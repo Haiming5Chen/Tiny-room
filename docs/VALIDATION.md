@@ -821,3 +821,32 @@ headless; on 3.14 the headless suite: 577 passed.
 
 Not claimed: a run does not set a design down; one built in the air still falls, and the
 build stage says so. Designs saved before this change keep their heights.
+
+## Runs under variation — 2026-10-01
+
+See ADR 0024. Twenty runs per sweep: as designed; set down 2 cm ahead, behind, left and
+right; turned 3 degrees each way; carrying 0.5 kg at its site and 5 cm either side; friction
+at the low and high end of every sourced pair; eight seeded random repeats. Tilt table, the
+arm on a cart: over between 51.4 and 58.4 degrees (54.5 as designed); set down off its mark,
+no change (the rail is set against its wheels); friction -0.5 to +0.2; turned 3 degrees +0.4
+and -3.1 against a predicted +1.7 and -1.6; carrying 0.5 kg +1.8 to +4.0, each within 0.3
+degrees of its prediction. Fetch, the program solved once for the design on its mark: every
+goal met in all 20 runs, the cube in the bin at 31.9 to 33.6 s; with 0.5 kg on the deck
+behind the arm the cart rides on its rear caster and rocks 5 degrees forward as the arm
+lifts, leaving the cube 12 mm short of the 5 cm line until it rocks back (lifted at 23.7 s
+instead of 16.2).
+
+Checks in `tests/test_variation.py` (13): the plan (as designed, each change alone, seeded
+repeats, inside its ranges); refusals; moving and turning a design about its mark; the
+payload as a steel block on its carrier, its default site clear of moving parts; every
+friction spread holding the value used, each cited end the value used or a number its note
+quotes; the backend's friction condition and its reset; the simulator weighing the payload;
+a sweep, its report and its JSON; the headline and what moved it most; the tilt table
+following the prediction with a payload aboard; stopping a sweep stopping its worker
+processes; and, with a display, the run report starting a sweep in another process and
+copying its report. On MuJoCo 3.3.7: **626 passed** with a display, 589 headless; on 3.14
+the headless suite: 589 passed.
+
+Not claimed: the placement and payload ranges are assumptions, stated; eight random repeats
+are a sample, not a distribution; the field, the motors' unit-to-unit spread and sensing
+are not varied.

@@ -11,6 +11,25 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-01 · Claude (Cowork) · OPEN LW-008: runs under variation
+Did: ADR 0024. A field run can be repeated with variations: set down off its mark and
+turned, carrying a steel block, friction across each surface pair's published range
+(`fields/variation.py`, `contact_pairs.SPREADS`, `MujocoBackend.vary_pair_friction`). The
+sweep (`inventory/sweep.py`, also `python -m little_world.inventory.sweep`) runs 20
+variations in worker processes and reports each goal's spread and what moved it most. The
+run report has "Repeat with variations", which runs it in another process
+(`ui/varied_runs.py`).
+Measured: tilt table, arm on a cart: 51.4 to 58.4 deg over 20 runs (54.5 as designed);
+turned 3 deg on the table moves it most (-3.1) and is where the prediction is furthest off
+(2.8 deg high); with 0.5 kg aboard the prediction holds within 0.3 deg. Fetch: every goal in
+all 20 runs; loaded behind the arm, the cart rocks 5 deg between its casters as the arm
+lifts and the lift falls 12 mm short until it rocks back. Suites: 626 with a display, 589
+headless; 3.14 headless 589.
+Unfinished: LW-016 (arm moves solved for one stance), LW-017 (a turned machine on the tilt
+table), both found by the sweeps and not fixed.
+For the owner: the placement and payload ranges (2 cm, 3 deg, 0.5 kg) are my assumptions;
+say if your lab's are different and they are one line to change.
+
 ## 2026-10-01 · Claude (Cowork) · OPEN LW-014: machines start on the floor
 Did: ADR 0023. The example machines are built resting 2 mm above the floor: the mobile
 platform (and the arm on a cart) is set down after assembly, the two-wheel example and the

@@ -440,6 +440,25 @@ class MujocoBackend:
         if self._any_sourced:
             apply_pair_friction(d, self._geom_surface, self._pair_mu)
 
+    def vary_pair_friction(self, table=None):
+        """Run on other pair frictions than the sourced ones, from the next step on: `table`
+        maps sourced surface pairs, such as ('concrete', 'rubber'), to the kinetic
+        coefficient to use. A condition of the run, as a damp floor would be, not part of
+        the design (ADR 0024). None restores the sourced values; so does a new compile."""
+        self._ready()
+        surfaces = sorted(contact_pairs.SURFACES)
+        index = {name: i for i, name in enumerate(surfaces)}
+        mu = np.full((len(surfaces) + 1,) * 2, np.nan)
+        for (a, b), pair in contact_pairs.PAIRS.items():
+            mu[index[a], index[b]] = mu[index[b], index[a]] = pair.kinetic
+        for (a, b), value in (table or {}).items():
+            if contact_pairs.lookup(a, b) is None:
+                raise ValueError(f"no sourced pair {a}/{b} to vary")
+            if not isfinite(value) or not 0. < value <= 2.:
+                raise ValueError("a friction coefficient must be finite, above 0 and at most 2")
+            mu[index[a], index[b]] = mu[index[b], index[a]] = value
+        self._pair_mu = mu
+
     def contact_report(self):
         """Current contacts: (geom, geom, coefficient in use, sourced pair or None)."""
         self._ready()
