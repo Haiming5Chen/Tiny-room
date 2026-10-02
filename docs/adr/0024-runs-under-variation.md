@@ -58,9 +58,13 @@ reads the sweep back as JSON.
 degrees (54.5 as designed). Set down 2 cm off its mark in any direction: no change, the
 trip rail is set against its wheels. Friction at either end of the sources: -0.5 to +0.2.
 Turned 3 degrees on the table: +0.4 and -3.1, where the rigid prediction said +1.7 and -1.6
-- its worst case, 2.8 degrees high. A turned machine meets the straight rail with one wheel
-first, which the prediction does not model; whether that is the cause is not examined yet
-(OPEN LW-017). Carrying 0.5 kg behind the arm: +1.8 to +4.0, each within 0.3 degrees of its
+- its worst case, 2.8 degrees high. Traced since (OPEN LW-017): the machine does not keep the
+heading it was set down at. Leaning on its right tread wheel against the rail and on its
+front caster, it turns as the table rises - set down straight it settles 1.7 degrees off by
+40 degrees of tilt, set down 3 degrees left it settles at the same heading and tips at the
+same angle, set down 3 degrees right it settles at -0.5 with only the end block of its tread
+against the rail, and near 48 degrees swings about that block (11 degrees by 50) and goes
+over early. The rigid prediction holds a heading and a rail along the whole wheel. Carrying 0.5 kg behind the arm: +1.8 to +4.0, each within 0.3 degrees of its
 prediction, closer than as designed (1.3, where the swivelling front caster the prediction
 does not know about gives way first). Fetch, 20 runs of the program solved once: every goal
 met in every run; the cube in the bin at 31.9 to 33.6 s. The one outlier is a lesson in

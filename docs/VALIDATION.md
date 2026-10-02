@@ -829,8 +829,10 @@ right; turned 3 degrees each way; carrying 0.5 kg at its site and 5 cm either si
 at the low and high end of every sourced pair; eight seeded random repeats. Tilt table, the
 arm on a cart: over between 51.4 and 58.4 degrees (54.5 as designed); set down off its mark,
 no change (the rail is set against its wheels); friction -0.5 to +0.2; turned 3 degrees +0.4
-and -3.1 against a predicted +1.7 and -1.6; carrying 0.5 kg +1.8 to +4.0, each within 0.3
-degrees of its prediction. Fetch, the program solved once for the design on its mark: every
+and -3.1 against a predicted +1.7 and -1.6 - traced to the machine turning as the table
+rises (set down straight it settles 1.7 degrees off; set down 3 degrees right it settles at
+-0.5 with one tread block against the rail and swings about it near 48 degrees); carrying
+0.5 kg +1.8 to +4.0, each within 0.3 degrees of its prediction. Fetch, the program solved once for the design on its mark: every
 goal met in all 20 runs, the cube in the bin at 31.9 to 33.6 s; with 0.5 kg on the deck
 behind the arm the cart rides on its rear caster, the jaws meet the cube 28 mm from their
 aim, and the cart rocks 5 degrees forward as the arm lifts, leaving the cube 12 mm short of

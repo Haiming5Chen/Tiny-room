@@ -23,7 +23,11 @@ its mark) and one correction brought it within 1-3 mm; in the bin at 34.0 s (32.
 Loaded with 0.5 kg behind the arm: jaws within 3.3 mm of the cube, lifted at 18.2 s (23.7
 before). Suites: 632 with a display, 595 headless; 3.14 headless 595.
 Unfinished: the pick-and-place template's poses are not aimed (its arm stands on a
-pedestal); LW-017 is still open.
+pedestal). LW-017 traced, not changed: a machine turns as the tilt table rises, and one set
+down 3 deg right ends with a single tread block against the rail and swings about it (ADR
+0024 has the numbers).
+For the owner: LW-017 is a choice - accept it, have the tilt protocol align the machine with
+the rail, or model the turn in the prediction.
 
 ## 2026-10-01 · Claude (Cowork) · OPEN LW-008: runs under variation
 Did: ADR 0024. A field run can be repeated with variations: set down off its mark and
