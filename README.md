@@ -89,7 +89,7 @@ change the design, try again.** A desktop robotics sandbox on
   project eleven MuJoCo releases behind, and running the suite on the newest showed which
   three wheel-contact results would move and why
   ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)).
-- **633 automated tests**, including OpenGL window tests that drive the interface
+- **634 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

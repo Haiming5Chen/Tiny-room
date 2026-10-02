@@ -348,6 +348,36 @@ def headline(sweep):
     return f'Every goal met in {whole} of {len(ran)} runs', 'warn'
 
 
+@dataclass(frozen=True)
+class Strip:
+    """One quantity over a sweep's runs, for drawing as ticks on a line: a static test's
+    angle at tipping, or else the goal whose time spread most."""
+    label: str
+    values: tuple           # one per run that has it
+    nominal: float | None   # the run as designed
+    predicted: float | None = None
+    unit: str = 'deg'
+
+
+def strip(sweep):
+    """What to draw of a sweep's spread, or None when no run gives a number."""
+    ran = [r for r in sweep.runs if not r.error]
+    nominal = next((r for r in ran if r.variation.nominal), None)
+    tipped = [r.tipped for r in ran if r.tipped is not None]
+    if tipped:
+        return Strip('tipped over at', tuple(tipped), nominal.tipped if nominal else None,
+                     nominal.predicted if nominal else None)
+    best = None
+    for label, _, _, times, _ in spread(sweep):
+        if len(times) >= 2 and (best is None or times[-1] - times[0] > best[1][-1] - best[1][0]):
+            best = (label, times)
+    if best is None:
+        return None
+    label, times = best
+    at = next((x.time for x in nominal.results if x.label == label), None) if nominal else None
+    return Strip(label.lower(), tuple(times), at, None, 's')
+
+
 def moved_most(sweep, count=3):
     """The one-at-a-time variations that changed the result most, with what they changed:
     a goal lost or won first, then the size of the change in the tipping angle or in time."""

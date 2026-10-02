@@ -16,7 +16,7 @@ import tempfile
 import threading
 
 from little_world.fields.variation import plan
-from little_world.inventory.sweep import PROTOCOLS, from_json, headline, markdown, moved_most, spread
+from little_world.inventory.sweep import PROTOCOLS, from_json, headline, markdown, moved_most, spread, strip
 
 MUTED = (.49, .57, .63)
 ACCENT = (.37, .83, .69)
@@ -130,12 +130,16 @@ class VariedRuns:
                 text(f'{good}/{total}', 16, y, 11, ACCENT if good == total else WARN)
                 text(label + span, 52, y, 11, LIGHT, 220)
                 y += 17
+        y = self.draw_strip(ui, text, strip(s), y)
         most = moved_most(s)
-        if most:
+        if most and y < wh - 150:
             text('moved it most:', 16, y + 2, 10, MUTED)
             y += 18
             for label, change in most:
-                text(f'{label}: {change}', 16, y, 11, LIGHT, 256)
+                if y > wh - 110:
+                    break
+                # The first change it made; the full report has the rest.
+                text(f'{label}: {change.split("; ")[0]}', 16, y, 11, LIGHT, 256)
                 y += 17
         skipped = sum(1 for r in s.runs if r.error)
         if skipped:
@@ -143,3 +147,37 @@ class VariedRuns:
             y += 17
         button('Copy the full report', 12, y + 4, 264, self.copy_variations_report, h=26)
         return y + 38
+
+    def draw_strip(self, ui, text, line, y):
+        """The runs as ticks on a line drawn just wide enough for them: the run as designed
+        taller and light, the design's prediction as a warm mark."""
+        if line is None:
+            return y
+        marks = [*line.values, *(v for v in (line.nominal, line.predicted) if v is not None)]
+        lo, hi = min(marks), max(marks)
+        step = 1. if line.unit == 'deg' else .5
+        lo, hi = step * (lo // step) - step, step * (hi // step) + 2 * step
+        x0, width = 16, 256
+
+        def at(v):
+            return x0 + width * (v - lo) / (hi - lo)
+        ui.rect(x0, y + 10, width, 2, (.20, .26, .31))
+        ui.rect(at(min(line.values)), y + 7, max(2., at(max(line.values)) - at(min(line.values))), 8, (.14, .32, .28))
+        for v in line.values:
+            ui.rect(at(v) - .5, y + 5, 1, 12, ACCENT)
+        if line.nominal is not None:
+            ui.rect(at(line.nominal) - 1, y + 1, 2, 20, LIGHT)
+        if line.predicted is not None:
+            ui.rect(at(line.predicted) - 3, y, 6, 4, WARN)
+        unit = ' deg' if line.unit == 'deg' else ' s'
+        text(f'{lo:g}', x0, y + 22, 10, MUTED)
+        end = f'{hi:g}{unit}'
+        text(end, x0 + width - ui.width(end, 10), y + 22, 10, MUTED)
+        # A key in the marks' own colours: each run, the run as designed, the prediction.
+        key = [(line.label, ACCENT), ('as designed', LIGHT)] + ([('predicted', WARN)] if line.predicted is not None else [])
+        gap = 8
+        x = x0 + (width - sum(ui.width(w, 10) for w, _ in key) - gap * (len(key) - 1)) / 2
+        for words, colour in key:
+            text(words, x, y + 22, 10, colour)
+            x += ui.width(words, 10) + gap
+        return y + 40

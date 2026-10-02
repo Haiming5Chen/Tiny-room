@@ -540,7 +540,8 @@ class TestDrive:
             y += 20
         y = self.draw_report_actions(button, y + 8)
         y = self.draw_variations(ui, button, text, section, y, wh)
-        if record.limit is not None and record.limit[0] is not None:
+        # What set the top speed, while there is room above the status line for it.
+        if record.limit is not None and record.limit[0] is not None and y + 54 <= wh - 40:
             limit, source, alone = record.limit
             text(f'Top speed set by the {source}: {limit:.2f} m/s', 16, y, 12, max_width=256)
             if source == 'drive assist':

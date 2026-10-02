@@ -196,6 +196,19 @@ def test_a_sweep_reads_as_one_line_and_names_what_moved_it_most():
                              ('friction at its low end', '5 m finish +0.6 s')], 'a lost goal first; repeats are not singled out'
 
 
+def test_a_sweep_draws_as_ticks_of_the_quantity_that_spread():
+    from dataclasses import replace
+    from little_world.inventory.sweep import strip
+    s = made_up_sweep()
+    line = strip(s)
+    assert line.label == '5 m finish' and sorted(line.values) == [15., 15.1, 15.6] and line.nominal == 15.
+    assert line.unit == 's' and line.predicted is None
+    tilted = replace(s, runs=tuple(replace(r, tipped=54.5 + i, predicted=55.8) for i, r in enumerate(s.runs)))
+    line = strip(tilted)
+    assert line.label == 'tipped over at' and line.values == (54.5, 55.5, 56.5, 57.5) and line.nominal == 54.5
+    assert line.predicted == 55.8
+
+
 @pytest.mark.skipif(__import__('os').name != 'posix', reason='process groups are POSIX')
 def test_stopping_the_repeats_stops_their_worker_processes_with_them(monkeypatch):
     """The sweep runs its variations in worker processes of its own; stopping it from the

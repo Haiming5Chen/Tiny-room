@@ -838,12 +838,12 @@ behind the arm the cart rides on its rear caster, the jaws meet the cube 28 mm f
 aim, and the cart rocks 5 degrees forward as the arm lifts, leaving the cube 12 mm short of
 the 5 cm line until it rocks back (lifted at 23.7 s instead of 16.2).
 
-Checks in `tests/test_variation.py` (13): the plan (as designed, each change alone, seeded
+Checks in `tests/test_variation.py` (14): the plan (as designed, each change alone, seeded
 repeats, inside its ranges); refusals; moving and turning a design about its mark; the
 payload as a steel block on its carrier, its default site clear of moving parts; every
 friction spread holding the value used, each cited end the value used or a number its note
 quotes; the backend's friction condition and its reset; the simulator weighing the payload;
-a sweep, its report and its JSON; the headline and what moved it most; the tilt table
+a sweep, its report and its JSON; the headline, the quantity drawn as ticks and what moved it most; the tilt table
 following the prediction with a payload aboard; stopping a sweep stopping its worker
 processes; and, with a display, the run report starting a sweep in another process and
 copying its report. On MuJoCo 3.3.7: **626 passed** with a display, 589 headless; on 3.14
@@ -881,4 +881,5 @@ OPEN LW-013. The radar profile adds MuJoCo Menagerie and the four registered arm
 FR3, Gen3, UR5e) to ADR 0019, whose tool moves they use. Checked in `tests/test_radar.py`
 (15): the Menagerie repository and a model update both file under ADR 0019 with "menagerie"
 among the words that matched. Suites: **633 passed** with a display, 596 headless; on 3.14
-the headless suite: 596 passed.
+the headless suite: 596 passed. With the variations panel's ticks (one more check): **634
+passed** with a display, 597 headless; 3.14 headless 597.

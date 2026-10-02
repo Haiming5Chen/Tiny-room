@@ -44,9 +44,9 @@ Blueprint edits and one run condition, and the runs are ordinary field runs.
   fastest, median and slowest time and the runs that missed it; for a static test the range
   the machine went over in and the design's prediction for each variation; and each run's
   change from the run as designed. From the run report, "Repeat with variations" starts the
-  same sweep in another Python process, shows its progress, then the headline, the changes
-  that moved the result most, and copies the full report to the clipboard
-  (`ui/varied_runs.py`). From a shell: `python -m little_world.inventory.sweep tilt --design
+  same sweep in another Python process, shows its progress, then the headline, every run as
+  a tick on a line beside the run as designed and the prediction, the changes that moved the
+  result most, and copies the full report to the clipboard (`ui/varied_runs.py`). From a shell: `python -m little_world.inventory.sweep tilt --design
   mobile_manipulator`.
 
 **Blueprint and builder.** Nothing saved changes. A varied design is ordinary Blueprint data
@@ -76,10 +76,10 @@ lifts, the cart rocks 5 degrees onto its front caster; the cube ends 12 mm short
 (8.6 mm over as designed) until the cart rocks back on the way to the bin - "lifted" at
 23.7 s instead of 16.2 (OPEN LW-016; ADR 0025 checks where the tool got to). Every run
 of both sweeps is in `docs/sweeps/`. Checks in
-`tests/test_variation.py` (13): the plan, refusals, moving and loading a design, the
+`tests/test_variation.py` (14): the plan, refusals, moving and loading a design, the
 payload's site and carrier, the friction spreads against their notes, the backend's
 friction condition and its reset, the simulator's weight of the payload, a sweep and its
-JSON, the headline and what moved it most, the tilt table following the prediction with a
+JSON, the headline, the ticks and what moved it most, the tilt table following the prediction with a
 payload aboard, stopping a sweep stopping its worker processes, and the run report
 starting a sweep in another process.
 
