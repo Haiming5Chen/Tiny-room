@@ -191,6 +191,26 @@ def test_coast_down_matches_the_closed_form_prediction():
     assert abs(measured - predicted) / predicted < .01, (measured, predicted)
 
 
+def test_a_wheel_meets_the_floor_at_one_contact_so_the_engine_adds_no_rolling_loss():
+    """MuJoCo 3.8 made multiccd the default: several contacts per convex pair. A cylinder
+    wheel on the box floor got four, within 0.1 mm of each other, and the solver loaded the
+    leading ones more as it rolled - a rolling loss of its own, 5 % of the sourced one at
+    0.8 m/s. The adapter keeps one contact per convex pair (ADR 0027), so the coast-down
+    above matches its closed form as it did on 3.3.7."""
+    backend = MujocoBackend()
+    with World(backend, Scene((room_entity(), Entity("cart", cart())))) as world:
+        world.start()
+        for _ in range(100):
+            world.step({})
+        m, d = backend.model, backend.data
+        assert m.opt.disableflags & mujoco.mjtDisableBit.mjDSBL_MULTICCD
+        for i in range(4):
+            wheel = m.body(f"cart/w{i}").id
+            touching = [k for k in range(d.ncon) if wheel in (m.geom_bodyid[d.contact[k].geom1],
+                                                               m.geom_bodyid[d.contact[k].geom2])]
+            assert len(touching) == 1, (i, len(touching))
+
+
 def test_gearbox_friction_sits_on_the_output_joint():
     from little_world.assets.catalog import BY_ID
     motor = BY_ID["gearmotor_37"].blueprint()

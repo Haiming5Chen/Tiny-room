@@ -93,7 +93,7 @@ change the design, try again.** A desktop robotics sandbox on
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
   [frontier](docs/agents/FRONTIER.md)).
-- **642 automated tests**, including OpenGL window tests that drive the interface
+- **643 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -110,8 +110,8 @@ Thermal physics, fluids, cross-physics coupling and AI remain future work.
 
 ## Run
 
-Python 3.11+; tested here with Python 3.13 and MuJoCo 3.3.7 on macOS. A local `.venv`
-is already installed in this workspace. From the repository root on a fresh checkout:
+Python 3.11+ and MuJoCo 3.10.0. The app is used on an Intel Mac with Python 3.13; the
+test suites run on Linux with Python 3.11. From the repository root on a fresh checkout:
 
 ```sh
 uv venv --python 3.13 .venv
@@ -120,8 +120,11 @@ uv pip install --python .venv/bin/python -e '.[workshop,dev]'
 
 Or use `python3 -m venv .venv` and `.venv/bin/python -m pip install -e '.[workshop,dev]'`.
 Core-only installation: `pip install -e .` (no MuJoCo dependency).
-The adapter pins 3.3.7 because that binary was verified on this Mac; the latest
-release attempted a source build. `requirements-lock.txt` records tested dependencies.
+MuJoCo is pinned to 3.10.0, the newest release with a ready-made wheel for an Intel Mac
+(from 3.11.0 on, pip would build MuJoCo from source there), with one contact per convex
+pair ([ADR 0027](docs/adr/0027-mujoco-3-10-one-contact-per-convex-pair.md)). An
+environment made for 3.3.7 needs the install line above run again.
+`requirements-lock.txt` records tested dependencies.
 
 The installed **Little World Builder** app opens in **Real** mode for robot
 experiments and programming. Use the top **Real / Anime** switch to move between

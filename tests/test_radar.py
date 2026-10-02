@@ -391,7 +391,7 @@ def test_fetching_reads_every_feed_and_reports_the_one_that_failed():
 
 
 def test_the_feeds_are_polite_and_a_token_goes_to_github_only():
-    assert pinned_mujoco(project_root()) == '3.3.7'
+    assert pinned_mujoco(project_root()) == '3.10.0'
     feeds = {s.name: s for s in sources('3.3.7')}
     assert 'arXiv cs.RO' in feeds and 'MuJoCo changelog' in feeds
     journals = [feeds[n] for n in ('Science Robotics', 'IEEE Robotics and Automation Letters',

@@ -5,11 +5,11 @@ branch, commits and tree; this file says what they mean.
 
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import). Not yet on
   GitHub; the owner publishes it.
-- **Decision records** 0001 to 0026. The newest: 0026 the frontier brief and proposals.
-- **Tests**: on MuJoCo 3.3.7, 642 pass with a display (`LITTLE_WORLD_TEST_RENDER=1` under
-  Xvfb) and 605 headless.
-- **Pinned**: Python 3.11 or newer, MuJoCo 3.3.7. The owner chose 3.10.0 for every machine
-  (FR-002): the newest release with wheels for an Intel Mac.
+- **Decision records** 0001 to 0027. The newest: 0027 MuJoCo 3.10.0, one contact per convex pair.
+- **Tests**: on MuJoCo 3.10.0, 643 pass with a display (`LITTLE_WORLD_TEST_RENDER=1` under
+  Xvfb) and 606 headless.
+- **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
+  wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-003 to FR-014 wait for the owner.
 - **Uncommitted**: nothing.
 - **Needs the owner's decision**: publishing the branch; the frontier proposals; the rest of

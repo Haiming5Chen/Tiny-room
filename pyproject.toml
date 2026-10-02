@@ -10,8 +10,8 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-mujoco = ["mujoco==3.3.7"]
-workshop = ["mujoco==3.3.7", "Pillow>=11,<13", "PyOpenGL>=3.1,<4"]
+mujoco = ["mujoco==3.10.0"]
+workshop = ["mujoco==3.10.0", "Pillow>=11,<13", "PyOpenGL>=3.1,<4"]
 dev = ["pytest>=8,<10"]
 
 [tool.pytest.ini_options]

@@ -10,10 +10,10 @@ table well formed.
 | LW-001 | 2026-09-27 | Claude (Cowork) | The caster curb check sits on its geometric limit: a 20 mm curb against a 40 mm caster wheel | checks moved to 18 against 24 mm (ADR 0022); the answer's dependence on the curb before it came from the platform's start in the air (ADR 0023) | done |
 | LW-002 | 2026-09-27 | Claude (Cowork) | The measured stance margin comes from reported contact points | now from the touching geoms' shapes: 3.39 cm on 3.3.7, 3.40 on 3.14, predicted 3.37 (ADR 0022) | done |
 | LW-003 | 2026-09-27 | Claude (Cowork) | Part of the tilt-table difference on MuJoCo 3.14 is unexplained | named release by release: box-box collider changes (tread blocks) and cylinder multicontact (caster) (ADR 0022) | done |
-| LW-004 | 2026-09-27 | Claude (Cowork) | MuJoCo is pinned to 3.3.7; the newest release is 3.14 | the whole headless suite passes on 3.14 (577 since ADR 0023) | open |
-| LW-005 | 2026-09-27 | Claude (Cowork) | The factory's feeder is a teleport | MuJoCo 3.11 `geom/surfacevel` models a conveyor with a static geom (needs LW-004) | open |
-| LW-006 | 2026-09-27 | Claude (Cowork) | MuJoCo's `pid` actuator is untried for the kit servos | it could replace the Torque slope of ADR 0014 (needs LW-004) | open |
-| LW-007 | 2026-09-27 | Claude (Cowork) | MuJoCo's `dcmotor` is untried for the Pololu 37D | the datasheet model of ADR 0011 maps onto it (needs LW-004) | open |
+| LW-004 | 2026-09-27 | Claude (Cowork) | MuJoCo is pinned to 3.3.7; the newest release is 3.14 | the owner chose 3.10.0 for every machine, the newest with Intel-Mac wheels (FR-002); pinned with one contact per convex pair (ADR 0027) | done |
+| LW-005 | 2026-09-27 | Claude (Cowork) | The factory's feeder is a teleport | MuJoCo 3.11 `geom/surfacevel` models a conveyor with a static geom, past the 3.10 pin; a powered roller conveyor works on 3.10 (FR-007) | open |
+| LW-006 | 2026-09-27 | Claude (Cowork) | MuJoCo's `pid` actuator is untried for the kit servos | it could replace the Torque slope of ADR 0014; it needs MuJoCo 3.12, past the 3.10 pin (FR-014) | open |
+| LW-007 | 2026-09-27 | Claude (Cowork) | MuJoCo's `dcmotor` is untried for the Pololu 37D | the datasheet model of ADR 0011 maps onto it; available on the 3.10 pin (FR-004) | open |
 | LW-008 | 2026-09-27 | Claude (Cowork) | The test fields run each scenario once, unperturbed | runs under variation - start pose, payload, friction across its sources' ranges - from the run report or `python -m little_world.inventory.sweep` (ADR 0024) | done |
 | LW-009 | 2026-09-27 | Claude (Cowork) | No servo has been calibrated against a real one | MuJoCo 3.5's system identification toolbox; needs hardware | open |
 | LW-010 | 2026-09-27 | Claude (Cowork) | The factory cell grasps at known part positions | positions from the cell's camera are on the roadmap | open |

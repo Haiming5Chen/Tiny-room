@@ -110,6 +110,11 @@ both releases; the curb answers on 3.3.7 turned out to depend on the curb before
 the tilt difference is the box-box collider changes (the tread blocks are boxes) and
 multicontact for the caster's cylinder. The headless suite passes in full on 3.14.
 
+Upgraded on 2026-10-02 to 3.10.0, the newest release with wheels for the owner's Intel
+Mac (ADR 0027). Run as released it moved one more result: multiccd's extra contacts gave a
+rolling cylinder wheel a loss of the engine's own, 5 % of the sourced one at 0.8 m/s. The
+adapter turns multiccd off; the radar now reads MuJoCo's changes after 3.10.0.
+
 ## Topics
 
 `docs/radar/profile.md` lists the extra words per decision, the planned steps and the

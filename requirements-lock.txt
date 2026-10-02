@@ -3,7 +3,7 @@ etils==1.14.0
 fsspec==2026.7.0
 glfw==2.10.2
 iniconfig==2.3.0
-mujoco==3.3.7
+mujoco==3.10.0
 numpy==2.5.3
 packaging==26.3
 pillow==12.3.0

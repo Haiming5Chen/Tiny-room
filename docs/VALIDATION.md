@@ -904,3 +904,22 @@ Not claimed: the journal feeds were not reached from this workspace (IEEE Xplore
 418, Science 403); the brief reads no papers; a proposal is an agent's reading of its
 sources and says so where only a title was seen.
 
+## MuJoCo 3.10.0, one contact per convex pair — 2026-10-02
+
+ADR 0027 (FR-002, the owner's choice: 3.10.0 is the newest MuJoCo with wheels for an Intel
+Mac). Run as released, 3.10.0 moved one check: the test cart's coast-down slowed 5.0 %
+faster than its closed form, because multiccd (on by default since 3.8) gave each
+cylinder wheel four contacts on the box floor and the solver loaded the leading ones more:
+a rolling loss of the engine's own (+1.4 %, +5.0 %, +6.3 % at 0.4, 0.8 and 1.6 m/s). The
+adapter turns multiccd off; the coast-down then equals 3.3.7's at all three speeds.
+Nominal runs against 3.3.7: tilt table 54.48 to 53.99 deg (predicted 55.75 about the rail);
+settled stance 2.89 deg and 3.36 cm (predicted 2.84 and 3.37); Fetch at the table 9.58 s,
+lifted 16.37 s, in the bin 33.04 s (9.65, 16.68, 33.97); curbs and sprint unchanged. Checked
+in `tests/test_drivetrain.py` (one new): each wheel of the cart meets the floor at one
+contact and the flag is set. On MuJoCo 3.10.0: **643 passed** with a display (484 s; 507 s
+on 3.3.7), 606 headless (411 s; 442 s on 3.3.7).
+
+Not claimed: the suites ran on Linux with Python 3.11, not on the owner's Mac; one contact
+per convex pair is this project's choice for its sourced rolling loss, not a finding that
+MuJoCo's multiple contacts are wrong in general.
+

@@ -61,8 +61,9 @@ These are reference-only sources. No vendor CAD, photographs, logos, source code
 or drawings are redistributed, and these modules are not accurate vendor replicas.
 The ideal motor limits and inferred masses are not copied product specifications.
 
-The batched body-velocity observation matches MuJoCo 3.3.7's `mj_objectVelocity`
-world-oriented body-inertial convention. Reference implementation:
+The batched body-velocity observation matches MuJoCo's `mj_objectVelocity`
+world-oriented body-inertial convention (written against 3.3.7, tested on 3.10.0).
+Reference implementation:
 https://github.com/google-deepmind/mujoco/blob/3.3.7/src/engine/engine_core_util.c
 and `mju_transformSpatial` in `engine_util_spatial.c` (MuJoCo, Apache-2.0).
 The vectorized NumPy implementation is independently written and tested against the

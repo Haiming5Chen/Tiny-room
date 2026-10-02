@@ -68,8 +68,10 @@ python scripts/agent_status.py                        # branch, tree, open items
 ruff check --select F src tests scripts               # optional; not a project dependency
 ```
 
-MuJoCo is pinned to 3.3.7 (`pyproject.toml`); a newer version moves physics results
-(docs/RADAR.md, OPEN LW-004). The headless suite takes about six minutes on two cores.
+MuJoCo is pinned to 3.10.0 (`pyproject.toml`, ADR 0027): the newest release with wheels
+for the owner's Intel Mac. The adapter turns multiccd off (one contact per convex pair);
+a different release moves physics results (docs/RADAR.md). The headless suite takes about
+seven minutes on two cores.
 
 ## Conventions
 

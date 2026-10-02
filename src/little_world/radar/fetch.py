@@ -34,7 +34,7 @@ class Source:
 
 
 def pinned_mujoco(root):
-    """The MuJoCo version the project pins in pyproject.toml, e.g. '3.3.7'."""
+    """The MuJoCo version the project pins in pyproject.toml, e.g. '3.10.0'."""
     path = Path(root) / 'pyproject.toml'
     found = re.search(r'mujoco==([\d.]+)', path.read_text(encoding='utf-8')) if path.exists() else None
     return found.group(1) if found else '0'

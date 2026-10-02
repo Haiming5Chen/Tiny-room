@@ -89,9 +89,10 @@ sweeps found a loaded cart rocking between its casters under its own arm, and pr
 now check where the tool got to and correct it (ADR 0025). What the field publishes now
 reaches the project as numbered proposals the owner accepts or declines, with the radar's
 brief beside them and journals among its sources (ADR 0026, docs/agents/FRONTIER.md).
-Next: MuJoCo 3.10.0 on every machine, the newest release with wheels for the owner's Intel
-Mac (accepted, FR-002); then what the owner picks from the frontier proposals - among them
-the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's feeder
-(moving surfaces and the PID actuator need a release past 3.10), one real servo calibrated
-with the system identification toolbox, and grasping from the cell's camera instead of
-known positions.
+MuJoCo 3.10.0 now runs on every machine - the newest release with wheels for the owner's
+Intel Mac - with one contact per convex pair, so the engine adds no rolling loss of its own
+to the sourced one (ADR 0027). Next: what the owner picks from the frontier proposals -
+among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the
+factory's feeder (moving surfaces and the PID actuator need a release past 3.10), one real
+servo calibrated with the system identification toolbox, and grasping from the cell's
+camera instead of known positions.

@@ -11,6 +11,22 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-02 · Claude (Cowork) · MuJoCo 3.10.0 (FR-002)
+Did: ADR 0027. MuJoCo pinned to 3.10.0, as the owner chose (the newest release with
+wheels for an Intel Mac). Run as released it moved one check, the test cart's coast-down,
+by 5 %: multiccd, on by default since 3.8, gives a cylinder wheel four contacts on the box
+floor within 0.2 mm of each other, and the solver loads the leading ones more as it rolls -
+a rolling loss of the engine's own on top of the sourced one, growing with speed. The
+adapter turns multiccd off (one contact per convex pair, as on 3.3.7).
+Measured: coast-down +0.18 % against the closed form on 3.3.7 and on 3.10.0 (+5.0 % with
+multiccd). Tilt table 54.48 to 53.99 deg, the box-box fix of 3.4 that ADR 0022 named;
+Fetch in the bin at 33.04 s (33.97); settled stance 3.36 cm (predicted 3.37); curbs and
+sprint unchanged. Suites on 3.10.0: 643 with a display, 606 headless.
+Unfinished: nothing from FR-002. The owner's Mac needs its environment reinstalled.
+For the owner: after publishing, run `.venv/bin/python -m pip install -e '.[workshop,dev]'`
+in Tiny-room (or the uv line in the README) so the Mac gets 3.10.0. FR-004 (the motor as
+MuJoCo's dcmotor) and FR-010 (the servo bench) are now possible on the pin.
+
 ## 2026-10-02 · Claude (Cowork) · the frontier brief and proposals
 Did: ADR 0026, asked for by the owner as the project's "brain". The radar reads journals'
 tables of contents (Science Robotics, IEEE RA-L, IEEE T-RO) besides preprints and releases,

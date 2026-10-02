@@ -55,7 +55,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: spent: two decision records.
 
 ### FR-002 · MuJoCo 3.10.0 on every machine
-- Status: accepted (the owner, 2026-10-02: one version everywhere, 3.10.0)
+- Status: done (ADR 0027, 2026-10-02; accepted by the owner the same day: one version everywhere, 3.10.0)
 - From: [MuJoCo's changelog](https://mujoco.readthedocs.io/en/latest/changelog.html), 3.4
   to 3.14 filed entry by entry (ADR 0021); multiccd on by default from 3.8.0
   (`mujoco:3.8.0#6`, radar: adopt); OPEN LW-004
@@ -66,7 +66,10 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   did). The DC-motor actuator (FR-004) and the system identification toolbox (FR-010)
   become available; the PID actuator and moving surfaces do not (FR-014).
 - How we would know: both suites pass on 3.10.0, each moved number explained in the
-  decision record; the owner's Mac installs 3.10.0 from a wheel.
+  decision record; the owner's Mac installs 3.10.0 from a wheel. Done: multiccd's extra
+  wheel contacts made a rolling loss of their own (+5.0 % at 0.8 m/s), so the adapter keeps
+  one contact per convex pair; the tilt table moved 54.48 to 53.99 deg, Fetch delivered at
+  33.0 s instead of 34.0 (ADR 0027).
 - Cost and needs: one decision record; the owner reinstalls the Mac's environment after
   publishing.
 
@@ -297,7 +300,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 
 *Written by `python -m little_world.radar brief` on 2026-10-02; edits inside these markers are replaced at the next run.*
 
-Since 2026-09-18: 302 items read, 51 filed under a decision or a step, 23 judged; MuJoCo pinned at 3.3.7.
+Since 2026-09-18: 302 items read, 51 filed under a decision or a step, 23 judged; MuJoCo pinned at 3.10.0.
 
 **ADR 0007** · Sourced motor profiles and build reports
 - **adopt** [MuJoCo 3.7.0: Added the dcmotor actuator for modeling DC motors.](https://mujoco.readthedocs.io/en/latest/changelog.html) · the Pololu 37D profile of ADR 0007 maps onto dcmotor's resistance, back-EMF and friction; after the upgrade · FR-004
@@ -310,12 +313,12 @@ Since 2026-09-18: 302 items read, 51 filed under a decision or a step, 23 judged
 - [Sim-to-Real Aware End-to-End Learning Environment for Micromobility](https://arxiv.org/abs/2609.28969) · matched real, sim, transfer
 - and 2 more (`python -m little_world.radar digest --html page.html`)
 
+**ADR 0024** · Runs under variation: a result with its spread
+- **adopt** [LIBERO-plus: robustness of robot policies under systematic perturbations](https://arxiv.org/abs/2510.13626) · perturbation sweeps for the test fields: friction, payload and start pose varied, the spread of results reported · FR-001
+
 **Next: conveyor and feeder** · Conveyor and feeder
 - **adopt** [MuJoCo 3.11.0: Added geom/surfacevel: the velocity of a geom's surface as seen by contacts, given as a velocity field with a constant component and a...](https://mujoco.readthedocs.io/en/latest/changelog.html) · the factory feeder becomes a conveyor: a static geom with a surface velocity, no joints; after the MuJoCo upgrade · FR-007, FR-014
 - **learn** [Drake 1.57: virtual conveyor belts and an error-controlled contact integrator](https://drake.mit.edu/release_notes/v1.57.0.html) · a second opinion on conveyors and on contact integration accuracy · FR-007, FR-013
-
-**ADR 0024** · Runs under variation: a result with its spread
-- **adopt** [LIBERO-plus: robustness of robot policies under systematic perturbations](https://arxiv.org/abs/2510.13626) · perturbation sweeps for the test fields: friction, payload and start pose varied, the spread of results reported · FR-001
 
 **ADR 0014** · Servo damping the solver integrates
 - **adopt** [MuJoCo 3.12.0: Added the pid actuator: a PID controller with real position and velocity setpoint inputs, optional integral action (ki, integrating the...](https://mujoco.readthedocs.io/en/latest/changelog.html) · the engine's own PID servo, correct under every integrator, could replace the Torque slope of ADR 0014; the servo damping tests decide · FR-014
@@ -323,9 +326,8 @@ Since 2026-09-18: 302 items read, 51 filed under a decision or a step, 23 judged
 - [MuJoCo 3.12.0: The mode-flag semantics of dcmotor/input ("voltage", "position", "velocity", selecting the interpretation of a single control) are...](https://mujoco.readthedocs.io/en/latest/changelog.html) · matched position, controller, damping
 - and 4 more (`python -m little_world.radar digest --html page.html`)
 
-**ADR 0022** · Wheel contacts across MuJoCo releases: stance from shapes, curbs off the limit, the tilt gap named
+**ADR 0027** · MuJoCo 3.10.0 on every machine, with one contact per convex pair
 - **adopt** [MuJoCo 3.8.0: The multiccd option (multiple contacts returned from the convex collision detection pipeline) is now enabled by default.](https://mujoco.readthedocs.io/en/latest/changelog.html) · breaking for us: with multiccd on, the platform's caster climbs the 20 mm curb (disabling it restores the stop) and the tilt table tips the manipulator at 52.4 deg instead of 54.2 (53.0 with it off) · FR-002
-- [MuJoCo 3.5.0: MuJoCo Warp is now officially released.](https://mujoco.readthedocs.io/en/latest/changelog.html) · matched released, mujoco
 
 **Learn: language models that program robots** · Language models that program robots
 - **learn** [Project Fetch, phase two: a language model programs a quadruped robot](https://www.anthropic.com/research/project-fetch-phase-two) · agents write working robot code fast and fail at fine closed-loop control: Little World's blocks are the layer to give an agent · FR-008
@@ -352,6 +354,9 @@ Since 2026-09-18: 302 items read, 51 filed under a decision or a step, 23 judged
 **Next: paths through clutter** · Paths through clutter
 - [CAMP: Cooperative Arm-Hand Motion Planning in Constrained Spaces](https://arxiv.org/abs/2609.29021) · matched planning, motion, planners
 - [Coding Agents for Generalized Task and Motion Planning Problems](https://huggingface.co/papers/2609.30233) · matched planning, motion · FR-008
+
+**ADR 0022** · Wheel contacts across MuJoCo releases: stance from shapes, curbs off the limit, the tilt gap named
+- [MuJoCo 3.5.0: MuJoCo Warp is now officially released.](https://mujoco.readthedocs.io/en/latest/changelog.html) · matched released, mujoco
 
 **ADR 0010** · Sourced contact-pair friction
 - [MuJoCo 3.11.0: Added geom/adhesion and pair/adhesion: an adhesive force associated with a contact, useful for modeling sticky materials.](https://mujoco.readthedocs.io/en/latest/changelog.html) · matched pair, contact, geom

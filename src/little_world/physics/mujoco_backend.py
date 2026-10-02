@@ -23,6 +23,12 @@ _IMPLICIT = (mj.mjtIntegrator.mjINT_IMPLICIT, mj.mjtIntegrator.mjINT_IMPLICITFAS
 # datasheet's 330 rpm (3.7 % fast). Joints without sourced friction keep the defaults.
 DRY_FRICTION_SOLIMP = (.9999, .9999, .001, .5, 2.)
 NOSLIP_ITERATIONS = 2
+# One contact per convex pair, as in every MuJoCo release before 3.8 made multiccd the
+# default (ADR 0027). For a cylinder wheel on the box floor multiccd's extra contacts lie
+# within 0.1 mm of each other and the solver loads the leading one more as the wheel rolls:
+# a rolling loss of the engine's own on top of the sourced one (5 % of it at 0.8 m/s, 6 %
+# at 1.6). Flip this only to compare.
+MULTICCD = False
 
 
 def dry_friction_solref(timestep):
@@ -30,9 +36,10 @@ def dry_friction_solref(timestep):
 
 
 def _fwd_position(m, d, contact_hook):
-    """mj_fwdPosition in MuJoCo 3.3.7's order, with one hook between collision detection
-    and constraint construction - the only point at which a contact's friction can be
-    set and still reach the solver. See ADR 0010; bit-identity with mj_step is tested."""
+    """mj_fwdPosition in MuJoCo's order (written for 3.3.7, unchanged in 3.10.0), with one
+    hook between collision detection and constraint construction - the only point at which
+    a contact's friction can be set and still reach the solver. See ADR 0010; bit-identity
+    with mj_step is tested, so a release that reorders the stage fails that test."""
     mj.mj_kinematics(m, d); mj.mj_comPos(m, d); mj.mj_camlight(m, d)
     mj.mj_flex(m, d); mj.mj_tendon(m, d)
     mj.mj_makeM(m, d); mj.mj_factorM(m, d)
@@ -230,6 +237,8 @@ class MujocoBackend:
         # cube squeezed at 12 N slid out of the kit gripper at 2 mm/s. The noslip pass
         # removes that creep and leaves real sliding alone (ADR 0017).
         spec.option.noslip_iterations = NOSLIP_ITERATIONS
+        if not MULTICCD:
+            spec.option.disableflags |= int(mj.mjtDisableBit.mjDSBL_MULTICCD)
         spec.worldbody.add_light(pos=(0, 0, 4), dir=(0, 0, -1), diffuse=(.8, .8, .8))
         if scene.backdrop == 'sky':
             # An open field is larger than the room light's cone: add a low sun as well.
