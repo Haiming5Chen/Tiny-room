@@ -11,6 +11,17 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-02 · Claude (Cowork) · OPEN LW-013, LW-017 traced, the variations panel drawn
+Did: the radar profile files MuJoCo Menagerie and the four registered arms under ADR 0019
+(LW-013, done). LW-017 traced and written into ADR 0024 (no behaviour changed). The
+variations panel draws every run as a tick against the run as designed and the prediction,
+and keeps inside the window. Commits 6030ea3, 38672c3, 7140150.
+Measured: suites 634 with a display, 597 headless; 3.14 headless 597.
+Unfinished: LW-017 waits on the owner. The remaining open items need the owner (LW-004,
+LW-009, LW-012, LW-015, LW-017), need LW-004 first (LW-005 to LW-007), cannot be done from
+this workspace (LW-011: the fetcher has to meet the live feeds from the owner's machine), or
+are a direction to choose (LW-010, grasping from the cell's camera).
+
 ## 2026-10-02 · Claude (Cowork) · OPEN LW-016: poses aimed at a point
 Did: ADR 0025. A pose can carry the point its tool was aimed at; the runner, given the arm's
 aim (`ToolMotion.aim`), checks where the tool got to once the pose settles and solves it
