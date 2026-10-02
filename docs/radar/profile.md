@@ -50,6 +50,8 @@ mobile manipulation; differential drive control; point stabilization; nonholonom
 
 ## ADR 0019
 industrial robot cell; production line simulation; throughput; bin picking; manufacturing automation; digital twin factory
+<!-- The registered robots (Panda, FR3, Gen3, UR5e) are MuJoCo Menagerie models (OPEN LW-013). -->
+MuJoCo Menagerie; Menagerie robot models; Franka Emika Panda; Franka FR3; Kinova Gen3; Universal Robots UR5e; robot arm models; gripper models; MJCF robot description
 
 ## Next: conveyor and feeder
 conveyor belt simulation; part feeder; material flow; moving surface contact; logistics automation

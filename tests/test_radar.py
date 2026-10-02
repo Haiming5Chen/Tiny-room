@@ -221,6 +221,19 @@ def test_items_are_filed_under_the_decision_they_touch_with_the_words_that_match
     assert found['arxiv:2609.00009'].topic is None
 
 
+def test_the_robot_models_the_app_imports_are_watched_under_the_decision_that_uses_them():
+    """MuJoCo Menagerie is where the registered arms come from; its first run had much
+    attention and no topic (OPEN LW-013). It files under the robots' tool moves (ADR 0019)."""
+    found = match([Item('github:google-deepmind/mujoco_menagerie', 'github', 'mujoco_menagerie',
+                        'A collection of high-quality models for the MuJoCo physics engine, curated by '
+                        'Google DeepMind: Franka Panda, Kinova Gen3, Universal Robots UR5e and more.', kind='repo'),
+                   Item('github:x/fr3', 'github', 'Franka FR3 model update in MuJoCo Menagerie',
+                        'New collision meshes and actuator gains for the Franka FR3 arm model.', kind='release')],
+                  topics())
+    assert [m.topic.id for m in found] == ['ADR 0019', 'ADR 0019']
+    assert 'menagerie' in found[0].words
+
+
 def test_the_profile_reads_topics_and_refuses_a_heading_it_does_not_know(tmp_path):
     assert read_profile('# x\n## ADR 0001\nwords here\n> a note\n## Learn: a\n- b\n') == \
         [('ADR 0001', 'words here'), ('Learn: a', 'b')]

@@ -54,7 +54,8 @@ What it filed, and the triage (23 verdicts):
 
 Much attention, no topic: MuJoCo Menagerie (4,125 stars) - the source of this project's
 registered robots, which no topic names yet - MuJoCo MPC, MyoSuite, and two openly
-promotional lists. The first is a gap in the profile; the last two are noise.
+promotional lists. The first is a gap in the profile; the last two are noise. (Closed on
+2026-10-02: the profile files Menagerie and its arms under ADR 0019, OPEN LW-013.)
 
 Missed: short changelog entries carry too few words to match - "Added single-shot
 multicontact for collisions with cylinder geoms" names no topic, yet it is about every

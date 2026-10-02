@@ -874,3 +874,11 @@ headless suite: 595 passed.
 
 Not claimed: sensing is ideal (the simulator's own tool and base poses); a pose is checked
 once it settles, not tracked while it moves.
+
+## Radar: the robot models the app imports — 2026-10-02
+
+OPEN LW-013. The radar profile adds MuJoCo Menagerie and the four registered arms (Panda,
+FR3, Gen3, UR5e) to ADR 0019, whose tool moves they use. Checked in `tests/test_radar.py`
+(15): the Menagerie repository and a model update both file under ADR 0019 with "menagerie"
+among the words that matched. Suites: **633 passed** with a display, 596 headless; on 3.14
+the headless suite: 596 passed.
