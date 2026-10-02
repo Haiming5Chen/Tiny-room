@@ -1,8 +1,9 @@
 """Where the work stands: python scripts/agent_status.py
 
 Prints the branch, the commits it has beyond main, uncommitted files, the items still
-open in docs/agents/OPEN.md and the newest entry of docs/agents/REPORTS.md. Standard
-library only; reads git, never writes.
+open in docs/agents/OPEN.md, the proposals in docs/agents/FRONTIER.md that wait on the
+owner or are under way, and the newest entry of docs/agents/REPORTS.md. Standard library
+only; reads git, never writes.
 """
 from pathlib import Path
 import re
@@ -31,6 +32,18 @@ def open_items(text):
     return rows
 
 
+def frontier(text):
+    """[(id, title, status)] of the proposals in FRONTIER.md, in order (ADR 0026); the same
+    reading as `little_world.radar.brief.proposals`, without importing the package."""
+    found = []
+    heads = list(re.finditer(r'^### (FR-\d{3}) · (.+)$', text, re.MULTILINE))
+    for k, head in enumerate(heads):
+        body = text[head.end():heads[k + 1].start() if k + 1 < len(heads) else len(text)]
+        status = re.search(r'^- Status: (\w+)', body, re.MULTILINE)
+        found.append((head.group(1), head.group(2).strip(), status.group(1) if status else ''))
+    return found
+
+
 def reports(text):
     """[(date, heading)] of the reports, in the order written (newest first); the template
     in the file's fenced example is not a report."""
@@ -55,6 +68,15 @@ def main(out=sys.stdout):
     print(f'\nopen     {len(still)} of {len(rows)} items', file=out)
     for item_id, opened, by, what, *_ in still:
         print(f'  {item_id}  {opened}  {what[:86]}', file=out)
+    path = AGENTS / 'FRONTIER.md'
+    proposals = frontier(path.read_text(encoding='utf-8')) if path.exists() else []
+    waiting = [p for p in proposals if p[2] == 'proposed']
+    moving = [p for p in proposals if p[2] in ('accepted', 'doing')]
+    if proposals:
+        print(f'\nfrontier {len(proposals)} proposals: {len(waiting)} wait on the owner, '
+              f'{len(moving)} accepted or under way', file=out)
+        for proposal_id, title, state in moving + waiting:
+            print(f'  {proposal_id}  {state:9} {title[:72]}', file=out)
     found = reports((AGENTS / 'REPORTS.md').read_text(encoding='utf-8'))
     if found:
         print(f'\nlast report  {found[0][1]}', file=out)

@@ -11,6 +11,7 @@ python -m little_world.radar digest --days 7 --out digest.md --html digest.html
 python -m little_world.radar rate <id> adopt|learn|watch|skip "why"
 python -m little_world.radar ingest found.jsonl    # items gathered by hand or by an assistant
 python -m little_world.radar topics                # what it looks for (docs/radar/profile.md)
+python -m little_world.radar brief                 # its section of docs/agents/FRONTIER.md
 ```
 
 The Markdown digest is short - verdicts and their reasons first, three items a topic. The
@@ -20,6 +21,22 @@ chart of the simulator's releases, and each item's summary and matched words on 
 The loop it is for: a digest arrives; a person (or an assistant) judges the top of it;
 an *adopt* becomes a trial on a branch, and a trial that holds becomes a decision record
 that cites what it adopted. The radar reads; the test suite measures.
+
+## The brief and the proposals (ADR 0026)
+
+Between a verdict and a change sits a proposal. `docs/agents/FRONTIER.md` is the file both
+agents read: numbered proposals (`FR-nnn`), each with where it comes from, how it would be
+adapted to Little World, how we would know it worked and what it costs, and a status only
+the owner moves to accepted or declined. `brief` rewrites the end of that file, between two
+markers: the last two weeks' filed items, judged ones first, each with the proposals citing
+it, and the items judged worth adopting or learning that no proposal cites yet.
+
+Journals joined the feeds on 2 October: the tables of contents of Science Robotics, IEEE
+Robotics and Automation Letters and IEEE Transactions on Robotics, an article keyed by its
+DOI. From the cloud workspace those feeds refused automated requests (IEEE Xplore 418,
+Science 403), so the weekly reading the owner chose - a scheduled session - searches them
+with web search and writes its proposals outside the repository for the next agent session
+to bring in; `fetch` on the owner's machine reads them directly if they answer it.
 
 ## First run - 27 September 2026
 

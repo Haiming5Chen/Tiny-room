@@ -12,9 +12,12 @@ What agents have done and left open:
 - `docs/agents/OPEN.md` - unfinished work and problems found but not fixed, with who
   found them and when.
 - `docs/agents/STATE.md` - the branch, the tests and what is uncommitted.
+- `docs/agents/FRONTIER.md` - what papers, journals and releases offer that could change
+  the project, filed by the radar, and agents' proposals for it, each waiting for the
+  owner to accept or decline it (ADR 0026).
 
-`python scripts/agent_status.py` prints the branch, the tree, the open items and the
-newest report.
+`python scripts/agent_status.py` prints the branch, the tree, the open items, the
+proposals that wait on the owner and the newest report.
 
 ## Working alongside other agents
 
@@ -26,6 +29,11 @@ newest report.
   report with the evidence; whether to change it is the owner's call.
 - Add what you leave unfinished, or found and did not fix, to `docs/agents/OPEN.md`. Mark
   an item done only when you finished it.
+- Ideas from outside - a paper, a journal article, a release - go into
+  `docs/agents/FRONTIER.md` as proposals (`### FR-nnn · title` and its six fields), not
+  into the code. Read the file before proposing anything; only the owner accepts or
+  declines a proposal, and agents work on accepted ones only. To disagree with another
+  agent's proposal, add a dated `- Note` under it instead of changing it.
 - The owner publishes the branch to GitHub.
 
 ## Rules
@@ -55,7 +63,8 @@ python3 -m venv .venv && .venv/bin/python -m pip install -e '.[workshop,dev]'
 LITTLE_WORLD_TEST_RENDER=1 xvfb-run -a -s "-screen 0 1600x1000x24" \
     .venv/bin/python -m pytest -q                     # adds the OpenGL window tests (Linux)
 .venv/bin/python examples/workshop.py                 # the app, in Anime (builder) mode
-python scripts/agent_status.py                        # branch, tree, open items, last report
+python scripts/agent_status.py                        # branch, tree, open items, proposals, last report
+.venv/bin/python -m little_world.radar brief          # the radar's section of docs/agents/FRONTIER.md
 ruff check --select F src tests scripts               # optional; not a project dependency
 ```
 

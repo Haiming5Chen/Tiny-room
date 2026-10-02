@@ -88,8 +88,12 @@ change the design, try again.** A desktop robotics sandbox on
   words that matched; a triage (adopt, learn, watch, skip) is kept. Its first run found the
   project eleven MuJoCo releases behind, and running the suite on the newest showed which
   three wheel-contact results would move and why
-  ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)).
-- **634 automated tests**, including OpenGL window tests that drive the interface
+  ([ADR 0021](docs/adr/0021-frontier-radar.md), [radar](docs/RADAR.md)). It reads journals'
+  tables of contents too, and its brief feeds a file of numbered proposals - where an
+  idea would go in this app, how we would know it worked, what it costs - that the owner
+  accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
+  [frontier](docs/agents/FRONTIER.md)).
+- **642 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

@@ -11,7 +11,7 @@ import pytest
 
 from little_world.radar.fetch import Source, fetch, pinned_mujoco, request, sources
 from little_world.radar.items import (Item, arxiv_api, arxiv_rss, github_releases, github_search, hf_models,
-                                      hf_papers, jsonl, mujoco_changelog)
+                                      hf_papers, journal_rss, jsonl, mujoco_changelog)
 from little_world.radar.profile import project_root, read_profile, topics
 from little_world.radar.score import match, stem, words
 from little_world.radar.store import Store
@@ -144,6 +144,42 @@ General
 '''
 
 
+IEEE_TOC = '''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>IEEE Robotics and Automation Letters - new TOC</title>
+    <item>
+      <title>Rolling Resistance of Small Rubber Wheels on &lt;i&gt;Lab&lt;/i&gt; Floors</title>
+      <link>http://ieeexplore.ieee.org/document/11000001</link>
+      <description>&lt;p&gt;We measure the rolling resistance of tread wheels &amp;amp; casters on vinyl.&lt;/p&gt;</description>
+      <pubDate>Thu, 24 Sep 2026 00:00:00 GMT</pubDate>
+      <doi>10.1109/LRA.2026.1000001</doi>
+    </item>
+    <item>
+      <title>An Item Without a Link</title>
+    </item>
+  </channel>
+</rss>'''
+SCIENCE_TOC = '''<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/">
+  <channel rdf:about="https://www.science.org/journal/scirobotics">
+    <title>Science Robotics: Table of Contents</title>
+  </channel>
+  <item rdf:about="https://www.science.org/doi/abs/10.1126/scirobotics.zz0001?af=R">
+    <title>Mobile manipulators that <i>brake</i> without tipping</title>
+    <link>https://www.science.org/doi/abs/10.1126/scirobotics.zz0001?af=R</link>
+    <description>A raised payload and a hard stop tip a mobile manipulator over long before a slope would.</description>
+    <dc:date>2026-09-23T12:00:00-07:00</dc:date>
+    <prism:doi>10.1126/scirobotics.zz0001</prism:doi>
+  </item>
+  <item rdf:about="https://www.science.org/doi/abs/10.1126/scirobotics.zz0002?af=R">
+    <title>Editorial: a year of robots</title>
+    <dc:date>2026-09-23</dc:date>
+  </item>
+</rdf:RDF>'''
+
+
 # -- parsers ---------------------------------------------------------------------------------
 
 def test_arxiv_listing_keeps_new_and_cross_listed_papers_not_replacements():
@@ -186,6 +222,21 @@ def test_the_changelog_gives_the_entries_newer_than_the_pinned_version():
     assert gains.tags == ('Actuation', 'breaking') and gains.summary == 'The pid gains are now in torque space.'
     assert preset.tags == ('Actuation', 'breaking') and preset.summary.endswith('Its default input changed.')
     assert len(mujoco_changelog(CHANGELOG, since='3.2.0')) == 6
+
+
+def test_journal_tables_of_contents_give_papers_keyed_by_their_doi():
+    """IEEE Xplore writes RSS 2.0 with the DOI in its own element; Science writes RSS 1.0 with
+    the DOI under prism and in the article's address. Markup in titles is dropped."""
+    (wheels,) = journal_rss(IEEE_TOC, 'IEEE Robotics and Automation Letters')      # no link, no article
+    assert wheels.id == 'journal:10.1109/LRA.2026.1000001' and (wheels.source, wheels.kind) == ('journal', 'paper')
+    assert wheels.title == 'Rolling Resistance of Small Rubber Wheels on Lab Floors'
+    assert wheels.summary == 'We measure the rolling resistance of tread wheels & casters on vinyl.'
+    assert wheels.published == '2026-09-24' and wheels.tags == ('IEEE Robotics and Automation Letters',)
+    braking, editorial = journal_rss(SCIENCE_TOC, 'Science Robotics')
+    assert braking.id == 'journal:10.1126/scirobotics.zz0001' and braking.published == '2026-09-23'
+    assert braking.title == 'Mobile manipulators that brake without tipping'
+    assert editorial.id == 'journal:10.1126/scirobotics.zz0002'          # from its address, the query dropped
+    assert editorial.url.startswith('https://www.science.org/doi/abs/10.1126/') and editorial.summary == ''
 
 
 def test_gathered_items_are_checked_line_by_line():
@@ -341,8 +392,13 @@ def test_fetching_reads_every_feed_and_reports_the_one_that_failed():
 
 def test_the_feeds_are_polite_and_a_token_goes_to_github_only():
     assert pinned_mujoco(project_root()) == '3.3.7'
-    names = [s.name for s in sources('3.3.7')]
-    assert 'arXiv cs.RO' in names and 'MuJoCo changelog' in names
+    feeds = {s.name: s for s in sources('3.3.7')}
+    assert 'arXiv cs.RO' in feeds and 'MuJoCo changelog' in feeds
+    journals = [feeds[n] for n in ('Science Robotics', 'IEEE Robotics and Automation Letters',
+                                   'IEEE Transactions on Robotics')]
+    assert all(j.pause >= 2. for j in journals)
+    assert journals[0].parse(SCIENCE_TOC, None)[0].tags == ('Science Robotics',)
+    assert journals[2].parse(IEEE_TOC, None)[0].tags == ('IEEE Transactions on Robotics',)
     github = request('https://api.github.com/search/repositories?q=x', {'GITHUB_TOKEN': 'abc'})
     arxiv = request('https://rss.arxiv.org/rss/cs.RO', {'GITHUB_TOKEN': 'abc'})
     assert github.get_header('Authorization') == 'Bearer abc' and arxiv.get_header('Authorization') is None
@@ -363,3 +419,123 @@ def test_the_command_line_ingests_digests_and_rates(tmp_path):
     assert '1 new of 1 items' in text and 'web:grip: watch' in text and 'ADR 0017' in text
     assert 'Grasp slip and creep' in page.read_text()
     assert 'Grasp slip and creep' in (tmp_path / 'digest.html').read_text()
+
+
+# -- the agents' brief (ADR 0026) ------------------------------------------------------------------
+
+FRONTIER = '''# Frontier
+
+How agents use this file.
+
+## Proposals
+
+### FR-001 · Conveyor belts as moving surfaces
+- Status: accepted (the owner, 2026-09-30)
+- From: [a conveyor](https://arxiv.org/abs/2609.00004) (`arxiv:2609.00004`)
+- Idea: a surface with a velocity.
+- In Little World: the feeder.
+- How we would know: a box moves at the belt's speed within 3 %.
+- Cost and needs: a newer MuJoCo.
+
+### FR-002 · The engine's PID servo
+- Status: proposed
+- From: `mujoco:3.4.0#4`
+- Idea: gains in torque space.
+- In Little World: ADR 0014.
+- How we would know: the damping tests.
+- Cost and needs: an upgrade.
+- Note (Codex, 2026-10-01): the slope may still be needed.
+
+## Radar brief
+
+<!-- radar:begin -->
+stale text
+<!-- radar:end -->
+
+Kept after the markers.
+'''
+
+
+def test_proposals_are_read_with_their_status_and_end_where_the_next_section_starts():
+    from little_world.radar.brief import proposals
+    first, second = proposals(FRONTIER)
+    assert first[:3] == ('FR-001', 'Conveyor belts as moving surfaces', 'accepted')
+    assert second[:3] == ('FR-002', "The engine's PID servo", 'proposed')
+    assert 'Note (Codex' in second[3] and 'Radar brief' not in second[3] and 'stale' not in second[3]
+
+
+def test_a_proposal_cites_an_item_by_its_id_or_by_a_link_no_other_item_shares():
+    from little_world.radar.brief import cited, proposals
+    found = proposals(FRONTIER)
+    (belt,) = arxiv_api(ATOM)
+    changes = mujoco_changelog(CHANGELOG, '3.3.7')                   # five entries, one page
+    assert cited(belt, found) == ['FR-001']
+    assert cited(changes[3], found) == ['FR-002'] and cited(changes[0], found) == []
+    assert cited(changes[3], [('FR-009', 'x', 'proposed', 'From: `mujoco:3.4.0#40`')]) == []   # #4 is not #40
+    page = changes[0].url
+    linked = [(pid, title, status, f'{body}\n- See {page}') for pid, title, status, body in found]
+    assert page and cited(changes[0], linked) == ['FR-001', 'FR-002']
+    assert cited(changes[0], linked, shared=frozenset({page})) == []
+
+
+def brief_of(rated, found=(), per_topic=3):
+    from little_world.radar.brief import brief
+    items = arxiv_rss(RSS) + arxiv_api(ATOM) + mujoco_changelog(CHANGELOG, '3.3.7') + [
+        Item('arxiv:2609.00009', 'arxiv', 'Protein Folding with Language Models',
+             'We fold proteins with a large language model trained on sequences.')]
+    with Store(':memory:') as store:
+        store.add(items)
+        for item_id, verdict, note in rated:
+            store.rate(item_id, verdict, note)
+        return brief(match(store.items(), topics()), store.verdicts(), '2026-10-02', '2026-09-18', found,
+                     per_topic, '3.3.7')
+
+
+def test_the_brief_leads_with_judged_items_names_their_proposals_and_what_waits_for_one():
+    from little_world.radar.brief import BEGIN, END, proposals
+    rated = [('arxiv:2609.00004', 'adopt', 'the feeder becomes a belt'),
+             ('arxiv:2609.00001', 'learn', 'noslip <!-- radar:end --> already holds'),
+             ('arxiv:2609.00002', 'skip', 'not our machines')]
+    text = brief_of(rated, proposals(FRONTIER))
+    assert text.startswith(BEGIN) and text.endswith(END) and text.count(END) == 1   # feed text stays inert
+    assert 'Since 2026-09-18: 9 items read, ' in text and ', 3 judged; MuJoCo pinned at 3.3.7.' in text
+    assert '- **adopt** [A Conveyor Belt as a Moving Contact Surface](https://arxiv.org/abs/2609.00004' in text
+    assert 'the feeder becomes a belt · FR-001' in text and 'matched ' in text
+    assert text.index('**adopt**') < text.index('**learn**')
+    assert 'Tip-Over Margins' not in text and 'Protein Folding' not in text    # skipped; filed nowhere
+    waiting = text.split('with no proposal yet:', 1)[1]
+    assert 'Creep-Free Grasps' in waiting and 'Conveyor Belt' not in waiting
+    assert 'with no proposal yet' not in brief_of(rated[:1], proposals(FRONTIER))
+    assert '- and 1 more (`python -m little_world.radar digest' in brief_of(rated, proposals(FRONTIER), per_topic=1)
+
+
+def test_the_brief_replaces_only_its_own_section(tmp_path):
+    from little_world.radar.brief import BEGIN, END, write
+    path, section = tmp_path / 'FRONTIER.md', f'{BEGIN}\nnew text\n{END}'
+    path.write_text(FRONTIER, encoding='utf-8')
+    write(path, section)
+    assert path.read_text(encoding='utf-8') == FRONTIER.replace('stale text', 'new text')
+    write(path, section)
+    assert path.read_text(encoding='utf-8') == FRONTIER.replace('stale text', 'new text')
+    bare = tmp_path / 'other.md'
+    bare.write_text('# Frontier\n', encoding='utf-8')
+    write(bare, section)
+    assert bare.read_text(encoding='utf-8') == f'# Frontier\n\n{section}\n'
+
+
+def test_the_command_line_writes_the_brief_and_keeps_the_proposals(tmp_path):
+    from little_world.radar.__main__ import main
+    from little_world.radar.brief import BEGIN
+    db, gathered, frontier = tmp_path / 'r.sqlite', tmp_path / 'g.jsonl', tmp_path / 'FRONTIER.md'
+    gathered.write_text(json.dumps({'id': 'arxiv:2609.00004', 'title': 'A Conveyor Belt as a Moving Contact Surface',
+                                    'summary': 'conveyor belts: a surface velocity seen by contacts, no extra joints',
+                                    'kind': 'paper'}) + '\n')
+    frontier.write_text(FRONTIER, encoding='utf-8')
+    out = io.StringIO()
+    assert main(['--db', str(db), 'ingest', str(gathered)], out) == 0
+    assert main(['--db', str(db), 'rate', 'arxiv:2609.00004', 'adopt', 'a belt'], out) == 0
+    assert main(['--db', str(db), 'brief', '--file', str(frontier)], out) == 0
+    text = frontier.read_text(encoding='utf-8')
+    assert f'wrote {frontier}' in out.getvalue() and 'stale text' not in text
+    assert text.startswith(FRONTIER.split(BEGIN)[0]) and text.endswith('Kept after the markers.\n')
+    assert '- **adopt** A Conveyor Belt as a Moving Contact Surface · a belt · FR-001' in text    # no address, no link

@@ -883,3 +883,24 @@ FR3, Gen3, UR5e) to ADR 0019, whose tool moves they use. Checked in `tests/test_
 among the words that matched. Suites: **633 passed** with a display, 596 headless; on 3.14
 the headless suite: 596 passed. With the variations panel's ticks (one more check): **634
 passed** with a display, 597 headless; 3.14 headless 597.
+
+## Frontier brief and proposals — 2026-10-02
+
+ADR 0026. The radar reads three journals' tables of contents (Science Robotics, IEEE
+Robotics and Automation Letters, IEEE Transactions on Robotics) and writes a brief into
+`docs/agents/FRONTIER.md`, where agents write numbered proposals for the owner to accept or
+decline; `scripts/agent_status.py` lists those waiting. First brief: 302 items read, 51
+filed, 23 judged; 14 proposals, every adopt and learn verdict cited by one. Checks:
+`tests/test_radar.py` (21, six new) - both journal feed shapes (DOIs from elements and from
+addresses without their query, markup dropped, an item without a link skipped), the
+journals among the sources, proposals read with their status, citations by whole id and by
+a link no other item shares, the brief's order, inert feed text and waiting list, writing
+only between the markers, the command line end to end; `tests/test_agent_docs.py` (6, two
+new) - every proposal has its six fields in order and a known status, a done one names its
+decision record, and the status script lists the proposals that wait on the owner. On
+MuJoCo 3.3.7: **642 passed** with a display, 605 headless.
+
+Not claimed: the journal feeds were not reached from this workspace (IEEE Xplore answered
+418, Science 403); the brief reads no papers; a proposal is an agent's reading of its
+sources and says so where only a title was seen.
+

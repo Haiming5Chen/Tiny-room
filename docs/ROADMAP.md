@@ -86,8 +86,12 @@ was the source of one of those results, and the build stage warns about a design
 the air (ADR 0023). A run can be repeated with variations - set down off its mark, loaded,
 on other floors - and reports its spread and what moved it most (ADR 0024); the first
 sweeps found a loaded cart rocking between its casters under its own arm, and program poses
-now check where the tool got to and correct it (ADR 0025).
-Next, if the owner chooses: upgrade MuJoCo and adopt its conveyor surfaces for the factory's
-feeder and its PID and DC-motor actuators for the kit's servos and gearmotors; calibrate one real
-servo with its system identification toolbox; and grasp from the cell's camera instead of
+now check where the tool got to and correct it (ADR 0025). What the field publishes now
+reaches the project as numbered proposals the owner accepts or declines, with the radar's
+brief beside them and journals among its sources (ADR 0026, docs/agents/FRONTIER.md).
+Next: MuJoCo 3.10.0 on every machine, the newest release with wheels for the owner's Intel
+Mac (accepted, FR-002); then what the owner picks from the frontier proposals - among them
+the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's feeder
+(moving surfaces and the PID actuator need a release past 3.10), one real servo calibrated
+with the system identification toolbox, and grasping from the cell's camera instead of
 known positions.

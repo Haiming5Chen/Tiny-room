@@ -11,6 +11,24 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-02 · Claude (Cowork) · the frontier brief and proposals
+Did: ADR 0026, asked for by the owner as the project's "brain". The radar reads journals'
+tables of contents (Science Robotics, IEEE RA-L, IEEE T-RO) besides preprints and releases,
+and `python -m little_world.radar brief` writes its findings into the new
+`docs/agents/FRONTIER.md`. Fourteen proposals written there (FR-001 to FR-014): where each
+idea would go in Little World, how we would know it worked, what it costs.
+`scripts/agent_status.py` lists the ones waiting for the owner. As the owner chose, a weekly
+scheduled session (Mondays) searches the same sources and writes new proposals outside the
+repository; the next agent session brings them in.
+Measured: first brief: 302 items read, 51 filed, 23 judged; every adopt and learn verdict is
+cited by a proposal. Suites on MuJoCo 3.3.7: 642 with a display, 605 headless.
+Unfinished: the journal feeds refused this workspace (IEEE Xplore 418, Science 403; LW-011).
+The weekly run's first brief is due on 2026-10-05.
+For the owner: twelve proposals wait for you (FR-003 to FR-014). If it helps: FR-003 and
+FR-006 are cheap and make every result more defensible; FR-004 and FR-005 bring the motors
+and the machines' tipping closer to the real ones; FR-009 and FR-010 need you in a lab;
+FR-014 waits on hardware newer than an Intel Mac.
+
 ## 2026-10-02 · Claude (Cowork) · OPEN LW-013, LW-017 traced, the variations panel drawn
 Did: the radar profile files MuJoCo Menagerie and the four registered arms under ADR 0019
 (LW-013, done). LW-017 traced and written into ADR 0024 (no behaviour changed). The

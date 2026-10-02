@@ -8,6 +8,7 @@ whether it came from arXiv's own feed or Hugging Face's daily papers.
 from dataclasses import dataclass
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+import html
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -27,6 +28,8 @@ class Item:
 
 
 KINDS = ('paper', 'model', 'repo', 'release', 'change')
+RDF_ABOUT = '{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about'
+DOI = re.compile(r'10\.\d{4,9}/[^\s"<>?#&]+')
 
 
 def _local(tag):
@@ -102,6 +105,35 @@ def arxiv_api(text):
         categories = tuple(c.get('term', '') for c in entry if _local(c.tag) == 'category')
         items.append(Item(f'arxiv:{pid}', 'arxiv', _text(fields.get('title')), _text(fields.get('summary')),
                           f'https://arxiv.org/abs/{pid}', _date(_text(fields.get('published'))), 'paper', 0., categories))
+    return items
+
+
+def _untagged(element):
+    """An element's text with any markup in it - child elements, or tags escaped inside the
+    text as feeds write them - reduced to its words."""
+    text = ''.join(element.itertext()) if element is not None else ''
+    return ' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', text)).split())
+
+
+def journal_rss(text, journal=''):
+    """A journal's table-of-contents feed as papers: RSS 2.0, as IEEE Xplore writes it, or
+    RSS 1.0 (RDF), as Science writes it. An article is 'journal:<DOI>' where the item gives
+    a DOI, else 'journal:<link>'; its journal is its tag (ADR 0026)."""
+    items = []
+    for element in ET.fromstring(text).iter():
+        if _local(element.tag) != 'item':
+            continue
+        fields = _children(element)
+        title = _untagged(fields.get('title'))
+        link = _text(fields.get('link')) or element.get(RDF_ABOUT, '')
+        found = DOI.search(' '.join((_text(fields.get('doi')), _text(fields.get('identifier')), link)))
+        key = found.group(0).rstrip('.') if found else link
+        if not title or not key:
+            continue
+        published = _date(_text(fields.get('pubDate')) or _text(fields.get('date')) or
+                          _text(fields.get('publicationDate')))
+        items.append(Item(f'journal:{key}', 'journal', title, _untagged(fields.get('description')), link,
+                          published, 'paper', 0., (journal,) if journal else ()))
     return items
 
 
@@ -296,4 +328,5 @@ def jsonl(text):
 
 
 PARSERS = {'arxiv-rss': arxiv_rss, 'arxiv-api': arxiv_api, 'hf-papers': hf_papers, 'hf-models': hf_models,
-           'github-search': github_search, 'mujoco-changelog': mujoco_changelog, 'jsonl': jsonl}
+           'github-search': github_search, 'mujoco-changelog': mujoco_changelog, 'jsonl': jsonl,
+           'journal-rss': journal_rss}

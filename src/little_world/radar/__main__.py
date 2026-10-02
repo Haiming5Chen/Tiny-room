@@ -1,9 +1,10 @@
-"""python -m little_world.radar fetch | ingest FILE | digest | rate ID VERDICT [NOTE] | topics"""
+"""python -m little_world.radar fetch | ingest FILE | digest | brief | rate ID VERDICT [NOTE] | topics"""
 import argparse
 from datetime import date, timedelta
 from pathlib import Path
 import sys
 
+from .brief import brief, proposals, write
 from .digest import markdown, plan
 from .page import html
 from .fetch import fetch, pinned_mujoco, sources
@@ -30,6 +31,10 @@ def main(argv=None, out=sys.stdout):
     show.add_argument('--out', default=None, help='a Markdown file (default: print it)')
     show.add_argument('--html', default=None, help='also write the digest as a self-contained page')
     show.add_argument('--fragment', action='store_true', help='the page without its own document skeleton')
+    agents = commands.add_parser('brief', help="write the radar's part of the agents' frontier file")
+    agents.add_argument('--days', type=int, default=14)
+    agents.add_argument('--least', type=float, default=LEAST, help='the cosine an item needs to match a topic')
+    agents.add_argument('--file', default=None, help='default: docs/agents/FRONTIER.md in the project')
     rate = commands.add_parser('rate', help='record a verdict on an item')
     rate.add_argument('id')
     rate.add_argument('verdict', choices=VERDICTS)
@@ -69,6 +74,13 @@ def main(argv=None, out=sys.stdout):
                 print(f'wrote {args.out}', file=out)
             elif not args.html:
                 print(text, file=out, end='')
+        elif args.command == 'brief':
+            since = (date.today() - timedelta(days=args.days)).isoformat()
+            path = Path(args.file) if args.file else Path(root) / 'docs' / 'agents' / 'FRONTIER.md'
+            written = proposals(path.read_text(encoding='utf-8')) if path.exists() else []
+            write(path, brief(match(store.items(since), topics(root), args.least), store.verdicts(),
+                              date.today().isoformat(), since, written, pinned=pinned_mujoco(root)))
+            print(f'wrote {path}', file=out)
         elif args.command == 'rate':
             store.rate(args.id, args.verdict, ' '.join(args.note))
             print(f'{args.id}: {args.verdict}', file=out)

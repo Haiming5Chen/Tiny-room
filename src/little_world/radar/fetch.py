@@ -18,6 +18,10 @@ from . import items as parse
 
 USER_AGENT = 'little-world-radar/0.1 (a personal research digest)'
 WATCHED = ('huggingface/lerobot', 'newton-physics/newton', 'mujocolab/mjlab', 'google-deepmind/mujoco_playground')
+# Journals' table-of-contents feeds (ADR 0026): what reaches print, not only preprints.
+JOURNALS = (('Science Robotics', 'https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics'),
+            ('IEEE Robotics and Automation Letters', 'https://ieeexplore.ieee.org/rss/TOC7083369.XML'),
+            ('IEEE Transactions on Robotics', 'https://ieeexplore.ieee.org/rss/TOC8860.XML'))
 
 
 @dataclass(frozen=True)
@@ -53,6 +57,7 @@ def sources(pinned='0'):
                lambda t, c: parse.mujoco_changelog(t, pinned)),
         *(Source(f'{repo} releases', f'https://api.github.com/repos/{repo}/releases?per_page=5',
                  (lambda r: lambda t, c: parse.github_releases(t, r))(repo)) for repo in WATCHED),
+        *(Source(name, url, (lambda n: lambda t, c: parse.journal_rss(t, n))(name), 2.) for name, url in JOURNALS),
     )
 
 
