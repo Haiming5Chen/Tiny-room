@@ -16,7 +16,8 @@ import tempfile
 import threading
 
 from little_world.fields.variation import plan
-from little_world.inventory.sweep import PROTOCOLS, assurance, from_json, headline, markdown, moved_most, spread, strip
+from little_world.inventory.sweep import (PROTOCOLS, assurance, from_json, headline, markdown, moved_most,
+                                          ranges_for, spread, strip)
 
 MUTED = (.49, .57, .63)
 ACCENT = (.37, .83, .69)
@@ -52,7 +53,7 @@ class VariedRuns:
         process = subprocess.Popen(self.vary_command(record.field, design, out, name), stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, text=True, start_new_session=os.name == 'posix')
         state = dict(field=record.field, run=record.number, blueprint=self.editor.blueprint, process=process,
-                     done=0, total=len(plan()), out=out, result=None, error='', lines=[])
+                     done=0, total=len(plan(ranges_for(record.field))), out=out, result=None, error='', lines=[])
 
         def read():
             for line in process.stdout:
@@ -97,7 +98,8 @@ class VariedRuns:
         if not self.variable(record.field):
             return y
         if v is None or v['field'] != record.field or v['blueprint'] is not self.editor.blueprint:
-            button(f'Repeat with variations ({len(plan())} runs)', 12, y, 264, self.start_variations, h=28)
+            button(f'Repeat with variations ({len(plan(ranges_for(record.field)))} runs)', 12, y, 264,
+                   self.start_variations, h=28)
             text('off its mark, turned, loaded, other floors', 16, y + 34, 10, MUTED, 256)
             return y + 54
         section(f'RUN {v["run"]} REPEATED  /  varied', y)

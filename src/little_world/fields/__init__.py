@@ -5,7 +5,7 @@ facing +X - so choosing a field never moves the design. Props are ordinary Bluep
 bodies with sourced surfaces (ADR 0010); nothing here is simulated specially.
 Standard library only.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import atan2, cos, degrees, radians, sin, tan
 from little_world.components import Transform, box
 from little_world.construction.structure import outline
@@ -41,13 +41,43 @@ class Field:
     gauge_top: float = 90.
     side: str | None = None
     ground: tuple = ()
+    # Set square before it starts (ADR 0029): the machine is turned in place to face along
+    # the field, as a tip test sets a machine square against its stops.
+    squared: bool = False
 
     def scene(self, machine):
+        if self.squared:
+            machine = replace(machine, blueprint=squared(machine.blueprint))
         parts = self.build(machine.blueprint) if self.fitted else self.build()
         return Scene((*parts, machine), backdrop=self.backdrop)
 
     def commands(self, state):
         return {} if self.actuate is None or state is None else self.actuate(state)
+
+
+def heading(blueprint):
+    """Which way the machine faces, degrees anticlockwise about the vertical: the yaw of
+    its first free body (its base), 0 for a design built facing along X."""
+    base = next((b for b in blueprint.components if isinstance(b, Body) and b.parent is None), None)
+    if base is None:
+        return 0.
+    w, x, y, z = base.transform.quaternion
+    return degrees(atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
+
+
+def squared(blueprint):
+    """The machine turned in place about its base until it faces along X: how a tip test
+    sets a machine down square to the table's hinge line before its rail is set against it."""
+    from .variation import moved
+    turn = heading(blueprint)
+    if abs(turn) < 1e-9:
+        return blueprint
+    base = next(b for b in blueprint.components if isinstance(b, Body) and b.parent is None)
+    px, py, _ = base.transform.position
+    back = radians(-turn)
+    # moved() turns about the mark; shifting by p - R p turns about the base instead.
+    rx, ry = cos(back) * px - sin(back) * py, sin(back) * px + cos(back) * py
+    return moved(blueprint, px - rx, py - ry, -turn)
 
 
 # -- materials: surfaces name the real thing, so contact friction is sourced ---------------
@@ -425,7 +455,7 @@ TILT = Field(
     f'The machine stands on a table that tilts, left side up, {TILT_RATE:g} deg/s to {TILT_MAX:g} deg, a 5 mm trip '
     'rail against its right-hand wheels. Where it tips over is its static stability.',
     tilt_entities, goals=tilt_goals(), actuate=tilt_actuate, home=((0., 0., .1), 2.6, 90., -12.), fitted=True,
-    reading=table_angle, gauge_top=TILT_MAX, side='right', ground=('field/tilt_table',))
+    reading=table_angle, gauge_top=TILT_MAX, side='right', ground=('field/tilt_table',), squared=True)
 
 
 FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE, FETCH, DOORWAY, TILT)}

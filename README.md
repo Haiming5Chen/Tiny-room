@@ -87,6 +87,10 @@ change the design, try again.** A desktop robotics sandbox on
   which shows only that at least 69 % of such set-ups would; drawn 59 times, it fetched it
   in all 59 - it fails in under 5 % of them, with 95 % confidence
   ([ADR 0028](docs/adr/0028-rates-from-runs-drawn-at-random.md)).
+- **A tip test done as in a lab.** The tilt table sets a machine square against its rail
+  before tilting: one set down turned 3 degrees now tips where it does straight, 54.0
+  degrees, instead of 3 degrees early
+  ([ADR 0029](docs/adr/0029-tilt-test-squares-the-machine.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

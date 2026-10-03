@@ -5,6 +5,7 @@ crate - so nothing tested turning where turning matters, or how steep a side slo
 machine stands on; and ADR 0015's stance, predicted from the design, was checked only
 standing still on the level.
 """
+import math
 from math import atan2, cos, degrees, radians, sin
 import pytest
 
@@ -136,6 +137,38 @@ def test_the_trip_rail_is_set_against_the_machine_on_the_table():
     from little_world.fields import RAIL, TILT_TABLE, trip_rail
     assert trip_rail(None) == pytest.approx(-(TILT_TABLE[1] / 2 - RAIL))
     assert trip_rail(mobile_platform_blueprint()) == pytest.approx(-.164, abs=.002)
+
+
+def test_the_tilt_table_sets_a_turned_machine_square_against_its_rail():
+    """OPEN LW-017, settled by the owner on 2026-10-03: a machine set down 3 deg turned met
+    the rail with one tread block, swung about it and went over 3.1 deg early. The tilt test
+    now turns the machine in place until it faces along the table's hinge line, as a tip
+    test sets a machine square against its stops (ADR 0029); its sweeps leave turning out
+    and vary everything else."""
+    from little_world.fields import heading, squared, trip_rail
+    from little_world.fields.variation import moved, plan
+    from little_world.inventory.sweep import ranges_for
+    design = mobile_manipulator_blueprint()
+    turned = moved(design, .01, -.01, -3.)
+    assert heading(turned) == pytest.approx(-3.) and heading(design) == 0.
+    machine = next(e for e in FIELDS['tilt'].scene(Entity('machine', turned)).entities if e.id == 'machine')
+    square = machine.blueprint
+    assert square == squared(turned) and heading(square) == pytest.approx(0., abs=1e-9)
+    # Turned in place about its base: the design moved, every body by the same offset.
+    bodies = [(a, b) for a, b in zip(design.components, square.components) if isinstance(a, Body) and a.parent is None]
+    root = next(iter(bodies))
+    offset = [q - p for p, q in zip(root[0].transform.position, root[1].transform.position)]
+    assert abs(offset[2]) < 1e-12 and math.hypot(offset[0], offset[1]) < .02
+    for a, b in bodies:
+        assert [q - p for p, q in zip(a.transform.position, b.transform.position)] == pytest.approx(offset, abs=1e-12)
+        assert b.transform.quaternion == pytest.approx(a.transform.quaternion, abs=1e-12)
+    assert trip_rail(square) - trip_rail(design) == pytest.approx(offset[1], abs=1e-9)
+    # What the sweep predicts for it is what it predicts for the design: the field stands it square.
+    assert standing(square).tip('right') == pytest.approx(standing(design).tip('right'), abs=1e-9)
+    assert FIELDS['fetch'].scene(Entity('machine', turned)).entities[-1].blueprint == turned   # only where squared
+    assert ranges_for('tilt').turn == 0. and ranges_for('fetch').turn == 3.
+    labels = [v.label for v in plan(ranges_for('tilt'))]
+    assert len(labels) == 18 and not any('turned' in label for label in labels)
 
 
 def test_a_skid_steer_rover_cannot_turn_on_the_spot_on_concrete():

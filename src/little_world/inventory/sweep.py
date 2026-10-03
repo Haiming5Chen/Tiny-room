@@ -129,6 +129,12 @@ def solve(field_id, blueprint):
         return fetch(motion, base, jaws, 'objects/fetch_cube', place, reach_in=fields.BIN_SIZE / 2 - .045)
 
 
+def ranges_for(field_id):
+    """The variation ranges a field's sweep uses: a field that sets the machine square
+    before it starts (the tilt table, ADR 0029) leaves turning out - it would be undone."""
+    return Ranges(turn=0.) if FIELDS[field_id].squared else Ranges()
+
+
 def run(field_id, blueprint, variation=Variation(), program=None, site=None):
     """One run of a field under one variation. A program field's program, when not given,
     is solved for `blueprint` as designed."""
@@ -144,6 +150,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None):
         bp = varied(blueprint, variation, site)
     except ValueError as error:
         return Run(variation, error=str(error))
+    if field.squared:               # predicted for the machine as the field will stand it (ADR 0029)
+        from little_world.fields import squared
+        bp = squared(bp)
     predicted = None
     if field.reading is not None and field.side is not None:
         from little_world.construction.structure import standing
@@ -499,7 +508,9 @@ def _changes(run, nominal):
 
 def _ranges(sweep):
     r = sweep.ranges
-    return (f'set down up to {100 * r.place:g} cm and {r.turn:g} deg off its mark; up to {r.payload:g} kg carried, '
+    placed = (f'set down up to {100 * r.place:g} cm and {r.turn:g} deg off its mark' if r.turn else
+              f'set down up to {100 * r.place:g} cm off its mark, then squared to the field')
+    return (f'{placed}; up to {r.payload:g} kg carried, '
             f'up to {100 * r.shift:g} cm either side of its site; friction across each surface pair\'s published '
             'range (contact_pairs.SPREADS; a factor of two where a source gives none). The placement and '
             'payload ranges are assumptions, stated; the friction ranges are the sources\'.')
@@ -521,11 +532,13 @@ def main(argv=None):
     parser.add_argument('--name', help='what to call the design in the report (default: --design)')
     args = parser.parse_args(argv)
     bp = design(args.design)
-    variations = plan(samples=args.samples, seed=args.seed)
+    ranges = ranges_for(args.field)
+    variations = plan(ranges, samples=args.samples, seed=args.seed)
 
     def progress(done, total, r):
         print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
-    result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress)
+    result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
+                   ranges=ranges)
     text = markdown(result)
     print(text)
     from pathlib import Path

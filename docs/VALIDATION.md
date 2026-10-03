@@ -939,3 +939,16 @@ display ran with ADR 0030.
 
 Not claimed: the rate is over set-ups drawn uniformly within ranges that are assumptions
 (FR-009); one seed draws them.
+
+## The tilt test squares the machine — 2026-10-03
+
+ADR 0029 (OPEN LW-017; the owner chose to align the machine with the rail). The tilt
+table turns the machine in place to face along its hinge line before setting the rail;
+its sweeps no longer turn the machine (18 runs). Arm on a cart, MuJoCo 3.10.0: tips over
+between 54.0 and 58.5 deg, -1.8 to +0.7 deg from each run's prediction (the turned run had
+been 2.8 deg off); set down turned 3 deg either way, it tips at 53.98 and 54.00 deg (as
+designed 53.99). Checked in `tests/test_more_fields.py` (one new). Suites: 616 headless; the suite with a
+display ran with ADR 0030.
+
+Not claimed: what a turned machine does against a rail is no longer measured by this field
+(ADR 0024 keeps it).

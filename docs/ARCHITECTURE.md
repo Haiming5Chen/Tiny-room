@@ -171,7 +171,9 @@ program template solved once for the design on its mark), in worker processes, a
 each goal's spread; it is also a command (`python -m little_world.inventory.sweep`). The run
 report starts it in another Python process (`ui/varied_runs.py`), so the window stays live.
 A sweep's rates come from its random repeats only, with exact binomial bounds from
-`inventory/confidence.py` (standard library, ADR 0028).
+`inventory/confidence.py` (standard library, ADR 0028). A field can stand the machine square
+before it starts (`Field.squared`, the tilt table, ADR 0029); its sweeps then leave turning
+out (`sweep.ranges_for`).
 
 ## Frontier radar
 

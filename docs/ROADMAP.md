@@ -92,8 +92,9 @@ brief beside them and journals among its sources (ADR 0026, docs/agents/FRONTIER
 MuJoCo 3.10.0 now runs on every machine - the newest release with wheels for the owner's
 Intel Mac - with one contact per convex pair, so the engine adds no rolling loss of its own
 to the sourced one (ADR 0027). A sweep says how sure it is: its rates come from the
-set-ups drawn at random, with exact bounds (ADR 0028). Next: what the owner picks from the
-frontier proposals -
+set-ups drawn at random, with exact bounds (ADR 0028). The tilt test sets a machine square
+against its rail before it tilts (ADR 0029). Next: what the owner picks from the frontier
+proposals -
 among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the
 factory's feeder (moving surfaces and the PID actuator need a release past 3.10), one real
 servo calibrated with the system identification toolbox, and grasping from the cell's
