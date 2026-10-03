@@ -15,6 +15,7 @@ import time
 
 from little_world.fields import FIELDS
 from little_world.fields.variation import Ranges, Variation, friction, payload_site, plan, varied
+from little_world.inventory.confidence import CONFIDENCE, lower_bound, runs_needed
 
 # Field -> (protocol, seconds). Fields not listed have no protocol a machine can follow alone.
 PROTOCOLS = {'tilt': ('hold', 33.), 'fetch': ('program', 60.), 'pick_place': ('program', 40.),
@@ -280,6 +281,56 @@ def spread(sweep):
     return out
 
 
+def drawn(sweep):
+    """The runs whose conditions were drawn at random within the ranges: the sample. The
+    others were chosen - the design as designed, each variation alone at either end of its
+    range - and check corners; they do not measure how often anything happens (ADR 0028)."""
+    return [r for r in sweep.runs if not r.error and r.variation.label.startswith('repeat')]
+
+
+def _succeeded(x):
+    return x is not None and x.status in ('met', 'kept')
+
+
+@dataclass(frozen=True)
+class Rate:
+    """How many drawn runs met a goal (or every goal), and the share of runs drawn the same
+    way that would, at least, with CONFIDENCE (one-sided, Clopper-Pearson)."""
+    label: str
+    met: int
+    runs: int
+
+    @property
+    def low(self):
+        return lower_bound(self.met, self.runs) if self.runs else 0.
+
+
+def rates(sweep):
+    """[every goal, then each goal] over the drawn runs; [] when none was drawn."""
+    sample = drawn(sweep)
+    if not sample:
+        return []
+    out = [Rate('every goal', sum(1 for r in sample if all(_succeeded(x) for x in r.results)), len(sample))]
+    for first in sample[0].results:
+        out.append(Rate(first.label, sum(1 for r in sample if _succeeded(r.result(first.id))), len(sample)))
+    return out
+
+
+def assurance(sweep):
+    """Two short lines for the panel: what the drawn runs show and how sure it makes us."""
+    sample = drawn(sweep)
+    if not sample:
+        return ()
+    n = len(sample)
+    tipped = [r.tipped for r in sample if r.tipped is not None]
+    if tipped and len(tipped) == n:
+        return (f'{n} random set-ups tipped at {min(tipped):.1f}-{max(tipped):.1f} deg;',
+                f'a new one lands in that span {n - 1} times in {n + 1}')
+    whole = rates(sweep)[0]
+    return (f'{whole.met} of {n} random set-ups met every goal,',
+            f'so at least {100 * whole.low:.0f}% would ({100 * CONFIDENCE:.0f}% confidence)')
+
+
 def _time(t):
     return '-' if t is None else f'{t:.1f} s'
 
@@ -296,11 +347,15 @@ def markdown(sweep):
              f'{len(ran)} runs, {what}' + (f'; {len(skipped)} could not run' if skipped else '') + '.']
     if sweep.site is not None:
         lines.append(f'Payload site: ({sweep.site[0]:.3f}, {sweep.site[1]:.3f}) m in plan, a steel block of the payload\'s mass.')
-    lines += ['', '| Goal | Met | Times (fastest / median / slowest) | Not met in |', '| --- | --- | --- | --- |']
+    by_goal = {rate.label: rate for rate in rates(sweep)[1:]}
+    lines += ['', '| Goal | Met | Drawn at random | Times (fastest / median / slowest) | Not met in |',
+              '| --- | --- | --- | --- | --- |']
     for label, good, total, times, bad in spread(sweep):
         span = ' / '.join(_time(t) for t in (times[0], median(times), times[-1])) if times else '-'
         missed = 'every run' if bad and not good else ', '.join(bad) if bad else '-'
-        lines.append(f'| {label} | {good} of {total} | {span} | {missed} |')
+        rate = by_goal.get(label)
+        sure = f'{rate.met} of {rate.runs}, at least {100 * rate.low:.0f} %' if rate else '-'
+        lines.append(f'| {label} | {good} of {total} | {sure} | {span} | {missed} |')
     tipped = [r for r in ran if r.tipped is not None]
     if tipped:
         lo, hi = min(tipped, key=lambda r: r.tipped), max(tipped, key=lambda r: r.tipped)
@@ -311,6 +366,7 @@ def markdown(sweep):
             worst = max((r for r in tipped if r.predicted is not None), key=lambda r: abs(r.tipped - r.predicted))
             lines.append(f'Against the design\'s prediction for each variation: {min(errors):+.1f} to '
                          f'{max(errors):+.1f} deg, the furthest {worst.variation.label}.')
+    lines += ['', _how_sure(sweep)]
     nominal = next((r for r in ran if r.variation.nominal), None)
     lines += ['', '## Each run', '', '| Variation | ' + ('Tipped at | Predicted | ' if tipped else '') + 'Goals | Changed from as designed |',
               '| --- | ' + ('--- | --- | ' if tipped else '') + '--- | --- |']
@@ -328,6 +384,30 @@ def markdown(sweep):
         lines.append('| ' + ' | '.join(cells) + ' |')
     lines += ['', 'Variations: ' + _ranges(sweep), '']
     return '\n'.join(lines)
+
+
+def _how_sure(sweep):
+    """The paragraph that says what the counts can and cannot show."""
+    sample = drawn(sweep)
+    chosen = len([r for r in sweep.runs if not r.error]) - len(sample)
+    level = f'{100 * CONFIDENCE:.0f} %'
+    corners = (f'The other {chosen} runs were chosen, not drawn - the design as designed and each variation '
+               'alone at either end of its range: they check the corners and measure no rate.') if chosen else ''
+    if not sample:
+        return f'How sure: no run was drawn at random, so no rate can be given. {corners}'.strip()
+    n = len(sample)
+    tipped = [r.tipped for r in sample if r.tipped is not None]
+    if tipped and len(tipped) == n:
+        return (f'How sure: the {n} runs drawn at random within the ranges tipped over between '
+                f'{min(tipped):.1f} and {max(tipped):.1f} deg. Another run drawn the same way lands between '
+                f'the lowest and highest of {n} with probability {n - 1}/{n + 1}, whatever the spread\'s shape '
+                f'(order statistics). {corners}').strip()
+    whole = rates(sweep)[0]
+    claim = runs_needed(.05)
+    return (f'How sure: the {n} runs drawn at random within the ranges are the sample. Every goal was met in '
+            f'{whole.met} of them, so at least {100 * whole.low:.0f} % of runs set up at random within these ranges '
+            f'would meet every goal ({level} confidence, one-sided, Clopper-Pearson). {corners} '
+            f'To show failures below 5 % at {level} takes {claim} drawn runs without one (`--samples {claim}`).')
 
 
 def headline(sweep):

@@ -16,7 +16,7 @@ import tempfile
 import threading
 
 from little_world.fields.variation import plan
-from little_world.inventory.sweep import PROTOCOLS, from_json, headline, markdown, moved_most, spread, strip
+from little_world.inventory.sweep import PROTOCOLS, assurance, from_json, headline, markdown, moved_most, spread, strip
 
 MUTED = (.49, .57, .63)
 ACCENT = (.37, .83, .69)
@@ -117,6 +117,11 @@ class VariedRuns:
         words, tone = headline(s)
         text(words, 16, y, 12, WARN if tone == 'warn' else ACCENT if tone == 'ok' else LIGHT, 256)
         y += 22
+        sure = assurance(s)
+        for line in sure:          # what the runs drawn at random show, and how sure (ADR 0028)
+            text(line, 16, y - 4, 10, MUTED, 256)
+            y += 13
+        y += 5 if sure else 0
         ran = [r for r in s.runs if not r.error and r.tipped is not None and r.predicted is not None]
         if ran:
             errors = [r.tipped - r.predicted for r in ran]

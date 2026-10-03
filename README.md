@@ -82,6 +82,11 @@ change the design, try again.** A desktop robotics sandbox on
   ([ADR 0024](docs/adr/0024-runs-under-variation.md)) - so a program's arm poses now say
   what point they were aimed at, and where the tool got to is checked and corrected
   ([ADR 0025](docs/adr/0025-poses-aimed-at-a-point.md)).
+- **How sure a result is.** A sweep's rates come only from the set-ups drawn at random,
+  with an exact 95 % bound: the arm on a cart fetched its cube in 8 of 8 drawn set-ups,
+  which shows only that at least 69 % of such set-ups would; drawn 59 times, it fetched it
+  in all 59 - it fails in under 5 % of them, with 95 % confidence
+  ([ADR 0028](docs/adr/0028-rates-from-runs-drawn-at-random.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

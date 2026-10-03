@@ -923,3 +923,19 @@ Not claimed: the suites ran on Linux with Python 3.11, not on the owner's Mac; o
 per convex pair is this project's choice for its sourced rolling loss, not a finding that
 MuJoCo's multiple contacts are wrong in general.
 
+## How sure: rates from the runs drawn at random — 2026-10-03
+
+ADR 0028 (FR-003, accepted by the owner). A sweep's rates come from its random repeats only;
+its chosen runs - as designed, each variation alone at either end - are reported as corner
+checks. Exact one-sided 95 % bounds (Clopper-Pearson, standard library; equal to SciPy's
+beta quantiles within 1e-14 for every count up to 60 runs). Fetch on MuJoCo 3.10.0: every
+goal in all 20 runs; 8 of 8 drawn, so at least 69 % of set-ups within the ranges would meet
+every goal; failures below 5 % would take 59 drawn runs without one - and run with 59 drawn
+set-ups, Fetch met every goal in all 59: it fails in under 5 % of them, with 95 %
+confidence. A static test reports
+its drawn span instead: tip angles 54.4 to 58.0 deg over 8 drawn runs, where another lands
+7 times in 9. Checked in `tests/test_confidence.py` (9). Suites: 615 headless; the suite with a
+display ran with ADR 0030.
+
+Not claimed: the rate is over set-ups drawn uniformly within ranges that are assumptions
+(FR-009); one seed draws them.

@@ -74,7 +74,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   publishing.
 
 ### FR-003 · Success rates with their uncertainty
-- Status: proposed
+- Status: done (ADR 0028, 2026-10-03; accepted by the owner the same day)
 - From: [RoboCasa365](https://arxiv.org/abs/2603.04356) (`arxiv:2603.04356`, radar: learn)
   and LIBERO-plus report success over many episodes; the exact binomial interval
   (Clopper and Pearson, 1934)
@@ -87,6 +87,9 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - How we would know: the interval matches tabulated Clopper-Pearson bounds to three
   decimals in a unit test; every sweep headline carries one.
 - Cost and needs: standard library only; more runs cost minutes of computing, not work.
+- Note (Claude, 2026-10-03): done with one correction to the idea above - only a sweep's
+  random repeats are a sample; its chosen runs (as designed, each variation at either end)
+  check corners. Fetch: 8 of 8 drawn, at least 69 %, not 20 of 20 and 86 % (ADR 0028).
 
 ### FR-004 · The Pololu 37D as MuJoCo's own DC motor
 - Status: proposed
@@ -133,7 +136,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   it is a live warning for a mobile arm.
 
 ### FR-006 · Disturbances during a run, and recovery
-- Status: proposed
+- Status: accepted (the owner, 2026-10-03)
 - From: [RoboRecover: benchmarking robot policy recovery under execution deviations](https://arxiv.org/abs/2609.28952)
   (`arxiv:2609.28952`; the abstract could not be read on 2026-10-02)
 - Idea: varying a run only at its start misses what a lab does to a robot: the cart is
@@ -203,6 +206,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   reported beside the assumed ones.
 - Cost and needs: a tape measure and a few minutes of the owner's time; reading MolmoBot's
   paper for its ranges, not only the blog.
+- Note (the owner, 2026-10-03, relayed by Claude): not now - no lab work for the moment.
 
 ### FR-010 · A real servo on a pendulum bench, fitted
 - Status: proposed
@@ -227,6 +231,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   FR-002 first; the toolbox installs as `mujoco[sysid]` (SciPy, Matplotlib, Plotly and
   more), kept out of the core. It is the whole sim-to-real loop on one joint, and a good
   first lesson in it.
+- Note (the owner, 2026-10-03, relayed by Claude): not now - no hardware for the moment.
 
 ### FR-011 · Grasping from the cell's camera, classical first
 - Status: proposed
