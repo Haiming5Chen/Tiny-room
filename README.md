@@ -91,6 +91,12 @@ change the design, try again.** A desktop robotics sandbox on
   before tilting: one set down turned 3 degrees now tips where it does straight, 54.0
   degrees, instead of 3 degrees early
   ([ADR 0029](docs/adr/0029-tilt-test-squares-the-machine.md)).
+- **Shoved mid-task.** A run can be disturbed partway - the machine shoved, a part moved -
+  and each set-up compared with itself undisturbed. Shoved once it has stopped at the
+  table, the arm on a cart still fetches its cube after a 4 N s shove (about 2 cm) in 9 of
+  9 set-ups and after a 6 N s one (about 6 cm) in 3 of 9 - in none with its arm poses run as
+  taught; a cube moved 5 cm is never found, since nothing looks for it
+  ([ADR 0030](docs/adr/0030-disturbances-during-a-run.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -102,7 +108,7 @@ change the design, try again.** A desktop robotics sandbox on
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
   [frontier](docs/agents/FRONTIER.md)).
-- **643 automated tests**, including OpenGL window tests that drive the interface
+- **660 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

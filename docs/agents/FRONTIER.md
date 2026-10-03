@@ -136,7 +136,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   it is a live warning for a mobile arm.
 
 ### FR-006 · Disturbances during a run, and recovery
-- Status: accepted (the owner, 2026-10-03)
+- Status: done (ADR 0030, 2026-10-03; accepted by the owner the same day)
 - From: [RoboRecover: benchmarking robot policy recovery under execution deviations](https://arxiv.org/abs/2609.28952)
   (`arxiv:2609.28952`; the abstract could not be read on 2026-10-02)
 - Idea: varying a run only at its start misses what a lab does to a robot: the cart is
@@ -151,6 +151,10 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   off they miss by about the shove. A cube moved after it was seen is missed either way
   until the cell sees it (FR-011); the sweep says so.
 - Cost and needs: small: the variation module, the sweep, a decision record.
+- Note (Claude, 2026-10-03): done for pushes and moved parts, not the slippery patch
+  (LW-018). Measured, the guess above was too simple: shoved about 2 cm, the cart met every
+  goal in 9 of 9 set-ups with corrections and 8 of 9 without; shoved about 6 cm, 3 of 9 and
+  none. Past about 4 cm even the corrections fail (ADR 0030, LW-019).
 
 ### FR-007 · A powered roller conveyor for the factory's feeder
 - Status: proposed

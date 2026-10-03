@@ -934,8 +934,8 @@ every goal; failures below 5 % would take 59 drawn runs without one - and run wi
 set-ups, Fetch met every goal in all 59: it fails in under 5 % of them, with 95 %
 confidence. A static test reports
 its drawn span instead: tip angles 54.4 to 58.0 deg over 8 drawn runs, where another lands
-7 times in 9. Checked in `tests/test_confidence.py` (9). Suites: 615 headless; the suite with a
-display ran with ADR 0030.
+7 times in 9. Checked in `tests/test_confidence.py` (9). Suites: 615 headless when committed; with a
+display, run with ADR 0030 below.
 
 Not claimed: the rate is over set-ups drawn uniformly within ranges that are assumptions
 (FR-009); one seed draws them.
@@ -947,8 +947,24 @@ table turns the machine in place to face along its hinge line before setting the
 its sweeps no longer turn the machine (18 runs). Arm on a cart, MuJoCo 3.10.0: tips over
 between 54.0 and 58.5 deg, -1.8 to +0.7 deg from each run's prediction (the turned run had
 been 2.8 deg off); set down turned 3 deg either way, it tips at 53.98 and 54.00 deg (as
-designed 53.99). Checked in `tests/test_more_fields.py` (one new). Suites: 616 headless; the suite with a
-display ran with ADR 0030.
+designed 53.99). Checked in `tests/test_more_fields.py` (one new). Suites: 616 headless when committed; with a
+display, run with ADR 0030 below.
 
 Not claimed: what a turned machine does against a rail is no longer measured by this field
 (ADR 0024 keeps it).
+
+## Disturbances during a run — 2026-10-03
+
+ADR 0030 (FR-006, accepted by the owner). A push on the machine's base or a loose part
+moved, timed from a goal being met and the machine standing still; `sweep --disturb` runs
+the design and the 8 set-ups its sweep draws, undisturbed and under each disturbance. Fetch,
+arm on a cart: shoved 4 N s at the table (1.7 cm median), every goal in 9 of 9 set-ups (8 of
+9 with poses as taught); 6 N s (6.4 cm), 3 of 9 (none as taught); the cube moved 3 cm, 7 of 9
+(6 of 9); 5 cm, none. Sprint, mobile platform: shoved 4 N s, 9 of 9; 8 N s, 2 of 9. Found and
+fixed on the way: the grasp check counted a table fixed to the world as held. Checked in
+`tests/test_disturbance.py` (7). Suites on MuJoCo 3.10.0: **660 passed** with a display, 623 headless.
+
+Not claimed: a push is a force on the base's centre of mass for 0.1 s, always to its left,
+sized to span recovery rather than measured; nine set-ups give wide bounds; no slippery
+patch (LW-018).
+

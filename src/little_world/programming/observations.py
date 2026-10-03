@@ -27,7 +27,9 @@ class Observations:
         return contacts,distances
 
     def grasped(self):
-        # Bilateral jaw contact only; it does not prove a stable grasp or payload rating.
+        # Bilateral jaw contact on something that can move: a part fixed to the world - a
+        # table, a wall - pressed between the jaws is not held (ADR 0030). It does not prove
+        # a stable grasp or a payload rating.
         pair_names=[tuple(pair) for pair in self.contact_pairs()]
         left={};right={}
         for pair in pair_names:
@@ -36,4 +38,5 @@ class Observations:
                 if '_finger_right_pad' in a:right.setdefault(a.split('_finger_right_pad')[0],set()).add(b)
                 if '__robot_left_finger' in a:left.setdefault(a.split('left_finger')[0],set()).add(b)
                 if '__robot_right_finger' in a:right.setdefault(a.split('right_finger')[0],set()).add(b)
-        return frozenset(obj for prefix,objects in left.items() for obj in objects & right.get(prefix,set()) if not obj.startswith(prefix))
+        return frozenset(obj for prefix,objects in left.items() for obj in objects & right.get(prefix,set())
+                         if not obj.startswith(prefix) and self.model.body_weldid[self.indices[obj]]!=0)

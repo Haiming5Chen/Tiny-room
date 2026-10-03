@@ -173,7 +173,10 @@ report starts it in another Python process (`ui/varied_runs.py`), so the window 
 A sweep's rates come from its random repeats only, with exact binomial bounds from
 `inventory/confidence.py` (standard library, ADR 0028). A field can stand the machine square
 before it starts (`Field.squared`, the tilt table, ADR 0029); its sweeps then leave turning
-out (`sweep.ranges_for`).
+out (`sweep.ranges_for`). `fields/disturbance.py` (standard library, ADR 0030) describes what
+happens partway through a run - a push on the machine's base, a loose part moved - and when;
+the adapter applies it (`MujocoBackend.push`, `MujocoBackend.shift`), and `sweep.disturb`
+runs the design and its drawn set-ups undisturbed and under each disturbance.
 
 ## Frontier radar
 

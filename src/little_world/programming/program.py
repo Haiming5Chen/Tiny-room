@@ -139,7 +139,10 @@ def smoothstep(s):
 
 
 class Runner:
-    def __init__(self):self.stop()
+    def __init__(self,corrections=CORRECTIONS):
+        # How often an aimed pose may be solved again (ADR 0025); 0 runs poses as taught.
+        if corrections<0:raise ValueError('corrections are counted from zero')
+        self.limit=corrections;self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
         self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
@@ -207,7 +210,7 @@ class Runner:
         elif b.kind=='pose':
             if condition:
                 # Aimed at a point: arrived where the joints were sent, is the tool there?
-                better=aim(b.point,self.pose_goal) if b.point and aim is not None and self.corrections<CORRECTIONS else None
+                better=aim(b.point,self.pose_goal) if b.point and aim is not None and self.corrections<self.limit else None
                 if better:
                     self.corrections+=1;self.elapsed=0.;self.pose_goal=tuple(better)
                     self.pose_from={a:tuple(angles.get(a,goal))[:len(goal)] for a,goal in self.pose_goal}

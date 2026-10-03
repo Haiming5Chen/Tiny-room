@@ -530,6 +530,43 @@ class MujocoBackend:
         mj.mj_comVel(self.model, self.data)
         return self.snapshot()
 
+    def push(self, body, force=(0., 0., 0.)):
+        """Hold a force on a body's centre of mass, world frame, newtons, until pushed again
+        (a zero force ends it): how a test field shoves a machine partway through a run (ADR
+        0030). The solver integrates it like gravity; nothing else is touched."""
+        self._ready()
+        if body not in self._body_ids:
+            raise ValueError(f'no body called {body!r}')
+        force = tuple(float(f) for f in force)
+        if len(force) != 3 or not all(isfinite(f) for f in force):
+            raise ValueError('a push is three finite newtons')
+        idx = self._body_ids[body]
+        self.data.xfrc_applied[idx, :3] = force
+        self.data.xfrc_applied[idx, 3:] = 0.
+
+    def shift(self, body, offset):
+        """Move a loose body - one on a free joint, such as a field's cube - by (dx, dy) metres
+        in plan and leave it at rest: a part someone moved while the machine was busy (ADR
+        0030). A body that is not loose cannot be moved this way."""
+        self._ready()
+        if body not in self._body_ids:
+            raise ValueError(f'no body called {body!r}')
+        idx = self._body_ids[body]
+        joint = self.model.body_jntadr[idx]
+        if joint < 0 or self.model.jnt_type[joint] != mj.mjtJoint.mjJNT_FREE:
+            raise ValueError(f'{body} is not loose: only a body on a free joint can be moved')
+        dx, dy = (float(v) for v in offset)
+        if not (isfinite(dx) and isfinite(dy)):
+            raise ValueError('an offset is two finite metres')
+        at, dof = self.model.jnt_qposadr[joint], self.model.jnt_dofadr[joint]
+        self.data.qpos[at] += dx
+        self.data.qpos[at + 1] += dy
+        self.data.qvel[dof:dof + 6] = 0.
+        mj.mj_kinematics(self.model, self.data)
+        mj.mj_comPos(self.model, self.data)
+        mj.mj_camlight(self.model, self.data)
+        mj.mj_comVel(self.model, self.data)
+
     def snapshot(self):
         self._ready()
         # Batch-detach poses before lazily constructing public BodyState objects.

@@ -11,6 +11,25 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-03 · Claude (Cowork) · FR-003, LW-017 and FR-006, as the owner chose
+Did: the owner accepted FR-003 and FR-006, chose to square machines on the tilt table
+(LW-017) and said no lab work for now (FR-009, FR-010). ADR 0028: a sweep's rates come from
+its random repeats only, with exact bounds; the report and the variations panel say how
+sure they are. ADR 0029: the tilt test turns the machine square to its rail before it
+tilts; its sweeps no longer turn it. ADR 0030: a run can be disturbed partway - the
+machine shoved, a part moved - and `sweep --disturb` compares each set-up with itself
+undisturbed; on the way, the grasp check stopped counting a fixed table as held.
+Measured: Fetch met every goal in 8 of 8 drawn set-ups (at least 69 %), and in 59 of 59
+when 59 were drawn: it fails in under 5 % of such set-ups, with 95 % confidence. Tilt,
+squared: 54.0 to 58.5 deg, the turned machine now tips as designed (53.98 against 53.99).
+Shoved at the table, the arm on a cart recovered from 4 N s (1.7 cm) in 9 of 9 set-ups and
+from 6 N s (6.4 cm) in 3 of 9; with its poses run as taught, 8 of 9 and none. Suites: 660 with a display, 623 headless.
+Unfinished: no button for disturbances and no slippery patch (LW-018); past about 4 cm the
+corrected arm meets the table's edge and the program has no way back to its stop (LW-019).
+For the owner: the next proposals to accept or decline (FR-004 to FR-008, FR-011 to
+FR-013), and whether a program should drive back to its stop when its arm cannot reach
+(LW-019).
+
 ## 2026-10-02 · Claude (Cowork) · MuJoCo 3.10.0 (FR-002)
 Did: ADR 0027. MuJoCo pinned to 3.10.0, as the owner chose (the newest release with
 wheels for an Intel Mac). Run as released it moved one check, the test cart's coast-down,

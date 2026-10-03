@@ -14,6 +14,7 @@ from statistics import median
 import time
 
 from little_world.fields import FIELDS
+from little_world.fields.disturbance import DEFAULTS, Disturbing
 from little_world.fields.variation import Ranges, Variation, friction, payload_site, plan, varied
 from little_world.inventory.confidence import CONFIDENCE, lower_bound, runs_needed
 
@@ -37,6 +38,8 @@ class Run:
     program: str = ''               # the program's final state, '' when none ran
     error: str = ''
     seconds: float = 0.             # wall clock
+    disturbed: str = ''             # what a disturbance did, '' when there was none (ADR 0030)
+    pushed: float | None = None     # how far a push moved the machine's base, the way it pushed (m)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -135,9 +138,10 @@ def ranges_for(field_id):
     return Ranges(turn=0.) if FIELDS[field_id].squared else Ranges()
 
 
-def run(field_id, blueprint, variation=Variation(), program=None, site=None):
-    """One run of a field under one variation. A program field's program, when not given,
-    is solved for `blueprint` as designed."""
+def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None):
+    """One run of a field under one variation, and a disturbance partway through if one is
+    given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
+    as designed; `corrections` caps an aimed pose's corrections (ADR 0025; None: the runner's own)."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -170,6 +174,12 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None):
         drive, control, base = _rigs(backend, bp)
         steps = round(duration / world.timestep)
         runner = None
+        kick = Disturbing(disturbance, _root(bp)) if disturbance is not None else None
+
+        def watch(state):
+            tracker.update(state)
+            if kick is not None:
+                kick.tick(backend, state, state.time - tracker.start, tracker.met)
         if protocol == 'program':
             from little_world.programming.execution import apply, base_targets, joint_angles, needs_grasp
             from little_world.programming.observations import Observations
@@ -183,7 +193,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None):
                 aim = ToolMotion(backend, bp, control).aim     # aimed poses checked (ADR 0025)
             except ValueError:
                 aim = None
-            runner = Runner()
+            runner = Runner() if corrections is None else Runner(corrections=corrections)
             runner.start(program)
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
@@ -196,13 +206,13 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None):
                 commands.update(control.step_commands(world.timestep))
                 commands.update(field.commands(state))
                 state = world.step(commands)
-                tracker.update(state)
+                watch(state)
                 if runner.state != 'running':
                     break
             control.held = set()
             for _ in range(round(AFTER / world.timestep)):
                 state = _hold(world, drive, control, field, state)
-                tracker.update(state)
+                watch(state)
         else:
             tracker = GoalTracker(field.goals, _root(bp))
             tracker.update(state)
@@ -214,9 +224,10 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None):
                     state = world.step(commands)
                 else:
                     state = _hold(world, drive, control, field, state)
-                tracker.update(state)
+                watch(state)
         return Run(variation, tracker.results(finished=True), tracker.tipped_at, predicted,
-                   runner.state if runner else '', '', time.monotonic() - started)
+                   runner.state if runner else '', '', time.monotonic() - started,
+                   kick.note() if kick is not None else '', kick.moved if kick is not None else None)
 
 
 def _one(args):
@@ -224,9 +235,9 @@ def _one(args):
 
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
-          ranges=Ranges()):
+          ranges=Ranges(), corrections=None):
     """Every variation's run of a field (by default the plan for `ranges`);
-    `progress(done, total, run)` after each."""
+    `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections."""
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
@@ -238,7 +249,7 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
             site = None     # each loaded run then reports why it could not be loaded
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint) if protocol == 'program' else None
-    work = [(field_id, blueprint, v, program, site) for v in variations]
+    work = [(field_id, blueprint, v, program, site, None, corrections) for v in variations]
     runs = []
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -255,6 +266,114 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
     return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs))
 
 
+@dataclass(frozen=True)
+class Disturbed:
+    """The same set-ups run undisturbed and under each disturbance (ADR 0030)."""
+    field: str
+    design: str
+    protocol: str
+    duration: float
+    site: tuple | None
+    ranges: Ranges
+    corrections: int | None         # an aimed pose's corrections, capped; None: the runner's own
+    groups: tuple                   # ((label, description, runs), ...), undisturbed first
+
+
+def setups(ranges=Ranges(), samples=8, seed=1):
+    """What a disturbance is tried on: the design as designed and the set-ups drawn at random
+    by the same plan a sweep uses, so that the two can be read side by side."""
+    return tuple(v for v in plan(ranges, samples, seed) if v.nominal or v.label.startswith('repeat'))
+
+
+def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, seed=1, jobs=1, progress=None,
+            corrections=None):
+    """Every set-up run undisturbed and then under each disturbance (by default the field's
+    own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each."""
+    if field_id not in PROTOCOLS:
+        raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
+                         f'fields that do: {", ".join(sorted(PROTOCOLS))}')
+    disturbances = tuple(disturbances if disturbances is not None else DEFAULTS.get(field_id, ()))
+    if not disturbances:
+        raise ValueError(f'nothing is defined to disturb the {field_id} field; fields that have it: '
+                         f'{", ".join(sorted(DEFAULTS))}')
+    ranges = ranges_for(field_id)
+    variations = setups(ranges, samples, seed)
+    site = None
+    if any(v.payload for v in variations):
+        try:
+            site = payload_site(blueprint, max(v.payload for v in variations))
+        except ValueError:
+            site = None
+    protocol, duration = PROTOCOLS[field_id]
+    program = solve(field_id, blueprint) if protocol == 'program' else None
+    tried = (None, *disturbances)
+    work = [(field_id, blueprint, v, program, site, d, corrections) for d in tried for v in variations]
+    runs = []
+    if jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(jobs) as pool:
+            for r in pool.map(_one, work):
+                runs.append(r)
+                if progress:
+                    progress(len(runs), len(work), r)
+    else:
+        for w in work:
+            runs.append(_one(w))
+            if progress:
+                progress(len(runs), len(work), runs[-1])
+    n = len(variations)
+    groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
+                   for i, d in enumerate(tried))
+    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups)
+
+
+def _last(run):
+    """When the run met its last goal, or None if it missed one."""
+    if run.error or not all(_succeeded(x) for x in run.results):
+        return None
+    times = [x.time for x in run.results if x.time is not None]
+    return max(times) if times else None
+
+
+def disturbed_markdown(result):
+    """A disturbance sweep as a short report: one row per disturbance."""
+    field = FIELDS[result.field]
+    undisturbed = result.groups[0][2]
+    n = len(undisturbed)
+    drawn_count = sum(1 for r in undisturbed if r.variation.label.startswith('repeat'))
+    what = {'hold': f'held still for {result.duration:g} s',
+            'drive': f'driven straight ahead at full speed for {result.duration:g} s',
+            'program': "running the field's program, solved once for the design on its mark"}[result.protocol]
+    capped = '' if result.corrections is None else \
+        f' Aimed poses were corrected at most {result.corrections} times (ADR 0025; the runner allows 2).'
+    lines = [f'# {field.title}, disturbed: {result.design}', '',
+             f'Each disturbance tried on the same {n} set-ups - the design as designed and {drawn_count} drawn at '
+             f'random within the ranges of ADR 0024 - {what}.{capped}', '',
+             '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Missed in |',
+             '| --- | --- | --- | --- | --- | --- |']
+    for label, _, runs in result.groups:
+        ok = [r for r in runs if _last(r) is not None]
+        sample = [r for r in runs if not r.error and r.variation.label.startswith('repeat')]
+        good = sum(1 for r in sample if _last(r) is not None)
+        sure = f'{good} of {len(sample)}, at least {100 * lower_bound(good, len(sample)):.0f} %' if sample else '-'
+        changes = [_last(r) - _last(u) for r, u in zip(runs, undisturbed)
+                   if _last(r) is not None and _last(u) is not None]
+        change = '-' if label == 'none' or not changes else f'{median(changes):+.1f} s'
+        pushes = sorted(r.pushed for r in runs if r.pushed is not None)
+        pushed = '-' if not pushes else f'{100 * median(pushes):.1f} cm ({100 * pushes[0]:.1f} to {100 * pushes[-1]:.1f})'
+        missed = [r.variation.label for r in runs if _last(r) is None]
+        lost = '-' if not missed else 'every set-up' if len(missed) == len(runs) else ', '.join(missed)
+        lines.append(f'| {label} | {len(ok)} of {len(runs)} | {sure} | {change} | {pushed} | {lost} |')
+    lines += ['', 'What each disturbance does:', '']
+    lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
+    first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
+    lines += ['', 'A run counts when it meets every goal' + (f' ({", ".join(first)})' if first else '') +
+              '. "Last goal, median change" compares each set-up with itself undisturbed. "Pushed" is how '
+              'far the machine\'s base went the way it was pushed, a second after the push. The rate is over '
+              'the set-ups drawn at random (ADR 0028); the design as designed is a chosen run.', '']
+    return '\n'.join(lines)
+
+
 def to_json(result):
     """A sweep as JSON, for the app to read back from a sweep run in another process."""
     import json
@@ -268,7 +387,8 @@ def from_json(text):
     d = json.loads(text)
     runs = tuple(Run(Variation(**{**r['variation'], 'at': tuple(r['variation']['at'])}),
                      tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'],
-                     r['program'], r['error'], r['seconds']) for r in d['runs'])
+                     r['program'], r['error'], r['seconds'], r.get('disturbed', ''), r.get('pushed'))
+                 for r in d['runs'])
     site = tuple(d['site']) if d['site'] is not None else None
     return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs)
 
@@ -530,6 +650,10 @@ def main(argv=None):
     parser.add_argument('--out', help='write the report here as well as printing it')
     parser.add_argument('--json', help='write the sweep here as JSON')
     parser.add_argument('--name', help='what to call the design in the report (default: --design)')
+    parser.add_argument('--disturb', action='store_true',
+                        help="instead: the design and the drawn set-ups, undisturbed and under the field's disturbances")
+    parser.add_argument('--corrections', type=int, default=None,
+                        help='cap an aimed pose\'s corrections (0: run poses as taught; default: the runner\'s own)')
     args = parser.parse_args(argv)
     bp = design(args.design)
     ranges = ranges_for(args.field)
@@ -537,9 +661,14 @@ def main(argv=None):
 
     def progress(done, total, r):
         print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
-    result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
-                   ranges=ranges)
-    text = markdown(result)
+    if args.disturb:
+        result = disturb(args.field, bp, None, args.name or args.design, args.samples, args.seed, args.jobs,
+                         progress, args.corrections)
+        text = disturbed_markdown(result)
+    else:
+        result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
+                       ranges=ranges, corrections=args.corrections)
+        text = markdown(result)
     print(text)
     from pathlib import Path
     if args.out:
