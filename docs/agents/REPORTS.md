@@ -11,6 +11,22 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-03 · Claude (Cowork) · going back to the stop (LW-019) and the disturbances button (LW-018)
+Did: the owner chose these two next. ADR 0031: an aimed pose settling more than 2 cm from
+the stop its program drove to sends the program back - the pose it drove in, a 25 cm run-up
+behind the stop along its heading, the stop - once per run; runs record it and the
+disturbance report counts it. The run report has "Repeat with disturbances" (ADR 0030,
+another process, a line per disturbance). Tracing the shoved runs corrected ADR 0030 before
+publishing: the grasp check had not passed on the table in those runs (the Fetch check names
+the cube); the arm, aimed from where the cart was pushed to, worked at the edge of its reach.
+Measured: shoved 6 N s at the table, the arm on a cart fetched its cube in 8 of 9 set-ups (3
+of 9 before); shoved 4 N s, 8 of 9 (9 of 9 with corrections alone - the one lost had its cube
+knocked over by the shove). Undisturbed, 59 of 59 drawn set-ups with the same times; nothing
+went back. Suites: 666 with a display, 628 headless.
+Unfinished: LW-018's slippery patch (the owner chose the button only). A cube knocked over
+by the shove is not found again (FR-011 would see it).
+For the owner: the remaining proposals (FR-004, FR-005, FR-007, FR-008, FR-011 to FR-013).
+
 ## 2026-10-03 · Claude (Cowork) · FR-003, LW-017 and FR-006, as the owner chose
 Did: the owner accepted FR-003 and FR-006, chose to square machines on the tilt table
 (LW-017) and said no lab work for now (FR-009, FR-010). ADR 0028: a sweep's rates come from

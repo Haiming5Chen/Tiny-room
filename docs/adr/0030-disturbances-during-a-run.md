@@ -31,7 +31,9 @@ judging by the field's own goals, and comparing every set-up with itself undistu
   met every goal, the rate over the drawn ones with its bound, the median change in when
   the last goal was met, and how far pushes moved the machine.
   `python -m little_world.inventory.sweep fetch --disturb`; `--corrections 0` runs a
-  program's poses as taught (the runner's correction cap is now a parameter).
+  program's poses as taught (the runner's correction cap is now a parameter). The run
+  report has "Repeat with disturbances" (added on 3 October at the owner's request, OPEN
+  LW-018): another process, as for variations, then a line per disturbance.
 - *Found on the way, and fixed.* The grasp check counted a table as held when both jaws
   touched it: shoved 6 N s, a corrected pose closed the jaws with a finger on the table's
   edge. It did not decide these runs - the Fetch template's check names the cube - but a
@@ -79,5 +81,5 @@ designed recovers from the 6 N s shove with corrections and misses the cube with
 **Boundaries.** A push is a force on the base's centre of mass for 0.1 s, not a hand on its
 side, always to its left; the impulses were chosen to span "recovers" to "does not", not
 measured in a lab. A moved part moves instantly and at rest. There is no slippery floor
-patch yet, and no button in the window (OPEN LW-018). Nine set-ups give wide bounds: the
-rates say what was seen, not how often it happens in a lab.
+patch yet (OPEN LW-018). Nine set-ups give wide bounds: the rates say what was seen, not how
+often it happens in a lab.

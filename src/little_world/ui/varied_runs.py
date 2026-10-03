@@ -26,6 +26,49 @@ LIGHT = (.86, .90, .93)
 JOBS = 2            # worker processes: most laptops have at least two cores to spare
 
 
+def launch(command, total):
+    """Start a sweep command in its own process group - so stopping it stops its workers too -
+    and return its state: the process, how far it has got (its 'done/total' lines), the
+    lines it printed. A thread reads its output; the window polls the state."""
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                               start_new_session=os.name == 'posix')
+    state = dict(process=process, done=0, total=total, result=None, error='', lines=[])
+
+    def read():
+        for line in process.stdout:
+            state['lines'].append(line.rstrip())
+            count = re.match(r'\s*(\d+)/(\d+) ', line)
+            if count:
+                state['done'], state['total'] = int(count[1]), int(count[2])
+    threading.Thread(target=read, daemon=True).start()
+    return state
+
+
+def halt(state):
+    """Stop a launched sweep and its workers, if it is still running."""
+    process = state['process'] if state is not None else None
+    if process is not None and process.poll() is None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL) if os.name == 'posix' else process.kill()
+        except ProcessLookupError:
+            pass
+
+
+def finished(state, read, what):
+    """Once a launched sweep's process has ended: its result read back with `read`, or why
+    it stopped; True the first time it has a result."""
+    if state is None or state['result'] is not None or state['error'] or state['process'].poll() is None:
+        return False
+    try:
+        if state['process'].returncode != 0:
+            raise ValueError(next((line for line in reversed(state['lines']) if line.strip()), f'the {what} stopped'))
+        state['result'] = read(state['out'].read_text(encoding='utf-8'))
+        return True
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        state['error'] = str(error) or f'the {what} stopped'
+        return False
+
+
 class VariedRuns:
     def init_varied_runs(self):
         # The variations of one run: field, the design they were made from, the process and
@@ -49,42 +92,19 @@ class VariedRuns:
         design.write_text(self.editor.blueprint.to_json(), encoding='utf-8')
         out = folder / 'sweep.json'
         name = self.path.stem if getattr(self, 'path', None) else 'design'
-        # Its own process group, so stopping it stops its worker processes too.
-        process = subprocess.Popen(self.vary_command(record.field, design, out, name), stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT, text=True, start_new_session=os.name == 'posix')
-        state = dict(field=record.field, run=record.number, blueprint=self.editor.blueprint, process=process,
-                     done=0, total=len(plan(ranges_for(record.field))), out=out, result=None, error='', lines=[])
-
-        def read():
-            for line in process.stdout:
-                state['lines'].append(line.rstrip())
-                count = re.match(r'\s*(\d+)/(\d+) ', line)
-                if count:
-                    state['done'], state['total'] = int(count[1]), int(count[2])
-        threading.Thread(target=read, daemon=True).start()
+        state = launch(self.vary_command(record.field, design, out, name), len(plan(ranges_for(record.field))))
+        state.update(field=record.field, run=record.number, blueprint=self.editor.blueprint, out=out)
         self.varied = state
         self.status = f'Repeating run {record.number} with {state["total"]} variations in the background.'
 
     def stop_variations(self):
-        process = self.varied['process'] if self.varied is not None else None
-        if process is not None and process.poll() is None:
-            try:
-                os.killpg(process.pid, signal.SIGKILL) if os.name == 'posix' else process.kill()
-            except ProcessLookupError:
-                pass
+        halt(self.varied)
         self.varied = None
 
     def poll_variations(self):
         v = self.varied
-        if v is None or v['result'] is not None or v['error'] or v['process'].poll() is None:
-            return
-        try:
-            if v['process'].returncode != 0:
-                raise ValueError(next((line for line in reversed(v['lines']) if line.strip()), 'the repeats stopped'))
-            v['result'] = from_json(v['out'].read_text(encoding='utf-8'))
+        if finished(v, from_json, 'repeats'):
             self.status = f'Repeated run {v["run"]}: ' + headline(v['result'])[0].lower() + '.'
-        except (OSError, ValueError, KeyError, TypeError) as error:
-            v['error'] = str(error) or 'the repeats stopped'
 
     def copy_variations_report(self):
         import glfw

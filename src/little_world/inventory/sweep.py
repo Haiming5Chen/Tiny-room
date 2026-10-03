@@ -341,6 +341,51 @@ def _last(run):
     return max(times) if times else None
 
 
+@dataclass(frozen=True)
+class Group:
+    """What one disturbance did over the set-ups."""
+    label: str
+    met: int                # set-ups that met every goal
+    runs: int
+    drawn_met: int          # of the set-ups drawn at random
+    drawn: int
+    change: float | None    # median change in when the last goal was met, s; None undisturbed or unknown
+    pushes: tuple           # how far each push moved the base, m, sorted
+    went_back: int          # set-ups whose program went back to its stop
+    missed: tuple           # the set-ups that missed a goal
+
+    @property
+    def low(self):
+        return lower_bound(self.drawn_met, self.drawn) if self.drawn else 0.
+
+
+def summaries(result):
+    """One Group per disturbance, undisturbed first, each set-up compared with itself."""
+    undisturbed = result.groups[0][2]
+    out = []
+    for i, (label, _, runs) in enumerate(result.groups):
+        sample = [r for r in runs if not r.error and r.variation.label.startswith('repeat')]
+        changes = [_last(r) - _last(u) for r, u in zip(runs, undisturbed)
+                   if _last(r) is not None and _last(u) is not None]
+        out.append(Group(label, sum(1 for r in runs if _last(r) is not None), len(runs),
+                         sum(1 for r in sample if _last(r) is not None), len(sample),
+                         median(changes) if i and changes else None,
+                         tuple(sorted(r.pushed for r in runs if r.pushed is not None)),
+                         sum(1 for r in runs if r.went_back),
+                         tuple(r.variation.label for r in runs if _last(r) is None)))
+    return out
+
+
+def disturbed_from_json(text):
+    """A disturbance sweep written with `to_json`, read back."""
+    import json
+    d = json.loads(text)
+    groups = tuple((label, description, tuple(_run(r) for r in runs)) for label, description, runs in d['groups'])
+    site = tuple(d['site']) if d['site'] is not None else None
+    return Disturbed(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']),
+                     d['corrections'], groups, d.get('retries'))
+
+
 def disturbed_markdown(result):
     """A disturbance sweep as a short report: one row per disturbance."""
     field = FIELDS[result.field]
@@ -359,20 +404,13 @@ def disturbed_markdown(result):
              f'random within the ranges of ADR 0024 - {what}.{capped}', '',
              '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Went back | Missed in |',
              '| --- | --- | --- | --- | --- | --- | --- |']
-    for label, _, runs in result.groups:
-        ok = [r for r in runs if _last(r) is not None]
-        sample = [r for r in runs if not r.error and r.variation.label.startswith('repeat')]
-        good = sum(1 for r in sample if _last(r) is not None)
-        sure = f'{good} of {len(sample)}, at least {100 * lower_bound(good, len(sample)):.0f} %' if sample else '-'
-        changes = [_last(r) - _last(u) for r, u in zip(runs, undisturbed)
-                   if _last(r) is not None and _last(u) is not None]
-        change = '-' if label == 'none' or not changes else f'{median(changes):+.1f} s'
-        pushes = sorted(r.pushed for r in runs if r.pushed is not None)
-        pushed = '-' if not pushes else f'{100 * median(pushes):.1f} cm ({100 * pushes[0]:.1f} to {100 * pushes[-1]:.1f})'
-        missed = [r.variation.label for r in runs if _last(r) is None]
-        lost = '-' if not missed else 'every set-up' if len(missed) == len(runs) else ', '.join(missed)
-        back = sum(1 for r in runs if r.went_back)
-        lines.append(f'| {label} | {len(ok)} of {len(runs)} | {sure} | {change} | {pushed} | {back or "-"} | {lost} |')
+    for g in summaries(result):
+        sure = f'{g.drawn_met} of {g.drawn}, at least {100 * g.low:.0f} %' if g.drawn else '-'
+        change = '-' if g.change is None else f'{g.change:+.1f} s'
+        pushed = '-' if not g.pushes else \
+            f'{100 * median(g.pushes):.1f} cm ({100 * g.pushes[0]:.1f} to {100 * g.pushes[-1]:.1f})'
+        lost = '-' if not g.missed else 'every set-up' if len(g.missed) == g.runs else ', '.join(g.missed)
+        lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {change} | {pushed} | {g.went_back or "-"} | {lost} |')
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
@@ -391,15 +429,17 @@ def to_json(result):
     return json.dumps(asdict(result))
 
 
+def _run(r):
+    from little_world.fields.goals import Result
+    return Run(Variation(**{**r['variation'], 'at': tuple(r['variation']['at'])}),
+               tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'], r['program'], r['error'],
+               r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0))
+
+
 def from_json(text):
     import json
-    from little_world.fields.goals import Result
     d = json.loads(text)
-    runs = tuple(Run(Variation(**{**r['variation'], 'at': tuple(r['variation']['at'])}),
-                     tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'],
-                     r['program'], r['error'], r['seconds'], r.get('disturbed', ''), r.get('pushed'),
-                     r.get('went_back', 0))
-                 for r in d['runs'])
+    runs = tuple(_run(r) for r in d['runs'])
     site = tuple(d['site']) if d['site'] is not None else None
     return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs)
 

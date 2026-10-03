@@ -178,7 +178,8 @@ before it starts (`Field.squared`, the tilt table, ADR 0029); its sweeps then le
 out (`sweep.ranges_for`). `fields/disturbance.py` (standard library, ADR 0030) describes what
 happens partway through a run - a push on the machine's base, a loose part moved - and when;
 the adapter applies it (`MujocoBackend.push`, `MujocoBackend.shift`), and `sweep.disturb`
-runs the design and its drawn set-ups undisturbed and under each disturbance.
+runs the design and its drawn set-ups undisturbed and under each disturbance. The run report
+starts those too (`ui/disturbed_runs.py`, sharing the process handling of `ui/varied_runs.py`).
 
 ## Frontier radar
 

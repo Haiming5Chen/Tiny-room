@@ -977,8 +977,20 @@ Fetch, arm on a cart, nine set-ups: shoved 6 N s at the table (6.3 cm), every go
 (3 of 9 with corrections alone); shoved 4 N s (1.7 cm), 8 of 9 (9 of 9); undisturbed, 9 of 9
 and nothing went back; drawn 59 times undisturbed, every goal in all 59 with the same times
 as before. The set-ups lost had their cube knocked over by the shove.
-Checked in `tests/test_going_back.py` (4). Suites: 627 headless; the suite with a display
-ran with the change below.
+Checked in `tests/test_going_back.py` (4). Suites: 627 headless when committed; with a
+display, run with the next section.
 
 Not claimed: the base's pose is the simulator's; one retry per run; the 2 cm threshold and
 the 25 cm run-up are chosen, and nine set-ups do not settle the threshold.
+
+## Disturbances from the run report — 2026-10-03
+
+OPEN LW-018, the owner's choice of a button: "Repeat with disturbances" in a run's report
+runs `sweep --disturb` in another process, as variations run, and lists each disturbance with
+the set-ups that met every goal and how much later; its report copies as Markdown. A
+disturbance sweep reads back from its JSON. Checked in `tests/test_disturbance.py` (two
+new: the read-back, and the window test that drives the button). Suites on MuJoCo 3.10.0:
+**666 passed** with a display, 628 headless.
+
+Not claimed: the slippery floor patch is not built (LW-018 stays open for it).
+

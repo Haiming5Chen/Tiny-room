@@ -161,3 +161,79 @@ def test_aimed_poses_recover_a_cart_shoved_8_cm_at_the_table_and_poses_as_taught
     assert .05 < corrected.pushed < .12 and corrected.went_back == 0
     taught = run('fetch', design('mobile_manipulator'), disturbance=shove, corrections=0, retries=0)
     assert {x.id: x.status for x in taught.results}['lifted'] == 'missed'
+
+
+def test_a_disturbance_sweep_reads_back_as_it_was_written():
+    from little_world.inventory.sweep import disturbed_from_json, summaries, to_json
+    result = made_up((('none', '', (33., 33., 34., 33.), None),
+                      ('shoved 6 N s at the table', 'a push', (41., 40., 42., None), .081)))
+    again = disturbed_from_json(to_json(result))
+    assert again == result
+    none, shoved = summaries(again)
+    assert (none.met, none.change, shoved.met, shoved.change, shoved.went_back) == (4, None, 3, 8., 2)
+    assert shoved.missed == ('repeat 3',) and round(shoved.low, 2) == .14
+
+
+@pytest.mark.skipif(__import__('os').environ.get('LITTLE_WORLD_TEST_RENDER') != '1', reason='requires OpenGL')
+def test_a_run_report_repeats_the_run_with_disturbances_in_another_process(monkeypatch, tmp_path):
+    """OPEN LW-018: the owner asked for a button. From the sprint's run report, 'Repeat with
+    disturbances' runs the sweep in another process and lists each disturbance's result."""
+    import sys
+    import time
+    import glfw
+    from little_world.inventory.sweep import Disturbed, to_json
+    from little_world.robots.mobile_platform import mobile_platform_blueprint
+    from little_world.ui.workshop import Workshop
+    app = Workshop(tmp_path / 'cart.json', mobile_platform_blueprint())
+    made = made_up((('none', '', (13., 13., 13.), None), ('shoved 8 N s after the start', 'a push', (14., None, 13.5), .5)))
+    made = Disturbed('sprint', 'cart', 'drive', 20., None, Ranges(), None, made.groups)
+
+    def command(field, design, out, name):
+        assert field == 'sprint' and name == 'cart' and '--disturb' in app.__class__.disturb_command(app, field, design, out, name)
+        return [sys.executable, '-c', 'import pathlib\n'
+                "print('  1/6 as designed: 5 s', flush=True)\n"
+                f'pathlib.Path({str(out)!r}).write_text({to_json(made)!r})\n'
+                "print('  6/6 repeat 2: 5 s', flush=True)"]
+    monkeypatch.setattr(app, 'disturb_command', command)
+    draw = app.draw
+    step = {'n': 0, 't': 0.}
+
+    def click(label):
+        b = next(b for b in app.buttons if b.label.startswith(label))
+        assert b.enabled, label
+        app.events.append(b.action)
+
+    def exercise():
+        draw()
+        n, now = step['n'], time.monotonic()
+        if n == 0:
+            app.set_field('sprint')
+            click('SIMULATE')
+        elif n == 1:
+            app.key(app.window, glfw.KEY_W, 0, glfw.PRESS, 0)
+            step['t'] = now
+        elif n == 2:
+            if app.state.time < .5:
+                return
+            app.key(app.window, glfw.KEY_W, 0, glfw.RELEASE, 0)
+            click('STOP / RETURN TO BUILD')
+        elif n == 3:
+            assert app.run_report is not None
+            click('Repeat with disturbances (27 runs)')
+        elif n == 4:
+            assert app.disturbing is not None and app.disturbing['field'] == 'sprint'
+            if app.disturbing['result'] is None and not app.disturbing['error']:
+                assert now - step['t'] < 30., 'the disturbed repeats should have finished'
+                return
+            assert not app.disturbing['error'] and app.disturbing['done'] == app.disturbing['total'] == 6
+            assert 'every goal met through 0 of 1 disturbances' in app.status
+        elif n == 5:
+            click('Copy the disturbances report')
+        elif n == 6:
+            assert glfw.get_clipboard_string(None).decode().startswith('# Sprint lane, disturbed: cart')
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=60)
+    assert step['n'] == 7

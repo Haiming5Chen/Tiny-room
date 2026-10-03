@@ -5,9 +5,9 @@ branch, commits and tree; this file says what they mean.
 
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import). Not yet on
   GitHub; the owner publishes it.
-- **Decision records** 0001 to 0030. The newest: 0030 disturbances during a run.
-- **Tests**: on MuJoCo 3.10.0, 660 pass with a display (`LITTLE_WORLD_TEST_RENDER=1` under
-  Xvfb) and 623 headless.
+- **Decision records** 0001 to 0031. The newest: 0031 going back to the stop.
+- **Tests**: on MuJoCo 3.10.0, 666 pass with a display (`LITTLE_WORLD_TEST_RENDER=1` under
+  Xvfb) and 628 headless.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003 and FR-006 done; FR-004, FR-005,
@@ -15,4 +15,4 @@ branch, commits and tree; this file says what they mean.
 - **Uncommitted**: nothing.
 - **Needs the owner's decision**: publishing the branch; the frontier proposals; the rest of
   radar phase two (LW-012: embeddings, a classifier); hardware for a servo calibration
-  (LW-009); the Curb run's 20 mm curb (LW-015); whether programs re-approach (LW-019).
+  (LW-009); the Curb run's 20 mm curb (LW-015); a slippery floor patch (LW-018).

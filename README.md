@@ -96,7 +96,8 @@ change the design, try again.** A desktop robotics sandbox on
   table, the arm on a cart still fetches its cube after a 4 N s shove (about 2 cm) in 9 of
   9 set-ups and after a 6 N s one (about 6 cm) in 3 of 9 - in none with its arm poses run as
   taught; a cube moved 5 cm is never found, since nothing looks for it
-  ([ADR 0030](docs/adr/0030-disturbances-during-a-run.md)).
+  ([ADR 0030](docs/adr/0030-disturbances-during-a-run.md)). "Repeat with disturbances" in a
+  run's report runs them in the background.
 - **Back to its stop.** Pushed more than 2 cm off the stop its program drove it to, a
   machine now drives back - backing off and coming in straight, as it first did - and
   reaches again: shoved 6 N s at the table, the arm on a cart fetches its cube in 8 of 9
@@ -113,7 +114,7 @@ change the design, try again.** A desktop robotics sandbox on
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
   [frontier](docs/agents/FRONTIER.md)).
-- **660 automated tests**, including OpenGL window tests that drive the interface
+- **666 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

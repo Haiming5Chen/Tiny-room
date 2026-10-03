@@ -540,6 +540,7 @@ class TestDrive:
             y += 20
         y = self.draw_report_actions(button, y + 8)
         y = self.draw_variations(ui, button, text, section, y, wh)
+        y = self.draw_disturbances(ui, button, text, section, y, wh)
         # What set the top speed, while there is room above the status line for it.
         if record.limit is not None and record.limit[0] is not None and y + 54 <= wh - 40:
             limit, source, alone = record.limit
@@ -664,6 +665,7 @@ class TestDrive:
             y += 20
         y = self.draw_report_actions(button, y + 6)
         y = self.draw_variations(ui, button, text, section, y, wh)
+        y = self.draw_disturbances(ui, button, text, section, y, wh)
         self.draw_session_runs(text, section, record, y, wh)
 
     def last_run_line(self):
