@@ -8,6 +8,9 @@ KINDS=('wait','action','drive','move','contact','distance','if_contact','pose','
 VERSION_2_KINDS=('pose','grasp','goto')
 SETTLE=2.   # degrees: a joint this close to its target has arrived
 CORRECTIONS=2   # times an aimed pose is solved again for where the tool actually got to
+REAPPROACH=.02  # m: an aimed pose settling this far from the stop its machine drove to goes back to it (ADR 0031)
+RETRIES=1       # times a program may go back to a stop
+RUN_UP=.25      # m: going back, the machine first backs off this far behind the stop, then drives in straight
 
 
 @dataclass(frozen=True)
@@ -139,13 +142,15 @@ def smoothstep(s):
 
 
 class Runner:
-    def __init__(self,corrections=CORRECTIONS):
+    def __init__(self,corrections=CORRECTIONS,retries=RETRIES):
         # How often an aimed pose may be solved again (ADR 0025); 0 runs poses as taught.
-        if corrections<0:raise ValueError('corrections are counted from zero')
-        self.limit=corrections;self.stop()
+        # How often a program may go back to a stop it was pushed off (ADR 0031); 0 never.
+        if corrections<0 or retries<0:raise ValueError('corrections and retries are counted from zero')
+        self.limit=corrections;self.retry_limit=retries;self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
         self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
+        self.retries=0;self.stop_at=None;self.stop_block=None;self.run_up=None
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
@@ -158,6 +163,25 @@ class Runner:
         if self.single:self.state='paused';self.message='Step complete'
     def fail(self,message):
         self.state='failed';self.message=message
+    def off_stop(self,base):
+        """How far the base is from the stop its last goto brought it to, when that is more
+        than REAPPROACH and a retry is left; else None."""
+        if self.stop_at is None or base is None or self.retries>=self.retry_limit:return None
+        off=((base[0]-self.stop_at[0])**2+(base[1]-self.stop_at[1])**2)**.5
+        return off if off>REAPPROACH else None
+    def reapproach(self,off):
+        """Pushed off its stop, the machine goes back to it the way it came - the pose it
+        drove in, if one came just before the goto, then the goto - and takes its aimed pose
+        again from where the pose was planned (ADR 0031)."""
+        from math import cos,radians,sin
+        blocks=self.program.blocks;start=self.stop_block;stop=blocks[start].point
+        # Come in along the stop's own heading, as the first approach did: from the side, a
+        # drive to a point accepts a few centimetres across its line (ADR 0018).
+        if len(stop)>2:
+            heading=radians(stop[2]);self.run_up=(stop[0]-RUN_UP*cos(heading),stop[1]-RUN_UP*sin(heading))
+        if start>0 and blocks[start-1].kind=='pose':start-=1
+        self.retries+=1;self.message=f'Pushed {100*off:.0f} cm off its stop: going back'
+        self.elapsed=0.;self.index=start;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
     def travel(self,block):
         """Seconds a pose's slowest joint needs at the pose's speed, from where it started."""
         goal=self.pose_goal or block.angles
@@ -190,9 +214,15 @@ class Runner:
             if self.driver is None:
                 from math import radians
                 from little_world.control.navigation import GoTo
-                self.driver=GoTo(b.point[:2],radians(b.point[2]) if len(b.point)>2 else None,b.value or .01)
+                if self.run_up and self.index==self.stop_block:
+                    self.driver=GoTo(self.run_up,None,.03)
+                else:
+                    self.driver=GoTo(b.point[:2],radians(b.point[2]) if len(b.point)>2 else None,b.value or .01)
             forward,turn,arrived=self.driver.step(base)
             output['base']=(forward,turn)
+            if arrived and self.run_up and self.index==self.stop_block and self.driver.goal==tuple(self.run_up):
+                self.run_up=None;self.driver=None;arrived=False      # backed off: now in to the stop
+            elif arrived:self.stop_at=b.point[:2];self.stop_block=self.index
         condition=False
         if b.kind=='move':condition=bool((angles or {}).get(b.target)) and all(abs(v-b.value)<=SETTLE for v in angles[b.target])
         elif b.kind=='pose':
@@ -208,7 +238,9 @@ class Runner:
             elif self.elapsed+1e-9>=b.duration:
                 self.fail('Nothing held: the grasp missed' if b.kind=='grasp' else 'Timed out: '+b.kind+' '+b.target)
         elif b.kind=='pose':
-            if condition:
+            off=self.off_stop(base) if condition and b.point else None
+            if off:self.reapproach(off)
+            elif condition:
                 # Aimed at a point: arrived where the joints were sent, is the tool there?
                 better=aim(b.point,self.pose_goal) if b.point and aim is not None and self.corrections<self.limit else None
                 if better:
@@ -217,8 +249,11 @@ class Runner:
                 else:self.advance()
             elif self.elapsed+1e-9>=self.travel(b)+b.duration:
                 # A correction that cannot settle keeps what the joints reached; the pose itself
-                # settled before it, so the program goes on.
+                # settled before it, so the program goes on. A pose that cannot settle because
+                # its machine was pushed off its stop goes back to the stop (ADR 0031).
+                off=self.off_stop(base) if b.point else None
                 if self.corrections:self.advance()
+                elif off:self.reapproach(off)
                 else:self.fail('Timed out: pose did not settle')
         elif self.elapsed+1e-9>=b.duration:self.advance()
         return output

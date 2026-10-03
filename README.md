@@ -97,6 +97,11 @@ change the design, try again.** A desktop robotics sandbox on
   9 set-ups and after a 6 N s one (about 6 cm) in 3 of 9 - in none with its arm poses run as
   taught; a cube moved 5 cm is never found, since nothing looks for it
   ([ADR 0030](docs/adr/0030-disturbances-during-a-run.md)).
+- **Back to its stop.** Pushed more than 2 cm off the stop its program drove it to, a
+  machine now drives back - backing off and coming in straight, as it first did - and
+  reaches again: shoved 6 N s at the table, the arm on a cart fetches its cube in 8 of 9
+  set-ups instead of 3
+  ([ADR 0031](docs/adr/0031-going-back-to-the-stop.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

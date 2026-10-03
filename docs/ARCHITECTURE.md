@@ -141,7 +141,9 @@ when used); `programming/execution.py` hands a runner's output to a position con
 the same way in the window, in inventory trials and headless. A pose may carry the point
 its tool was aimed at; a runner given the arm's aim (`ToolMotion.aim`) checks where the
 tool got to once the pose settles and solves it again for where the machine now stands
-(ADR 0025).
+(ADR 0025). A runner also remembers the stop its last drive-to reached: an aimed pose
+settling more than 2 cm from it sends the program back - the pose it drove in, a run-up
+behind the stop, the stop - once per run (ADR 0031).
 
 A base with a left and a right drive wheel can be driven to a point (ADR 0018):
 `control/navigation.py` turns the axle midpoint's pose into a forward speed and a turn

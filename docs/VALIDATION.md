@@ -968,3 +968,17 @@ Not claimed: a push is a force on the base's centre of mass for 0.1 s, always to
 sized to span recovery rather than measured; nine set-ups give wide bounds; no slippery
 patch (LW-018).
 
+## Going back to the stop — 2026-10-03
+
+ADR 0031 (OPEN LW-019; the owner chose going back). An aimed pose that settles, or cannot
+settle, more than 2 cm from the stop its program drove to sends the program back - the pose
+it drove in, a 25 cm run-up behind the stop along its heading, the stop - once per run.
+Fetch, arm on a cart, nine set-ups: shoved 6 N s at the table (6.3 cm), every goal in 8 of 9
+(3 of 9 with corrections alone); shoved 4 N s (1.7 cm), 8 of 9 (9 of 9); undisturbed, 9 of 9
+and nothing went back; drawn 59 times undisturbed, every goal in all 59 with the same times
+as before. The set-ups lost had their cube knocked over by the shove.
+Checked in `tests/test_going_back.py` (4). Suites: 627 headless; the suite with a display
+ran with the change below.
+
+Not claimed: the base's pose is the simulator's; one retry per run; the 2 cm threshold and
+the 25 cm run-up are chosen, and nine set-ups do not settle the threshold.

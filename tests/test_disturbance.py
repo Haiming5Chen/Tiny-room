@@ -130,7 +130,7 @@ def made_up(groups):
             label = 'as designed' if i == 0 else f'repeat {i}'
             results = (Result('reached', 'Reached the table', 'met', 9.6),
                        Result('delivered', 'Cube resting in the bin', 'met' if t else 'missed', t))
-            out.append(Run(Variation(label, x=.001 * i), results, pushed=pushed))
+            out.append(Run(Variation(label, x=.001 * i), results, pushed=pushed, went_back=int(bool(pushed) and i < 2)))
         return tuple(out)
     return Disturbed('fetch', 'arm on a cart', 'program', 60., None, Ranges(), None,
                      tuple((label, text, runs(times, pushed)) for label, text, times, pushed in groups))
@@ -143,20 +143,21 @@ def test_the_report_compares_each_set_up_with_itself_undisturbed():
     page = disturbed_markdown(result)
     assert page.startswith('# Fetch, disturbed: arm on a cart')
     assert 'the same 4 set-ups - the design as designed and 3 drawn at random' in page
-    assert '| none | 4 of 4 | 3 of 3, at least 37 % | - | - | - |' in page
-    assert '| shoved 6 N s at the table | 3 of 4 | 2 of 3, at least 14 % | +8.0 s | 8.1 cm (8.1 to 8.1) | repeat 3 |' in page
+    assert '| none | 4 of 4 | 3 of 3, at least 37 % | - | - | - | - |' in page
+    assert '| shoved 6 N s at the table | 3 of 4 | 2 of 3, at least 14 % | +8.0 s | 8.1 cm (8.1 to 8.1) | 2 | repeat 3 |' in page
     assert '- **shoved 6 N s at the table**: a push.' in page
 
 
 def test_aimed_poses_recover_a_cart_shoved_8_cm_at_the_table_and_poses_as_taught_miss():
     """FR-006's check, measured: shoved 6 N s to its left once stopped at the table, the
     cart slides about 8 cm. With ADR 0025's corrections the arm finds the cube where the
-    cart now stands and the run meets every goal, later; run as taught it closes on air."""
+    cart now stands and the run meets every goal, later; run as taught it misses the cube.
+    Both without going back to the stop, which ADR 0031 added after."""
     pytest.importorskip('mujoco')
     from little_world.inventory.sweep import design, run
     shove = DEFAULTS['fetch'][1]
-    corrected = run('fetch', design('mobile_manipulator'), disturbance=shove)
+    corrected = run('fetch', design('mobile_manipulator'), disturbance=shove, retries=0)
     assert all(x.status in ('met', 'kept') for x in corrected.results), corrected.results
-    assert .05 < corrected.pushed < .12
-    taught = run('fetch', design('mobile_manipulator'), disturbance=shove, corrections=0)
+    assert .05 < corrected.pushed < .12 and corrected.went_back == 0
+    taught = run('fetch', design('mobile_manipulator'), disturbance=shove, corrections=0, retries=0)
     assert {x.id: x.status for x in taught.results}['lifted'] == 'missed'

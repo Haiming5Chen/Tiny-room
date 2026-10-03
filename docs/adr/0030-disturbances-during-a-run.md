@@ -32,11 +32,12 @@ judging by the field's own goals, and comparing every set-up with itself undistu
   the last goal was met, and how far pushes moved the machine.
   `python -m little_world.inventory.sweep fetch --disturb`; `--corrections 0` runs a
   program's poses as taught (the runner's correction cap is now a parameter).
-- *Found on the way, and fixed.* The grasp check counted the table as held. Shoved 6 N s,
-  a corrected pose closed the jaws on the table's edge, both pads touched something - the
-  table - and the program carried on as if it held the cube; only the field's goals said
-  otherwise. A grasp now counts only a body that can move (`Observations.grasped`), so such
-  a program stops with "Nothing held", as ADR 0016 meant it to.
+- *Found on the way, and fixed.* The grasp check counted a table as held when both jaws
+  touched it: shoved 6 N s, a corrected pose closed the jaws with a finger on the table's
+  edge. It did not decide these runs - the Fetch template's check names the cube - but a
+  check that names nothing would have passed on the table. A grasp now counts only a body
+  that can move (`Observations.grasped`). (Corrected on 3 October before publishing: this
+  record first said the check had passed on the table.)
 
 **Blueprint and builder.** Untouched: a disturbance is a condition of a run.
 
@@ -60,9 +61,12 @@ cm (46.6 to 121.4), and it finishes in 2 of 9.
 
 What it shows: undisturbed, the poses work as taught in every set-up. The corrections carry
 the cart through a 4 N s shove (about 2 cm) in every set-up, where poses as taught lose one,
-and through a 6 N s shove (about 6 cm) in 3 of 9, where poses as taught lose all nine - past
-about 4 cm the corrected pose put the jaws on the table's edge, and the program has no way
-back to its stop (OPEN LW-019). A cube
+and through a 6 N s shove (about 6 cm) in 3 of 9, where poses as taught lose all nine. Traced
+set-up by set-up, past about 4 cm the arm, aimed from where the cart was pushed to, worked
+at the edge of its reach: one finger on the table, a lift that stopped short of the field's
+5 cm line (just under it in one set-up, whose cube still reached the bin), a cube dropped on the
+way, or jaws that closed on nothing. The program had no way back to its stop (OPEN LW-019;
+ADR 0031 gives it one). A cube
 moved after the cart arrived is still taken at 3 cm in 7 of 9 set-ups, by the jaws' own
 width, and at 5 cm in none: nothing looks at the cube again (FR-011). Checks in
 `tests/test_disturbance.py` (7): what a disturbance says and refuses; a push waits for its

@@ -40,6 +40,7 @@ class Run:
     seconds: float = 0.             # wall clock
     disturbed: str = ''             # what a disturbance did, '' when there was none (ADR 0030)
     pushed: float | None = None     # how far a push moved the machine's base, the way it pushed (m)
+    went_back: int = 0              # times the program went back to a stop it was pushed off (ADR 0031)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -138,10 +139,12 @@ def ranges_for(field_id):
     return Ranges(turn=0.) if FIELDS[field_id].squared else Ranges()
 
 
-def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None):
+def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
+        retries=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
-    as designed; `corrections` caps an aimed pose's corrections (ADR 0025; None: the runner's own)."""
+    as designed; `corrections` caps an aimed pose's corrections (ADR 0025) and `retries` how
+    often the program may go back to a stop it was pushed off (ADR 0031); None: the runner's own."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -193,7 +196,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 aim = ToolMotion(backend, bp, control).aim     # aimed poses checked (ADR 0025)
             except ValueError:
                 aim = None
-            runner = Runner() if corrections is None else Runner(corrections=corrections)
+            caps = {k: v for k, v in (('corrections', corrections), ('retries', retries)) if v is not None}
+            runner = Runner(**caps)
             runner.start(program)
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
@@ -227,7 +231,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 watch(state)
         return Run(variation, tracker.results(finished=True), tracker.tipped_at, predicted,
                    runner.state if runner else '', '', time.monotonic() - started,
-                   kick.note() if kick is not None else '', kick.moved if kick is not None else None)
+                   kick.note() if kick is not None else '', kick.moved if kick is not None else None,
+                   runner.retries if runner else 0)
 
 
 def _one(args):
@@ -235,7 +240,7 @@ def _one(args):
 
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
-          ranges=Ranges(), corrections=None):
+          ranges=Ranges(), corrections=None, retries=None):
     """Every variation's run of a field (by default the plan for `ranges`);
     `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections."""
     if field_id not in PROTOCOLS:
@@ -249,7 +254,7 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
             site = None     # each loaded run then reports why it could not be loaded
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint) if protocol == 'program' else None
-    work = [(field_id, blueprint, v, program, site, None, corrections) for v in variations]
+    work = [(field_id, blueprint, v, program, site, None, corrections, retries) for v in variations]
     runs = []
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -277,6 +282,7 @@ class Disturbed:
     ranges: Ranges
     corrections: int | None         # an aimed pose's corrections, capped; None: the runner's own
     groups: tuple                   # ((label, description, runs), ...), undisturbed first
+    retries: int | None = None      # going back to a stop, capped (ADR 0031); None: the runner's own
 
 
 def setups(ranges=Ranges(), samples=8, seed=1):
@@ -286,7 +292,7 @@ def setups(ranges=Ranges(), samples=8, seed=1):
 
 
 def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, seed=1, jobs=1, progress=None,
-            corrections=None):
+            corrections=None, retries=None):
     """Every set-up run undisturbed and then under each disturbance (by default the field's
     own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each."""
     if field_id not in PROTOCOLS:
@@ -307,7 +313,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint) if protocol == 'program' else None
     tried = (None, *disturbances)
-    work = [(field_id, blueprint, v, program, site, d, corrections) for d in tried for v in variations]
+    work = [(field_id, blueprint, v, program, site, d, corrections, retries) for d in tried for v in variations]
     runs = []
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -324,7 +330,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     n = len(variations)
     groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
                    for i, d in enumerate(tried))
-    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups)
+    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries)
 
 
 def _last(run):
@@ -344,13 +350,15 @@ def disturbed_markdown(result):
     what = {'hold': f'held still for {result.duration:g} s',
             'drive': f'driven straight ahead at full speed for {result.duration:g} s',
             'program': "running the field's program, solved once for the design on its mark"}[result.protocol]
-    capped = '' if result.corrections is None else \
-        f' Aimed poses were corrected at most {result.corrections} times (ADR 0025; the runner allows 2).'
+    capped = ('' if result.corrections is None else
+              f' Aimed poses were corrected at most {result.corrections} times (ADR 0025; the runner allows 2).') + \
+        ('' if result.retries is None else
+         f' A program went back to a stop it was pushed off at most {result.retries} times (ADR 0031; the runner allows 1).')
     lines = [f'# {field.title}, disturbed: {result.design}', '',
              f'Each disturbance tried on the same {n} set-ups - the design as designed and {drawn_count} drawn at '
              f'random within the ranges of ADR 0024 - {what}.{capped}', '',
-             '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Missed in |',
-             '| --- | --- | --- | --- | --- | --- |']
+             '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Went back | Missed in |',
+             '| --- | --- | --- | --- | --- | --- | --- |']
     for label, _, runs in result.groups:
         ok = [r for r in runs if _last(r) is not None]
         sample = [r for r in runs if not r.error and r.variation.label.startswith('repeat')]
@@ -363,13 +371,15 @@ def disturbed_markdown(result):
         pushed = '-' if not pushes else f'{100 * median(pushes):.1f} cm ({100 * pushes[0]:.1f} to {100 * pushes[-1]:.1f})'
         missed = [r.variation.label for r in runs if _last(r) is None]
         lost = '-' if not missed else 'every set-up' if len(missed) == len(runs) else ', '.join(missed)
-        lines.append(f'| {label} | {len(ok)} of {len(runs)} | {sure} | {change} | {pushed} | {lost} |')
+        back = sum(1 for r in runs if r.went_back)
+        lines.append(f'| {label} | {len(ok)} of {len(runs)} | {sure} | {change} | {pushed} | {back or "-"} | {lost} |')
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
     lines += ['', 'A run counts when it meets every goal' + (f' ({", ".join(first)})' if first else '') +
               '. "Last goal, median change" compares each set-up with itself undisturbed. "Pushed" is how '
-              'far the machine\'s base went the way it was pushed, a second after the push. The rate is over '
+              'far the machine\'s base went the way it was pushed, a second after the push; "Went back", in how '
+              'many set-ups the program drove back to a stop it had been pushed off (ADR 0031). The rate is over '
               'the set-ups drawn at random (ADR 0028); the design as designed is a chosen run.', '']
     return '\n'.join(lines)
 
@@ -387,7 +397,8 @@ def from_json(text):
     d = json.loads(text)
     runs = tuple(Run(Variation(**{**r['variation'], 'at': tuple(r['variation']['at'])}),
                      tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'],
-                     r['program'], r['error'], r['seconds'], r.get('disturbed', ''), r.get('pushed'))
+                     r['program'], r['error'], r['seconds'], r.get('disturbed', ''), r.get('pushed'),
+                     r.get('went_back', 0))
                  for r in d['runs'])
     site = tuple(d['site']) if d['site'] is not None else None
     return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs)
@@ -654,6 +665,8 @@ def main(argv=None):
                         help="instead: the design and the drawn set-ups, undisturbed and under the field's disturbances")
     parser.add_argument('--corrections', type=int, default=None,
                         help='cap an aimed pose\'s corrections (0: run poses as taught; default: the runner\'s own)')
+    parser.add_argument('--retries', type=int, default=None,
+                        help='cap how often a program goes back to a stop it was pushed off (0: never; default: the runner\'s own)')
     args = parser.parse_args(argv)
     bp = design(args.design)
     ranges = ranges_for(args.field)
@@ -663,11 +676,11 @@ def main(argv=None):
         print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
     if args.disturb:
         result = disturb(args.field, bp, None, args.name or args.design, args.samples, args.seed, args.jobs,
-                         progress, args.corrections)
+                         progress, args.corrections, args.retries)
         text = disturbed_markdown(result)
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
-                       ranges=ranges, corrections=args.corrections)
+                       ranges=ranges, corrections=args.corrections, retries=args.retries)
         text = markdown(result)
     print(text)
     from pathlib import Path
