@@ -16,3 +16,10 @@ Add contract tests before significant new behavior, then relevant integration
 checks. Run `python -m pytest`; no graphics required for the default suite. Camera
 and viewer checks are explicit. Do not implement thermal, fluids, chemistry, AI,
 or a graphical builder in milestone one. Do not add dependencies for future phases.
+
+## Multi-agent coordination
+
+Read HANDOFF.md before editing for shared status and overlap checks. Preserve other
+agents' changes and record your own scope and results there. Do not assign work
+without the owner's permission. Keep automated test windows hidden; use
+`docs/AGENT_TESTING.md`. The handoff file is a record, not a live connection or lock.
