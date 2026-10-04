@@ -95,6 +95,7 @@ seven minutes on two cores.
 | `src/little_world/physics/mujoco_backend.py` | the only MuJoCo adapter: compiles Blueprints, steps, applies commands |
 | `src/little_world/control/` | drive and arm controllers, navigation, tool motion, telemetry |
 | `src/little_world/fields/` | test fields and their goals (goals read the core `State` only) |
+| `src/little_world/perception/` | depth cameras and finding known parts in their pictures (ADR 0032) |
 | `src/little_world/programming/` | block programs and the runner |
 | `src/little_world/factory/` | the automated factory cell |
 | `src/little_world/ui/` | the one-window app: workshop, build, program, test drive, factory |

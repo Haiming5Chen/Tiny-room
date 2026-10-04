@@ -96,9 +96,10 @@ set-ups drawn at random, with exact bounds (ADR 0028). The tilt test sets a mach
 against its rail before it tilts (ADR 0029). A run can be disturbed partway - the machine
 shoved, a part moved - to see what it recovers from (ADR 0030), from the run report as well
 as the command line; and a program pushed off its stop drives back to it and reaches again
-(ADR 0031). Next: what the owner picks
-from the frontier proposals -
-among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the
-factory's feeder (moving surfaces and the PID actuator need a release past 3.10), one real
-servo calibrated with the system identification toolbox, and grasping from the cell's
-camera instead of known positions.
+(ADR 0031). The Fetch table has a depth camera, a RealSense D435 with its maker's numbers,
+and the Fetch program looks for its cube before it reaches - plane removed, box fitted, no
+learned model - and aims where it was seen (ADR 0032). Next: what the owner picks from the
+frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller
+conveyor for the factory's feeder (moving surfaces and the PID actuator need a release past
+3.10), one real servo calibrated with the system identification toolbox, the factory cell
+grasping from its own camera, and looking again when a grasp misses.

@@ -181,6 +181,19 @@ the adapter applies it (`MujocoBackend.push`, `MujocoBackend.shift`), and `sweep
 runs the design and its drawn set-ups undisturbed and under each disturbance. The run report
 starts those too (`ui/disturbed_runs.py`, sharing the process handling of `ui/varied_runs.py`).
 
+A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
+names a Blueprint camera in the field and its sensor, whose numbers are in
+`perception/sensors.py` (standard library). The adapter casts a camera's pixels as rays
+(`MujocoBackend.cast`, MuJoCo's `mj_multiRay`: no GL context) and reports its pose
+(`camera_pose`). `perception/eye.py` takes a picture of the region round where a part was
+planned and adds the sensor's noise; `perception/boxes.py` (numpy) finds a known box in it -
+support plane, clusters standing on it, top face laid back along its rays and fitted - and
+never reads the simulator's pose of the part. A `look` block (program version 3) hands the
+runner a `see` callback's sightings; once three in a row agree, the poses at that stop aimed
+near the part aim where it was seen (`Runner.aimed`). `sweep.run` records each look with where
+the part really was, for the reports; the program workspace draws the last picture through the
+canvas (`Canvas.pixels`).
+
 ## Frontier radar
 
 `little_world/radar/` (ADR 0021, standard library) is not part of the simulator: it reads

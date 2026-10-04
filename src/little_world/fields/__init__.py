@@ -6,12 +6,12 @@ bodies with sourced surfaces (ADR 0010); nothing here is simulated specially.
 Standard library only.
 """
 from dataclasses import dataclass, replace
-from math import atan2, cos, degrees, radians, sin, tan
+from math import atan2, cos, degrees, radians, sin, sqrt, tan
 from little_world.components import Transform, box
 from little_world.construction.structure import outline
 from little_world.core.blueprint import Blueprint
 from little_world.core.command import Torque
-from little_world.core.component import Body, Geometry, Hinge, Motor
+from little_world.core.component import Body, Camera, Geometry, Hinge, Motor
 from little_world.core.entity import Entity
 from little_world.core.material import Material
 from little_world.core.scene import Scene
@@ -44,6 +44,9 @@ class Field:
     # Set square before it starts (ADR 0029): the machine is turned in place to face along
     # the field, as a tip test sets a machine square against its stops.
     squared: bool = False
+    # A depth camera of the field's own that programs may look with (ADR 0032): (the camera's
+    # id in the field's Blueprint, its sensor in little_world.perception.sensors).
+    camera: tuple = ()
 
     def scene(self, machine):
         if self.squared:
@@ -100,6 +103,36 @@ X0 = -3.
 
 def fixed(name, size, material, position, quaternion=(1., 0., 0., 0.)):
     return box(name, size, material, transform=Transform(position, quaternion))
+
+
+def looking(position, target):
+    """The turn (w, x, y, z) of a camera at `position` looking at `target` with its picture
+    upright: its -z towards the target, its x level (MuJoCo's camera frame)."""
+    f = [t - p for t, p in zip(target, position)]
+    n = sqrt(sum(v * v for v in f))
+    f = [v / n for v in f]
+    r = [f[1], -f[0], 0.]                                   # forward x up, level
+    n = sqrt(r[0] ** 2 + r[1] ** 2)
+    if n < 1e-9:
+        raise ValueError('a camera looking straight up or down needs another way to keep upright')
+    r = [v / n for v in r]
+    u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]]
+    z = [-v for v in f]
+    m = ((r[0], u[0], z[0]), (r[1], u[1], z[1]), (r[2], u[2], z[2]))  # columns: x, y, z
+    trace = m[0][0] + m[1][1] + m[2][2]
+    if trace > 0:
+        k = sqrt(trace + 1.) * 2
+        q = (k / 4, (m[2][1] - m[1][2]) / k, (m[0][2] - m[2][0]) / k, (m[1][0] - m[0][1]) / k)
+    elif m[0][0] > m[1][1] and m[0][0] > m[2][2]:
+        k = sqrt(1. + m[0][0] - m[1][1] - m[2][2]) * 2
+        q = ((m[2][1] - m[1][2]) / k, k / 4, (m[0][1] + m[1][0]) / k, (m[0][2] + m[2][0]) / k)
+    elif m[1][1] > m[2][2]:
+        k = sqrt(1. + m[1][1] - m[0][0] - m[2][2]) * 2
+        q = ((m[0][2] - m[2][0]) / k, (m[0][1] + m[1][0]) / k, k / 4, (m[1][2] + m[2][1]) / k)
+    else:
+        k = sqrt(1. + m[2][2] - m[0][0] - m[1][1]) * 2
+        q = ((m[1][0] - m[0][1]) / k, (m[0][2] + m[2][0]) / k, (m[1][2] + m[2][1]) / k, k / 4)
+    return q if q[0] >= 0 else tuple(-v for v in q)
 
 
 def loose(name, size, material, position):
@@ -301,12 +334,24 @@ PICK_PLACE = Field(
 TABLE = (2.0, 0., .40, .50, .12)    # centre x, y; depth, width, height (m)
 FETCH_CUBE = (1.84, 0.)             # 4 cm behind the table's front edge
 BIN, BIN_SIZE, BIN_WALL = (.5, .8), .20, .04   # a bin on the floor, left of the start
+# A depth camera on a stand 10 cm beyond the table's far edge, 0.9 m up, looking down at the
+# front of the table where the cube stands (ADR 0032). From there, about 60 degrees down and
+# 0.87 m from the cube, the open jaws held over the cube do not hide its top.
+CAMERA_AT, CAMERA_AIM = (2.30, 0., .90), (1.85, 0., .12)
 
 
 def fetch_entities():
     x, y, depth, width, height = TABLE
     parts = slab()
     parts.append(fixed('table', (depth, width, height), 'plywood', (x, y, height / 2)))
+    # An Intel RealSense D435 (90 x 25 x 25 mm) held out on a bracket from a 30 mm post
+    # behind it, out of its picture; the picture is the camera's.
+    cx, cy, cz = CAMERA_AT
+    parts.append(fixed('camera_post', (.03, .03, cz + .015), 'stand', (cx + .07, cy, (cz + .015) / 2)))
+    parts.append(fixed('camera_bracket', (.07, .02, .01), 'stand', (cx + .045, cy, cz + .02)))
+    turn = looking(CAMERA_AT, CAMERA_AIM)
+    parts.append(fixed('camera_head', (.09, .025, .025), 'stand', CAMERA_AT, turn))
+    parts.append(Camera('table_camera', 'camera_head', Transform((0., 0., -.0125)), fovy=58.))
     bx, by = BIN
     half = BIN_SIZE / 2
     parts.append(fixed('bin_base', (BIN_SIZE, BIN_SIZE, .006), 'tray', (bx, by, .003)))
@@ -333,7 +378,8 @@ def fetch_goals():
 FETCH = Field(
     'fetch', 'Fetch',
     'A cube on a table 1.8 m ahead: drive there, pick it up, bring it back and set it in the bin left of the start.',
-    fetch_entities, goals=fetch_goals(), home=((1.0, .35, .15), 3.6, -70., -32.))
+    fetch_entities, goals=fetch_goals(), home=((1.0, .35, .15), 3.6, -70., -32.),
+    camera=('table_camera', 'realsense_d435'))
 
 
 WALL_X, DOOR_Y, DOOR_WIDTH = 2.0, .5, .50   # a wall across the field, its door off to the left

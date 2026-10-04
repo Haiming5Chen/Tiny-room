@@ -994,3 +994,27 @@ new: the read-back, and the window test that drives the button). Suites on MuJoC
 
 Not claimed: the slippery floor patch is not built (LW-018 stays open for it).
 
+
+## A camera at the table — 2026-10-04
+
+ADR 0032 (FR-011, accepted by the owner). The Fetch table has a depth camera on a stand beyond
+it - an Intel RealSense D435: depth over 87 x 58 deg at 848 x 480, nothing nearer than
+16.8 cm, depth noise z^2 x 0.08 px / (f x 50 mm), from Intel's documents and Keselman et al.
+(2017) - whose pictures are MuJoCo's rays from it, with no GL context. A program's `look`
+block finds a known box in them classically - support plane, clusters, the top face laid
+back along its rays - and the poses at that stop aim where it was seen. Measured: the cube at
+80 placements, up to 8 cm off its plan and turned up to 45 deg, found in every picture: within
+1.9 mm and 2.4 deg without noise, 2.4 mm and 6.0 deg with the D435's (median 1.3 mm and
+0.6 deg; 9 of 1600 pictures over 5 deg). Fetch, arm on a cart, nine set-ups, looking: the
+cube moved 5 cm as the cart stands at the table, 9 of 9 (none blind, ADR 0031); 3 cm, 9 of 9
+(7 of 9); shoved 4 and 6 N s, 9 of 9 each (8 of 9 each); moved 5 cm 2 s later, none;
+undisturbed 9 of 9, the cube in the bin 2.5 s later than blind. Set down elsewhere before the
+run: 13 of 14 placements fetched looking, 6 of 14 blind. Drawn 59 times undisturbed, looking:
+every goal in all 59 (at least 95 %), 2.5 s later than blind. Every sighting within 2.0 mm of
+where the cube really was. Checked in `tests/test_perception.py` (7) and `tests/test_look.py`
+(9, one with a display). Suites on MuJoCo 3.10.0: 682 passed with a display, 643 headless.
+
+Not claimed: the camera's pose is known exactly; its noise is the stereo error alone - no
+holes, flying pixels or projected pattern; one look per stop, so a part moved after it is
+missed; the four-joint arm does not use the cube's turn; the program still stops where the
+cube was planned; the one-second watch and ten pictures a second are chosen.

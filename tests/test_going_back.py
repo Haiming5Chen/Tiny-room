@@ -96,14 +96,14 @@ def test_a_pose_that_cannot_settle_off_its_stop_goes_back_instead_of_failing():
 def test_a_cart_shoved_6_N_s_at_the_table_goes_back_and_fetches_its_cube():
     """Measured, set-up 'repeat 2' of the Fetch sweep: shoved 8 cm, the cart's lift stopped
     just short of the field's 5 cm line and the run failed (ADR 0030). Going back, it meets
-    every goal."""
+    every goal. The program as measured then, before it looked for the cube (ADR 0032)."""
     pytest.importorskip('mujoco')
     from little_world.fields.disturbance import DEFAULTS
     from little_world.fields.variation import payload_site
-    from little_world.inventory.sweep import design, ranges_for, run, setups
+    from little_world.inventory.sweep import design, ranges_for, run, setups, solve
     variations = setups(ranges_for('fetch'))
     bp = design('mobile_manipulator')
     site = payload_site(bp, max(v.payload for v in variations))
     setup = next(v for v in variations if v.label == 'repeat 2')
-    back = run('fetch', bp, setup, site=site, disturbance=DEFAULTS['fetch'][1])
+    back = run('fetch', bp, setup, solve('fetch', bp, look=False), site=site, disturbance=DEFAULTS['fetch'][1])
     assert back.went_back == 1 and all(x.status in ('met', 'kept') for x in back.results), back.results

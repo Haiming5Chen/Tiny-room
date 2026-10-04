@@ -41,6 +41,7 @@ class Run:
     disturbed: str = ''             # what a disturbance did, '' when there was none (ADR 0030)
     pushed: float | None = None     # how far a push moved the machine's base, the way it pushed (m)
     went_back: int = 0              # times the program went back to a stop it was pushed off (ADR 0031)
+    seen: tuple = ()                # each look's (object, where planned, where seen, where it was) (ADR 0032)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -94,8 +95,9 @@ def _hold(world, drive, control, field, state):
     return world.step(commands)
 
 
-def solve(field_id, blueprint):
-    """The field's program template, solved for the machine as designed on its mark."""
+def solve(field_id, blueprint, look=True):
+    """The field's program template, solved for the machine as designed on its mark; it
+    looks with the field's camera, when the field has one, unless `look` is False."""
     from little_world import Entity, World
     from little_world.physics.mujoco_backend import MujocoBackend
     from little_world.programming.program import Block, Program
@@ -130,7 +132,8 @@ def solve(field_id, blueprint):
         if base is None:
             raise ValueError('the Fetch program needs a left and a right drive wheel')
         place = (fields.BIN[0], fields.BIN[1], top('field/bin_base'))
-        return fetch(motion, base, jaws, 'objects/fetch_cube', place, reach_in=fields.BIN_SIZE / 2 - .045)
+        return fetch(motion, base, jaws, 'objects/fetch_cube', place, reach_in=fields.BIN_SIZE / 2 - .045,
+                     look=look and bool(field.camera))
 
 
 def ranges_for(field_id):
@@ -140,11 +143,13 @@ def ranges_for(field_id):
 
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
-        retries=None):
+        retries=None, ideal=False):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025) and `retries` how
-    often the program may go back to a stop it was pushed off (ADR 0031); None: the runner's own."""
+    often the program may go back to a stop it was pushed off (ADR 0031); None: the runner's own.
+    A program that looks does so with the field's camera, its sensor's noise drawn for this
+    set-up, or without noise if `ideal` (ADR 0032)."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -169,7 +174,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
         if tip is not None:
             predicted = railed(tip, stance.height) if field.fitted else tip
     backend = MujocoBackend()
-    with World(backend, field.scene(Entity('machine', bp))) as world:
+    scene = field.scene(Entity('machine', bp))
+    with World(backend, scene) as world:
         state = world.start()
         table = friction(variation)
         if table:
@@ -199,11 +205,19 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             caps = {k: v for k, v in (('corrections', corrections), ('retries', retries)) if v is not None}
             runner = Runner(**caps)
             runner.start(program)
+            try:
+                see = eye(backend, field, scene, variation, ideal) if any(b.kind == 'look' for b in program.blocks) else None
+            except ValueError as error:
+                return Run(variation, error=str(error))
+            actual = []         # where each looked-for object really was: measured, not seen
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
                 held = obs.grasped() if needs_grasp(program) else frozenset()
                 out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held,
-                                  base.pose() if base else None, aim)
+                                  base.pose() if base else None, aim, see)
+                if len(runner.seen) > len(actual):
+                    body = backend.model.body(runner.seen[-1][0]).id
+                    actual.append(tuple(float(v) for v in backend.data.xpos[body]))
                 control.held = apply(out, control)
                 ahead = base_targets(out, base) if out['base'] else out['drive']
                 commands = dict(drive.step_commands(ahead, world.timestep, angular=True))
@@ -232,7 +246,20 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
         return Run(variation, tracker.results(finished=True), tracker.tipped_at, predicted,
                    runner.state if runner else '', '', time.monotonic() - started,
                    kick.note() if kick is not None else '', kick.moved if kick is not None else None,
-                   runner.retries if runner else 0)
+                   runner.retries if runner else 0,
+                   tuple((*look, at) for look, at in zip(runner.seen, actual)) if runner else ())
+
+
+def eye(backend, field, scene, variation=Variation(), ideal=False):
+    """The field's depth camera for a program's looks (ADR 0032), its noise drawn from a
+    seed of the set-up's own, so a set-up sees the same noise however it is disturbed."""
+    from zlib import crc32
+    from little_world.perception.eye import Eye, sizes_in
+    from little_world.perception.sensors import SENSORS
+    if not field.camera:
+        raise ValueError(f'the {field.id} field has no camera to look with')
+    camera, sensor = field.camera
+    return Eye(backend, f'field/{camera}', SENSORS[sensor], sizes_in(scene), crc32(variation.label.encode()), ideal)
 
 
 def _one(args):
@@ -240,9 +267,10 @@ def _one(args):
 
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
-          ranges=Ranges(), corrections=None, retries=None):
+          ranges=Ranges(), corrections=None, retries=None, blind=False):
     """Every variation's run of a field (by default the plan for `ranges`);
-    `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections."""
+    `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections;
+    `blind` runs the program without its looks (ADR 0032)."""
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
@@ -253,7 +281,7 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
         except ValueError:
             site = None     # each loaded run then reports why it could not be loaded
     protocol, duration = PROTOCOLS[field_id]
-    program = solve(field_id, blueprint) if protocol == 'program' else None
+    program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     work = [(field_id, blueprint, v, program, site, None, corrections, retries) for v in variations]
     runs = []
     if jobs > 1:
@@ -283,6 +311,7 @@ class Disturbed:
     corrections: int | None         # an aimed pose's corrections, capped; None: the runner's own
     groups: tuple                   # ((label, description, runs), ...), undisturbed first
     retries: int | None = None      # going back to a stop, capped (ADR 0031); None: the runner's own
+    blind: bool = False             # the program ran without its looks (ADR 0032)
 
 
 def setups(ranges=Ranges(), samples=8, seed=1):
@@ -292,7 +321,7 @@ def setups(ranges=Ranges(), samples=8, seed=1):
 
 
 def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, seed=1, jobs=1, progress=None,
-            corrections=None, retries=None):
+            corrections=None, retries=None, blind=False):
     """Every set-up run undisturbed and then under each disturbance (by default the field's
     own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each."""
     if field_id not in PROTOCOLS:
@@ -311,7 +340,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
         except ValueError:
             site = None
     protocol, duration = PROTOCOLS[field_id]
-    program = solve(field_id, blueprint) if protocol == 'program' else None
+    program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     tried = (None, *disturbances)
     work = [(field_id, blueprint, v, program, site, d, corrections, retries) for d in tried for v in variations]
     runs = []
@@ -330,7 +359,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     n = len(variations)
     groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
                    for i, d in enumerate(tried))
-    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries)
+    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries, blind)
 
 
 def _last(run):
@@ -353,6 +382,7 @@ class Group:
     pushes: tuple           # how far each push moved the base, m, sorted
     went_back: int          # set-ups whose program went back to its stop
     missed: tuple           # the set-ups that missed a goal
+    seen: tuple = ()        # how far from its plan each set-up's last look saw its object, m, sorted
 
     @property
     def low(self):
@@ -372,8 +402,22 @@ def summaries(result):
                          median(changes) if i and changes else None,
                          tuple(sorted(r.pushed for r in runs if r.pushed is not None)),
                          sum(1 for r in runs if r.went_back),
-                         tuple(r.variation.label for r in runs if _last(r) is None)))
+                         tuple(r.variation.label for r in runs if _last(r) is None),
+                         tuple(sorted(off(r.seen[-1]) for r in runs if r.seen))))
     return out
+
+
+def off(look):
+    """How far, in plan, a look saw its object from where it was planned (m)."""
+    _, planned, seen, *_ = look
+    return ((seen[0] - planned[0]) ** 2 + (seen[1] - planned[1]) ** 2) ** .5
+
+
+def missed_by(look):
+    """How far a look's sighting was from where its object really was (m), or None."""
+    if len(look) < 4:
+        return None
+    return sum((a - b) ** 2 for a, b in zip(look[2], look[3])) ** .5
 
 
 def disturbed_from_json(text):
@@ -383,7 +427,7 @@ def disturbed_from_json(text):
     groups = tuple((label, description, tuple(_run(r) for r in runs)) for label, description, runs in d['groups'])
     site = tuple(d['site']) if d['site'] is not None else None
     return Disturbed(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']),
-                     d['corrections'], groups, d.get('retries'))
+                     d['corrections'], groups, d.get('retries'), d.get('blind', False))
 
 
 def disturbed_markdown(result):
@@ -398,27 +442,37 @@ def disturbed_markdown(result):
     capped = ('' if result.corrections is None else
               f' Aimed poses were corrected at most {result.corrections} times (ADR 0025; the runner allows 2).') + \
         ('' if result.retries is None else
-         f' A program went back to a stop it was pushed off at most {result.retries} times (ADR 0031; the runner allows 1).')
+         f' A program went back to a stop it was pushed off at most {result.retries} times (ADR 0031; the runner allows 1).') + \
+        (' The program ran without its looks (`--blind`, ADR 0032).' if result.blind else '')
+    groups = summaries(result)
+    looked = any(g.seen for g in groups)
+    worst = max((missed_by(r.seen[-1]) or 0. for _, _, runs in result.groups for r in runs if r.seen), default=0.)
     lines = [f'# {field.title}, disturbed: {result.design}', '',
              f'Each disturbance tried on the same {n} set-ups - the design as designed and {drawn_count} drawn at '
              f'random within the ranges of ADR 0024 - {what}.{capped}', '',
-             '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Went back | Missed in |',
-             '| --- | --- | --- | --- | --- | --- | --- |']
-    for g in summaries(result):
+             '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Went back |'
+             + (' Camera saw it moved |' if looked else '') + ' Missed in |',
+             '| --- | --- | --- | --- | --- | --- |' + (' --- |' if looked else '') + ' --- |']
+    for g in groups:
         sure = f'{g.drawn_met} of {g.drawn}, at least {100 * g.low:.0f} %' if g.drawn else '-'
         change = '-' if g.change is None else f'{g.change:+.1f} s'
         pushed = '-' if not g.pushes else \
             f'{100 * median(g.pushes):.1f} cm ({100 * g.pushes[0]:.1f} to {100 * g.pushes[-1]:.1f})'
         lost = '-' if not g.missed else 'every set-up' if len(g.missed) == g.runs else ', '.join(g.missed)
-        lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {change} | {pushed} | {g.went_back or "-"} | {lost} |')
+        seen = ('' if not looked else ' - |' if not g.seen else
+                f' {100 * median(g.seen):.1f} cm ({100 * g.seen[0]:.1f} to {100 * g.seen[-1]:.1f}) |')
+        lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
     lines += ['', 'A run counts when it meets every goal' + (f' ({", ".join(first)})' if first else '') +
               '. "Last goal, median change" compares each set-up with itself undisturbed. "Pushed" is how '
               'far the machine\'s base went the way it was pushed, a second after the push; "Went back", in how '
-              'many set-ups the program drove back to a stop it had been pushed off (ADR 0031). The rate is over '
-              'the set-ups drawn at random (ADR 0028); the design as designed is a chosen run.', '']
+              'many set-ups the program drove back to a stop it had been pushed off (ADR 0031). '
+              + ('"Camera saw it moved" is how far from where it was planned the table camera last saw the cube '
+                 f'(ADR 0032); every sighting was within {1000 * worst:.1f} mm of where the cube really was. '
+                 if looked else '') +
+              'The rate is over the set-ups drawn at random (ADR 0028); the design as designed is a chosen run.', '']
     return '\n'.join(lines)
 
 
@@ -433,7 +487,8 @@ def _run(r):
     from little_world.fields.goals import Result
     return Run(Variation(**{**r['variation'], 'at': tuple(r['variation']['at'])}),
                tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'], r['program'], r['error'],
-               r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0))
+               r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0),
+               tuple((look[0], *(tuple(v) for v in look[1:])) for look in r.get('seen', ())))
 
 
 def from_json(text):
@@ -546,6 +601,12 @@ def markdown(sweep):
             worst = max((r for r in tipped if r.predicted is not None), key=lambda r: abs(r.tipped - r.predicted))
             lines.append(f'Against the design\'s prediction for each variation: {min(errors):+.1f} to '
                          f'{max(errors):+.1f} deg, the furthest {worst.variation.label}.')
+    looks = sorted(off(r.seen[-1]) for r in ran if r.seen)
+    if looks:
+        worst = max((missed_by(r.seen[-1]) or 0. for r in ran if r.seen), default=0.)
+        lines += ['', f'The program looked for its object with the field\'s camera (ADR 0032) in {len(looks)} runs and '
+                  f'saw it {1000 * median(looks):.1f} mm from where it was planned (median; {1000 * looks[0]:.1f} to '
+                  f'{1000 * looks[-1]:.1f} mm), each time within {1000 * worst:.1f} mm of where it really was.']
     lines += ['', _how_sure(sweep)]
     nominal = next((r for r in ran if r.variation.nominal), None)
     lines += ['', '## Each run', '', '| Variation | ' + ('Tipped at | Predicted | ' if tipped else '') + 'Goals | Changed from as designed |',
@@ -707,6 +768,8 @@ def main(argv=None):
                         help='cap an aimed pose\'s corrections (0: run poses as taught; default: the runner\'s own)')
     parser.add_argument('--retries', type=int, default=None,
                         help='cap how often a program goes back to a stop it was pushed off (0: never; default: the runner\'s own)')
+    parser.add_argument('--blind', action='store_true',
+                        help="run the field's program without looking with the field's camera (ADR 0032)")
     args = parser.parse_args(argv)
     bp = design(args.design)
     ranges = ranges_for(args.field)
@@ -716,11 +779,11 @@ def main(argv=None):
         print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
     if args.disturb:
         result = disturb(args.field, bp, None, args.name or args.design, args.samples, args.seed, args.jobs,
-                         progress, args.corrections, args.retries)
+                         progress, args.corrections, args.retries, args.blind)
         text = disturbed_markdown(result)
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
-                       ranges=ranges, corrections=args.corrections, retries=args.retries)
+                       ranges=ranges, corrections=args.corrections, retries=args.retries, blind=args.blind)
         text = markdown(result)
     print(text)
     from pathlib import Path

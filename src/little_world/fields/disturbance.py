@@ -19,7 +19,8 @@ class Disturbance:
     """One thing that happens to a run. A push acts on the machine's base: `impulse`
     newton-seconds, horizontal, spread over `seconds`, toward `toward` degrees from the
     machine's heading (anticlockwise: 90 pushes it to its left). A move shifts a loose
-    field part, such as the Fetch cube, by `offset` metres in plan."""
+    field part, such as the Fetch cube, by `offset` metres in plan and turns it `turn`
+    degrees about the vertical."""
     label: str
     kind: str
     after: str = ''                # the goal whose being met starts the clock; '' the run's start
@@ -30,6 +31,7 @@ class Disturbance:
     seconds: float = .1
     part: str = ''
     offset: tuple = (0., 0.)
+    turn: float = 0.
 
     def __post_init__(self):
         object.__setattr__(self, 'offset', tuple(float(v) for v in self.offset))
@@ -39,8 +41,8 @@ class Disturbance:
             raise ValueError('a disturbance waits a while, lasts a while and pushes forwards')
         if self.kind == 'push' and not self.impulse:
             raise ValueError('a push needs an impulse')
-        if self.kind == 'move' and not (self.part and any(self.offset)):
-            raise ValueError('a move needs a part and an offset')
+        if self.kind == 'move' and not (self.part and (any(self.offset) or self.turn)):
+            raise ValueError('a move needs a part and an offset or a turn')
 
     def describe(self):
         when = [f'after "{self.after}"' if self.after else 'from the start']
@@ -51,8 +53,8 @@ class Disturbance:
         if self.kind == 'push':
             return (f'{self.impulse:g} N s over {self.seconds:g} s, {self.toward:g} deg left of its heading, '
                     + ', '.join(when))
-        return (f'{self.part.split("/")[-1]} moved {100 * self.offset[0]:+.1f} cm, {100 * self.offset[1]:+.1f} cm, '
-                + ', '.join(when))
+        return (f'{self.part.split("/")[-1]} moved {100 * self.offset[0]:+.1f} cm, {100 * self.offset[1]:+.1f} cm'
+                + (f', turned {self.turn:+g} deg' if self.turn else '') + ', ' + ', '.join(when))
 
 
 def _yaw(quaternion):
@@ -100,7 +102,7 @@ class Disturbing:
                 return
             self.began = elapsed
             if d.kind == 'move':
-                backend.shift(d.part, d.offset)
+                backend.shift(d.part, d.offset, d.turn)
                 self.done = True
                 return
             pose = state.bodies[self.root].pose
@@ -137,13 +139,17 @@ def _push(label, after, impulse, **more):
 
 # What each field can have done to it, measured in ADR 0030. Fetch: once the cart has stopped
 # at the table (stood still 0.2 s) a shove to its left, or the cube moved sideways (+Y, the
-# cart's left as it faces the table). Sprint: a shove to its left a second past the start line.
+# cart's left as it faces the table) - then, or 2 s later, when a cart that looks has looked
+# and is bringing its jaws over the cube (ADR 0032). Sprint: a shove to its left a second
+# past the start line.
 DEFAULTS = {
     'fetch': (_push('shoved 4 N s at the table', 'reached', 4., still=.2, delay=.1),
               _push('shoved 6 N s at the table', 'reached', 6., still=.2, delay=.1),
               Disturbance('cube moved 3 cm sideways', 'move', after='reached', still=.2, delay=.1,
                           part='objects/fetch_cube', offset=(0., .03)),
               Disturbance('cube moved 5 cm sideways', 'move', after='reached', still=.2, delay=.1,
+                          part='objects/fetch_cube', offset=(0., .05)),
+              Disturbance('cube moved 5 cm sideways, 2 s later', 'move', after='reached', still=.2, delay=2.1,
                           part='objects/fetch_cube', offset=(0., .05))),
     'sprint': (_push('shoved 4 N s after the start', 'start', 4., delay=1.),
                _push('shoved 8 N s after the start', 'start', 8., delay=1.)),

@@ -544,10 +544,11 @@ class MujocoBackend:
         self.data.xfrc_applied[idx, :3] = force
         self.data.xfrc_applied[idx, 3:] = 0.
 
-    def shift(self, body, offset):
+    def shift(self, body, offset, turn=0.):
         """Move a loose body - one on a free joint, such as a field's cube - by (dx, dy) metres
-        in plan and leave it at rest: a part someone moved while the machine was busy (ADR
-        0030). A body that is not loose cannot be moved this way."""
+        in plan, turned `turn` degrees about the vertical through its centre, and leave it at
+        rest: a part someone moved while the machine was busy (ADR 0030, 0032). A body that is
+        not loose cannot be moved this way."""
         self._ready()
         if body not in self._body_ids:
             raise ValueError(f'no body called {body!r}')
@@ -556,11 +557,16 @@ class MujocoBackend:
         if joint < 0 or self.model.jnt_type[joint] != mj.mjtJoint.mjJNT_FREE:
             raise ValueError(f'{body} is not loose: only a body on a free joint can be moved')
         dx, dy = (float(v) for v in offset)
-        if not (isfinite(dx) and isfinite(dy)):
-            raise ValueError('an offset is two finite metres')
+        if not (isfinite(dx) and isfinite(dy) and isfinite(turn)):
+            raise ValueError('an offset is two finite metres, a turn finite degrees')
         at, dof = self.model.jnt_qposadr[joint], self.model.jnt_dofadr[joint]
         self.data.qpos[at] += dx
         self.data.qpos[at + 1] += dy
+        if turn:
+            spin = np.array((np.cos(np.radians(turn) / 2), 0., 0., np.sin(np.radians(turn) / 2)))
+            turned = np.zeros(4)
+            mj.mju_mulQuat(turned, spin, self.data.qpos[at + 3:at + 7].copy())
+            self.data.qpos[at + 3:at + 7] = turned
         self.data.qvel[dof:dof + 6] = 0.
         mj.mj_kinematics(self.model, self.data)
         mj.mj_comPos(self.model, self.data)
@@ -604,6 +610,35 @@ class MujocoBackend:
         self.model.actuator_biasprm[self._affine] = 0.
         staged_forward(self.model, self.data, self._contact_policy, self._energy_sensor)
         return self.snapshot()
+
+    def camera_pose(self, camera):
+        """(position, rotation) of a camera now: its centre in the world, and its axes as the
+        columns of a 3 x 3 matrix - x right, y up, looking along -z (ADR 0032)."""
+        self._ready()
+        if camera not in self._camera_ids:
+            raise ValueError(f"unknown camera: {camera}")
+        i = self._camera_ids[camera]
+        return self.data.cam_xpos[i].copy(), self.data.cam_xmat[i].reshape(3, 3).copy()
+
+    def cast(self, camera, directions, cutoff=10.):
+        """Rays from a camera to the first visible surface (ADR 0032): `directions` (n x 3)
+        in the camera's frame. Returns how far along each direction the surface is - the hit
+        is at the camera plus that times the direction, so a direction scaled to z = -1
+        gives depth along the camera's axis - and NaN where nothing is met; geoms further
+        than `cutoff` metres are passed over. Visible geoms only (groups 0 to 2), not the
+        camera's own body: what a camera there would see, from MuJoCo's own ray casting,
+        without a GL context."""
+        position, rotation = self.camera_pose(camera)
+        local = np.asarray(directions, dtype=float).reshape(-1, 3)
+        if not np.isfinite(local).all() or not np.isfinite(cutoff) or cutoff <= 0:
+            raise ValueError("rays need finite directions and a positive cutoff")
+        world = np.ascontiguousarray(local @ rotation.T)
+        n = len(world)
+        geoms, found = np.zeros(n, np.int32), np.zeros(n)
+        if n:
+            mj.mj_multiRay(self.model, self.data, position, world.reshape(-1), np.array((1, 1, 1, 0, 0, 0), np.uint8),
+                           1, int(self.model.cam_bodyid[self._camera_ids[camera]]), geoms, found, None, n, float(cutoff))
+        return np.where(found >= 0, found, np.nan)
 
     def capture(self, camera, width=320, height=240):
         """Return a detached RGB uint8 array; creates GL resources only on demand."""

@@ -109,11 +109,12 @@ def test_a_loaded_cart_lifts_the_cube_clear_when_its_poses_are_aimed():
     """0.5 kg behind the arm: the cart rides on its rear caster, so the jaws met the cube
     28 mm from where they were aimed and the lift left it 12 mm short of the 5 cm line
     until the cart rocked back on its way to the bin (lifted at 23.7 s). Aimed, the jaws
-    meet it within 4 mm and the lift clears the line: lifted at 18.2 s, 16.7 as designed."""
+    meet it within 4 mm and the lift clears the line: lifted at 18.2 s, 16.7 as designed.
+    The program as measured then, before it looked for the cube (ADR 0032)."""
     from little_world.fields.variation import Variation, payload_site
     from little_world.inventory.sweep import run, solve
     bp = mobile_manipulator_blueprint()
-    loaded = run('fetch', bp, Variation(payload=.5), solve('fetch', bp), payload_site(bp))
+    loaded = run('fetch', bp, Variation(payload=.5), solve('fetch', bp, look=False), payload_site(bp))
     goals = {r.id: r for r in loaded.results}
     assert loaded.program == 'completed' and all(r.status in ('met', 'kept') for r in goals.values())
     assert goals['lifted'].time < 19.

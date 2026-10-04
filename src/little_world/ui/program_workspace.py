@@ -10,6 +10,7 @@ class ProgramWorkspace:
         self.program=Program();self.runner=Runner();self.program_selected=0;self.program_offset=0
         self.program_past=[];self.program_future=[];self.program_drag=None;self.program_rows=[]
         self.panel_mode='keys';self.program_keys=set();self.program_drive=None
+        self.eye=None;self.look_rect=None
 
     @property
     def program_path(self):return self.path.with_suffix('.program.json')
@@ -85,8 +86,24 @@ class ProgramWorkspace:
                 commands.update(self.joint_control.step_commands(self.world.timestep))
                 self.state=self.world.step(commands)
             self.paused=True
-        self.program_edit(fetch(self.tool_motion,self.base_pose,jaws.id,'objects/fetch_cube',place,reach_in=BIN_SIZE/2-.045))
-        self.status='Fetch solved for this machine: drive, pick, bring back, set down. Run it: the field judges it.'
+        look=self.field_camera() is not None
+        self.program_edit(fetch(self.tool_motion,self.base_pose,jaws.id,'objects/fetch_cube',place,reach_in=BIN_SIZE/2-.045,look=look))
+        self.status=('Fetch solved for this machine: drive, look with the table camera, pick, bring back, set down. Run it: the field judges it.'
+                     if look else 'Fetch solved for this machine: drive, pick, bring back, set down. Run it: the field judges it.')
+
+    def field_camera(self):
+        """The chosen field's own depth camera, (camera id, sensor id), or None (ADR 0032)."""
+        from little_world.fields import FIELDS
+        field=FIELDS.get(getattr(self,'field_id','workshop'))
+        return field.camera if field is not None and field.camera else None
+
+    def program_eye(self):
+        """The field camera that a program's looks take their pictures with, or None."""
+        from little_world.perception.eye import Eye,sizes_in
+        from little_world.perception.sensors import SENSORS
+        camera=self.field_camera()
+        if camera is None:return None
+        return Eye(self.backend,'field/'+camera[0],SENSORS[camera[1]],sizes_in(self._scene()))
 
     def doorway_program(self):
         """Line up 0.7 m before the Doorway field's door, drive through it and park in the
@@ -176,6 +193,8 @@ class ProgramWorkspace:
                 self.grasp_form(index);return
             if kind=='goto':
                 self.goto_form(index);return
+            if kind=='look':
+                self.look_form(index);return
             def target_selected(target=''):
                 if kind=='action':fields=[('Direction: 1 increase / -1 decrease',str(old.value if old else 1)),('Duration (seconds)',str(old.duration if old else 1))]
                 elif kind=='drive':fields=[('Left wheel target (rad/s)',str(old.value if old else 3)),('Right wheel target (rad/s)',str(old.secondary if old else 3)),('Duration (seconds)',str(old.duration if old else 1))]
@@ -196,7 +215,29 @@ class ProgramWorkspace:
                 self.choose('Choose joint action',tuple(labels),lambda label:target_selected(labels[label]))
             else:target_selected()
         if old:kind_selected(old.kind)
-        else:self.choose('Add program block',('pose','grasp','goto','action','drive','wait','move','contact','distance','if_contact'),kind_selected)
+        else:self.choose('Add program block',('pose','grasp','goto','look','action','drive','wait','move','contact','distance','if_contact'),kind_selected)
+
+    def look_form(self,index=None):
+        """A look: the field's camera finds a loose object, and the poses at this stop aimed
+        near where it was planned aim where it was seen (ADR 0032)."""
+        old=self.program.blocks[index] if index is not None else None
+        if self.field_camera() is None:raise ValueError('This field has no camera to look with: the Fetch table has one')
+        names=tuple(n for n in self.observations.indices if n.startswith('objects/'))
+        if not names:raise ValueError('Nothing loose in this field to look for')
+        def chosen(name):
+            def apply(values):
+                watch,timeout=(numbers(v,1)[0] for v in values)
+                here=tuple(float(v) for v in self.data.xpos[self.model.body(name).id])
+                b=Block('look',name,watch,timeout,point=old.point if old and old.target==name else here)
+                blocks=list(self.program.blocks)
+                if index is None:blocks.append(b)
+                else:blocks[index]=b
+                self.program_edit(replace(self.program,blocks=tuple(blocks)))
+                self.program_selected=len(blocks)-1 if index is None else index
+            self.form('Block / look',[('Watch (seconds)',str(old.value if old else 1)),('Timeout (seconds)',str(old.duration if old else 5))],apply,
+                      'The table camera watches until three pictures agree; poses aimed near the object then aim where it was seen.')
+        if old:chosen(old.target)
+        else:self.choose('Object to look for',names,chosen)
 
     def sensor_block_form(self,kind,index=None):
         names=tuple(self.observations.indices)
@@ -231,6 +272,7 @@ class ProgramWorkspace:
         self.close_bench()
         if self.building:self.simulate()
         self.clear_keys();self.paused=False;self.runner.start(self.program,single)
+        self.eye=self.program_eye() if any(b.kind=='look' for b in self.program.blocks) else None
 
     def stop_program(self):
         self.runner.stop();self.program_keys.clear();self.program_drive=None;self.clear_keys();self.paused=False
@@ -248,11 +290,31 @@ class ProgramWorkspace:
         base=getattr(self,'base_pose',None)
         motion=getattr(self,'tool_motion',None)
         result=self.runner.tick(self.world.timestep,joint_angles(self.joint_control),contacts,distances,held,
-                                base.pose() if base is not None else None,motion.aim if motion is not None else None)
+                                base.pose() if base is not None else None,motion.aim if motion is not None else None,
+                                getattr(self,'eye',None))
         self.program_drive=base_targets(result,base) if result['base'] else result['drive']
         self.program_keys|=apply(result,self.joint_control)
         if self.runner.state in ('paused','failed'):self.paused=True
         if self.runner.state in ('paused','failed','completed'):self.status='Program: '+self.runner.message
+
+    def draw_look_frame(self,ui,text,wh):
+        """The table camera's last depth picture - the region round where the object was
+        planned - in the corner of the view, the object's pixels green (ADR 0032)."""
+        self.look_rect=None
+        picture=getattr(getattr(self,'eye',None),'last',None)
+        if picture is None or not picture.depth.size or self.building:return
+        rows,cols=picture.depth.shape
+        scale=min(220/cols,220/rows);w,h=cols*scale,rows*scale
+        x,top=self.PANEL+14,wh-74-h
+        ui.pixels('look',picture.colours(),x,top,w,h,version=self.eye.pictures)
+        self.look_rect=(x,74,w,h)
+        for rx,ry,rw,rh in ((x-2,top-2,w+4,2),(x-2,top+h,w+4,2),(x-2,top,2,h),(x+w,top,2,h)):ui.rect(rx,ry,rw,rh,(.37,.83,.69))
+        ui.rect(x-2,top-38,max(w+4,220),36,(.045,.065,.085,.9))
+        text('TABLE CAMERA / DEPTH',x+6,top-34,10,(.68,.82,.84))
+        seen=self.runner.seen[-1] if self.runner.seen else None
+        line=(f'{seen[0].split("/")[-1]} seen {100*sum((a-c)**2 for a,c in zip(seen[2][:2],seen[1][:2]))**.5:.1f} cm from the plan'
+              if seen else 'near warm, far cool, the part green')
+        text(line,x+6,top-19,10,(.6,.74,.77),max(w,212)-8)
 
     def program_mouse(self,x,y,action):
         if self.panel_mode!='program' or not self.control_panel or self.dialog is not None:return False
@@ -284,7 +346,7 @@ class ProgramWorkspace:
         for row,b in enumerate(self.program.blocks[self.program_offset:self.program_offset+rows]):
             i=self.program_offset+row;y=282+row*43
             names={'wait':'Wait','action':'Joint action','drive':'Drive','move':'Move to angle','contact':'Wait for contact','distance':'Wait for distance','if_contact':'If contact',
-                   'pose':'Move to pose','grasp':'Check grasp','goto':'Drive to'}
+                   'pose':'Move to pose','grasp':'Check grasp','goto':'Drive to','look':'Look for'}
             label=f'{i+1}. '+names[b.kind]+(' / '+labels.get(b.target,b.target.split('/')[-1]) if b.target else '')
             active=self.runner.index==i and self.runner.state in ('running','paused')
             button(label,x+16,y,294,lambda i=i:setattr(self,'program_selected',i),active=active or (editing and self.program_selected==i),h=26)
@@ -301,6 +363,10 @@ class ProgramWorkspace:
                 if b.point:detail=f'{len(b.angles)} joints / {b.value:g} deg/s / aimed at a point {100*b.point[2]:.0f} cm up'
             elif b.kind=='grasp':detail=f'Holding {b.target.split(chr(47))[-1] if b.target else "anything"} / timeout {b.duration:g}s'
             elif b.kind=='goto':detail=f'x {b.point[0]:.2f}  y {b.point[1]:.2f} m'+(f'  /  {round(b.point[2]):d} deg' if len(b.point)>2 else '')+f'  /  within {100*(b.value or .01):.0f} cm'
+            elif b.kind=='look':
+                seen=next((s for t,p,s in reversed(self.runner.seen) if p==b.point),None)
+                detail=(f'Seen {100*sum((a-c)**2 for a,c in zip(seen[:2],b.point[:2]))**.5:.1f} cm from the plan' if seen else
+                        f'Table camera / watches {b.value:g}s / timeout {b.duration:g}s')
             text(detail,x+24,y+28,10,(.6,.74,.77),276)
             self.program_rows.append((i,x+16,y,294,38))
         if not self.program.blocks:text('Add blocks or load an example.',x+16,286,12,(.6,.74,.77),294)

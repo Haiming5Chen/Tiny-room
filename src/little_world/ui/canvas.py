@@ -30,6 +30,7 @@ class Canvas:
         GL.glTexImage2D(GL.GL_TEXTURE_2D,0,GL.GL_RGBA,atlas.width,atlas.height,0,
                         GL.GL_RGBA,GL.GL_UNSIGNED_BYTE,atlas.tobytes())
         self.image_textures={}
+        self.pixel_textures={}
         self.begin()
 
     def begin(self):
@@ -114,6 +115,22 @@ class Canvas:
         u,v,u2,v2=(left-x)/w,(top-y)/h,(right-x)/w,(bottom-y)/h
         self.images.append((self.image_textures[key],((left,top,u,v),(right,top,u2,v),(right,bottom,u2,v2),(left,bottom,u,v2))))
 
+    def pixels(self,key,rgb,x,y,w,h,version=0):
+        """An RGB array (rows x columns x 3, top row first) drawn into a rectangle, each pixel
+        a sharp square; uploaded again only when `version` changes."""
+        rgb=np.ascontiguousarray(rgb,dtype=np.uint8)
+        tex,shown=self.pixel_textures.get(key,(None,None))
+        if tex is None:
+            tex=GL.glGenTextures(1);GL.glBindTexture(GL.GL_TEXTURE_2D,tex)
+            GL.glTexParameteri(GL.GL_TEXTURE_2D,GL.GL_TEXTURE_MIN_FILTER,GL.GL_NEAREST)
+            GL.glTexParameteri(GL.GL_TEXTURE_2D,GL.GL_TEXTURE_MAG_FILTER,GL.GL_NEAREST)
+        if shown!=version:
+            GL.glBindTexture(GL.GL_TEXTURE_2D,tex)
+            GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT,1)
+            GL.glTexImage2D(GL.GL_TEXTURE_2D,0,GL.GL_RGB,rgb.shape[1],rgb.shape[0],0,GL.GL_RGB,GL.GL_UNSIGNED_BYTE,rgb.tobytes())
+        self.pixel_textures[key]=(tex,version)
+        self.images.append((tex,((x,y,0.,0.),(x+w,y,1.,0.),(x+w,y+h,1.,1.),(x,y+h,0.,1.))))
+
     def flush(self,width,height,framebuffer_width,framebuffer_height):
         GL.glPushAttrib(GL.GL_ALL_ATTRIB_BITS)
         GL.glPushClientAttrib(GL.GL_CLIENT_ALL_ATTRIB_BITS)
@@ -187,4 +204,4 @@ class Canvas:
         GL.glPopAttrib()
 
     def close(self):
-        GL.glDeleteTextures([self.texture,*self.image_textures.values()])
+        GL.glDeleteTextures([self.texture,*self.image_textures.values(),*(t for t,_ in self.pixel_textures.values())])

@@ -380,6 +380,8 @@ PICK_FORWARD = .23      # m ahead of the drive axle where the tool meets an obje
 PLACE_FORWARD = .25     # the compact arm's reach at table and floor height, clear of the chassis
 BACK_OFF = .25          # m to back away from the table before turning, so the arm clears it
 DROP = .03              # m above the bin's floor the object is let go from
+WATCH = 1.              # s a look at the object watches before it may end (ADR 0032)
+LOOKING = 5.            # s before a look that has not seen the object hold still fails
 
 
 def at_base(base_now, base_plan, point):
@@ -394,14 +396,16 @@ def at_base(base_now, base_plan, point):
     return np.array((x1 + c1 * fx - s1 * fy, y1 + s1 * fx + c1 * fy, point[2]))
 
 
-def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=0.):
+def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=0., look=False):
     """A program for a mobile manipulator: drive to the object, pick it up, back away,
     drive to `place` (x, y, height of the surface under it) and set it down. Each arm
     waypoint is solved for the machine standing where the program will have driven it,
     as it stands now - so plan it with the machine settled on the floor, not in its level
     design pose; the drive axle's midpoint comes to within 1 cm and 2 degrees of each stop.
     `reach_in` lets go that much short of `place`, on the side the machine comes from:
-    a short arm reaching into a bin keeps its chassis off the bin's near wall."""
+    a short arm reaching into a bin keeps its chassis off the bin's near wall. With `look`,
+    a camera looks for the object once the machine has stopped at it, and the jaws are
+    brought over where it was seen before they go down (ADR 0032)."""
     backend = motion.backend
     now = base.pose()
     body = backend.model.body(target).id
@@ -445,6 +449,12 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
     reach('over', drop, [point + clearance * up for point in lowest])
     reach('down', drop, lowest)
     reach('retract', drop, [goal + clearance * up])
+    if look:
+        # Looking, the open jaws come in short of the object at the height they will stand
+        # over it, so that a camera beyond it sees all of its top past them (ADR 0032).
+        seed = motion.angles(poses['above'])
+        short = (_jaws_reach(motion) + _plan_radius(backend, body) + .01) * np.array((*ahead, 0.))
+        reach('ready', pick, [held + clearance * up - short, held + 2 * clearance * up - short])
     # Every pose taken at a stop is aimed at its point in the field (ADR 0025): the base
     # stops within 1 cm of its mark and a cart rocks onto another caster as its arm moves,
     # so where the tool got to is checked and the pose solved again. 'above' is taken at
@@ -453,16 +463,45 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
                                                  point=points[label] if aimed else ())
     goto = lambda stop: Block('goto', value=.01, duration=60., point=(stop[0], stop[1], float(np.degrees(stop[2]))))
     # The arm takes its 'above' pose before the drive, so the open jaws arrive over the
-    # object instead of pushing it off the table on the way in.
+    # object instead of pushing it off the table on the way in - or, looking, its 'ready'
+    # pose short of it; once the camera has seen where the object is, the jaws come over it.
+    seen = (Block('look', target, value=WATCH, duration=LOOKING, point=tuple(float(v) for v in held)),
+            pose('above', speed)) if look else ()
     return Program((
-        Block('action', jaws, -1, .6), pose('above', speed, aimed=False),
-        goto(pick), pose('at', speed / 2),
+        Block('action', jaws, -1, .6), pose('ready' if look else 'above', speed, aimed=False),
+        goto(pick), *seen, pose('at', speed / 2),
         Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5),
         pose('lift', speed / 2),
         goto(retreat), goto(drop),
         pose('over', speed / 2), pose('down', speed / 2),
         Block('action', jaws, -1, .8),
         pose('retract', speed)))
+
+
+def _corners(m, d, g):
+    """A geom's box corners in the world, or its bounding box's for other shapes."""
+    half = m.geom_size[g] if m.geom_type[g] == mj.mjtGeom.mjGEOM_BOX else np.full(3, m.geom_rbound[g])
+    corners = np.array([(sx, sy, sz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]) * half
+    return d.geom_xpos[g] + corners @ d.geom_xmat[g].reshape(3, 3).T
+
+
+def _jaws_reach(motion):
+    """How far the tool's visible parts reach past its tool point, the way it points (m)."""
+    m, d = motion.model, motion.data
+    point, pointing = motion.tool()
+    far = 0.
+    for g in range(m.ngeom):
+        if _below(m, int(m.geom_bodyid[g]), motion.body) and m.geom_rgba[g][3] > 0:
+            far = max(far, float(np.max((_corners(m, d, g) - point) @ pointing)))
+    return far
+
+
+def _plan_radius(backend, body):
+    """How far a body's geoms reach from its centre in plan (m)."""
+    m, d = backend.model, backend.data
+    centre = d.xpos[body][:2]
+    return max((float(np.max(np.linalg.norm(_corners(m, d, g)[:, :2] - centre, axis=1)))
+                for g in range(m.ngeom) if m.geom_bodyid[g] == body), default=0.)
 
 
 def _bottom(backend, body):

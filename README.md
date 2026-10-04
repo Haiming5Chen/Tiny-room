@@ -103,6 +103,16 @@ change the design, try again.** A desktop robotics sandbox on
   reaches again: shoved 6 N s at the table, the arm on a cart fetches its cube in 8 of 9
   set-ups instead of 3
   ([ADR 0031](docs/adr/0031-going-back-to-the-stop.md)).
+- **It looks before it grasps.** The Fetch table has a depth camera on a stand behind it - an
+  Intel RealSense D435 with its maker's field of view and depth noise, its pictures cast as
+  rays in MuJoCo - and the Fetch program looks for the cube once the cart has stopped: the
+  table's plane is removed, what stands on it gathered and the cube's top face fitted, with
+  no learned model and no GPU. It finds the cube within 2.4 mm wherever it is set down up to
+  8 cm off its plan, and the arm reaches where it was seen: moved 5 cm as the cart stands at
+  the table, the cube is fetched in 9 of 9 set-ups instead of none. Moved after the look, it
+  is still missed, and one set down beyond the arm's reach from its stop is seen but not
+  fetched ([ADR 0032](docs/adr/0032-a-camera-at-the-table.md)). The program shows the
+  camera's depth picture, the cube in green.
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -114,7 +124,7 @@ change the design, try again.** A desktop robotics sandbox on
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
   [frontier](docs/agents/FRONTIER.md)).
-- **666 automated tests**, including OpenGL window tests that drive the interface
+- **682 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
@@ -658,6 +668,15 @@ machine as it stands ([ADR 0018](docs/adr/0018-fetch-drive-to-a-point.md)).
 
 <p align="center">
   <img src="docs/media/fetch-done.png" width="80%" alt="The mobile manipulator has fetched the cube into the bin; all four Fetch goals are done">
+</p>
+
+The Fetch table has a depth camera on a stand behind it, so the program first **looks for
+the cube** - here moved 5 cm to the cart's left once the cart had stopped - and brings the
+jaws down where it was seen. The corner of the view shows the camera's depth picture: near
+warm, far cool, the cube green ([ADR 0032](docs/adr/0032-a-camera-at-the-table.md)).
+
+<p align="center">
+  <img src="docs/media/fetch-camera.png" width="80%" alt="The cart's jaws come down over the cube the table camera found 5 cm from where it was planned; the depth picture is in the corner">
 </p>
 
 Programs are versioned `.program.json` files beside the Blueprint. Main **Save**

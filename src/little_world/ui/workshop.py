@@ -714,6 +714,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         text(help_text,self.PANEL+18,wh-57,12,(.8,.86,.86),ww-self.PANEL-35-(338 if self.control_panel else 0))
         text(self.status,16,wh-24,12,(.61,.70,.73),ww-32)
         self.draw_inset_frame(ui,text,wh)
+        self.draw_look_frame(ui,text,wh)
         if self.building and self.active_tab=='Add' and self.library_open:
             self.render_catalog_preview(ww,wh,fw,fh)
             text('PREVIEW / drag to rotate',ww-224,112,11,muted)

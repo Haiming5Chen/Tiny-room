@@ -238,7 +238,8 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Note (the owner, 2026-10-03, relayed by Claude): not now - no hardware for the moment.
 
 ### FR-011 · Grasping from the cell's camera, classical first
-- Status: proposed
+- Status: done (ADR 0032, 2026-10-04, for the Fetch table; accepted by the owner 2026-10-03.
+  The factory cell still grasps at known positions: LW-010)
 - From: [FoundationPose](https://huggingface.co/nvidia/foundationpose)
   (`hf-model:nvidia/foundationpose`, radar: watch); OPEN LW-010
 - Idea: real cells find their parts with a camera. Learned pose estimators such as
@@ -252,6 +253,15 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   a real depth camera's noise added, from its datasheet.
 - Cost and needs: numpy only; rendering needs a display or an offscreen context (the
   window tests run under xvfb); the direction is the owner's choice (LW-010).
+- Note (Claude, 2026-10-04): done at the Fetch table, where the measured failure was (the
+  cube moved 5 cm: none of 9). A RealSense D435 on a stand beyond the table, with its maker's
+  numbers; MuJoCo's rays instead of its renderer, so no display or GL context is needed and
+  the suites stay headless. Over 80 placements the cube was found within 2.4 mm and 6 deg
+  (median 1.3 mm, 0.6 deg; 9 of 1600 noisy pictures over 5 deg, the cube turned 45 deg). The
+  Fetch program looks once stopped and aims there: the cube moved 5 cm, 9 of 9; set down up to
+  8 cm off before the run, fetched where blind it was not - except 6 cm further along the
+  table, out of the arm's reach from its stop (FR-016). Moved after the look, it is missed
+  (FR-015). Yaw is measured, but the four-joint arm cannot use it.
 
 ### FR-012 · Runs exported as LeRobot datasets
 - Status: proposed
@@ -302,6 +312,38 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   a belt carries a box at its surface speed within 3 %.
 - Cost and needs: a newer Mac, a Linux machine, or a source build (CMake, the C library,
   then the Python bindings): the owner's call.
+
+### FR-015 · Looking again when a grasp misses
+- Status: proposed
+- From: ADR 0032's own measurement (the cube moved 5 cm 2 s after the look: none of 9, the
+  grasp check holding nothing); [RoboRecover](https://arxiv.org/abs/2609.28952)
+  (`arxiv:2609.28952`), recovery from deviations during execution; OPEN LW-020
+- Idea: a grasp check that fails says the object is not where the jaws went. A pick cell
+  that can see opens its jaws, looks again and tries once more before it gives up.
+- In Little World: when a grasp check fails at a stop where the program looked, the runner
+  opens the jaws, takes them back up to the pose before the descent, looks again and repeats
+  the approach once - a cap like going back's (ADR 0031), a runner parameter, counted in
+  `Run`.
+- How we would know: "cube moved 5 cm sideways, 2 s later" goes from none of 9 to most of
+  them; undisturbed and under the other disturbances nothing changes; the seconds it costs
+  are reported.
+- Cost and needs: small: the runner, which blocks a retry repeats, tests, a decision record.
+
+### FR-016 · Planning the stop from where the camera sees the cube
+- Status: proposed
+- From: ADR 0032's own measurement (the cube 6 cm further along the table, seen within
+  0.4 mm, out of the arm's reach from the stop planned for it); OPEN LW-021
+- Idea: the table camera sees the cube from anywhere: look before driving, and stop where
+  the arm can reach the cube where it is, as a mobile manipulator plans its base from what it
+  perceives rather than from a map.
+- In Little World: the Fetch program's first look comes before its drive to the table; the
+  stop is placed from where the cube was seen (a goto aimed relative to the object, as poses
+  are), and the look at the stop stays for the grasp.
+- How we would know: the cube set down 6 and 10 cm further along the table, or 15 cm
+  sideways, is fetched; the placements fetched now still are; the run is no slower when the
+  cube is where planned.
+- Cost and needs: small to medium: the runner (a goto re-aimed by a look), the template,
+  tests, a decision record.
 
 ## Radar brief
 

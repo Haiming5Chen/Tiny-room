@@ -29,8 +29,8 @@ class Recorder:
     def push(self, body, force=(0., 0., 0.)):
         self.calls.append(('push', body, tuple(round(f, 9) for f in force)))
 
-    def shift(self, body, offset):
-        self.calls.append(('shift', body, tuple(offset)))
+    def shift(self, body, offset, turn=0.):
+        self.calls.append(('shift', body, tuple(offset)) + ((turn,) if turn else ()))
 
 
 def state(x, y, speed=0., facing=90.):
@@ -152,14 +152,17 @@ def test_aimed_poses_recover_a_cart_shoved_8_cm_at_the_table_and_poses_as_taught
     """FR-006's check, measured: shoved 6 N s to its left once stopped at the table, the
     cart slides about 8 cm. With ADR 0025's corrections the arm finds the cube where the
     cart now stands and the run meets every goal, later; run as taught it misses the cube.
-    Both without going back to the stop, which ADR 0031 added after."""
+    Both without going back to the stop, which ADR 0031 added after, and with the program as
+    it was before it looked (ADR 0032)."""
     pytest.importorskip('mujoco')
-    from little_world.inventory.sweep import design, run
+    from little_world.inventory.sweep import design, run, solve
     shove = DEFAULTS['fetch'][1]
-    corrected = run('fetch', design('mobile_manipulator'), disturbance=shove, retries=0)
+    bp = design('mobile_manipulator')
+    blind = solve('fetch', bp, look=False)
+    corrected = run('fetch', bp, program=blind, disturbance=shove, retries=0)
     assert all(x.status in ('met', 'kept') for x in corrected.results), corrected.results
     assert .05 < corrected.pushed < .12 and corrected.went_back == 0
-    taught = run('fetch', design('mobile_manipulator'), disturbance=shove, corrections=0, retries=0)
+    taught = run('fetch', bp, program=blind, disturbance=shove, corrections=0, retries=0)
     assert {x.id: x.status for x in taught.results}['lifted'] == 'missed'
 
 

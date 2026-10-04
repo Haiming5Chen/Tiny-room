@@ -11,6 +11,33 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-04 · Claude (Cowork) · FR-011: a depth camera at the Fetch table
+Did: the owner accepted FR-011 (grasping from a camera, classical first). ADR 0032: an Intel
+RealSense D435 on a stand beyond the Fetch table with its maker's numbers; its pictures are
+MuJoCo's rays (`MujocoBackend.cast`, no GL context, so the suites stay headless); a classical
+finder for known boxes (`perception/`: support plane by RANSAC, clusters standing on it, the
+top face laid back along its rays and fitted); a `look` block (programs version 3) whose
+sighting re-aims the poses at its stop; the Fetch program looks once stopped, its jaws waiting
+short of the cube so as not to hide it. `sweep --blind`, a camera column in the disturbance
+report, `python -m little_world.perception` for the camera's accuracy, and the program
+workspace shows the camera's depth picture. The tests of ADR 0025, 0030 and 0031 run the
+program blind, as they were measured. ADR 0031's broken line fixed.
+Measured: the cube at 80 placements (up to 8 cm off, turned up to 45 deg): found in every
+picture, within 2.4 mm and 6 deg with the D435's noise (median 1.3 mm, 0.6 deg). Fetch, nine
+set-ups, looking: the cube moved 5 cm as the cart stands at the table, 9 of 9 (none
+blind); moved 3 cm, 9 of 9; shoved 4 and 6 N s, 9 of 9 each (going back alone lost one each:
+the shove knocked the cube with the jaws, which now wait short of it); moved 5 cm 2 s later,
+none. Set down elsewhere before the run: 13 of 14 placements fetched looking, 6 of 14 blind.
+Looking costs 2.5 s; drawn 59 times undisturbed, it met every goal in all 59, as blind.
+Suites: 682 passed with a display, 643 headless. Still running when committed: the disturbance sweep run blind the same
+day, for a follow-up commit.
+Unfinished: LW-020 (a cube moved after the look is missed; FR-015 proposed), LW-021 (a cube
+seen beyond the arm's reach from its planned stop; FR-016 proposed), LW-010 (the factory
+cell). A look costs about 0.1 s of computing a picture: on a slow machine the window may
+lag while it looks.
+For the owner: FR-015 and FR-016, and the remaining proposals (FR-004, FR-005, FR-007,
+FR-008, FR-012, FR-013).
+
 ## 2026-10-03 · Claude (Cowork) · going back to the stop (LW-019) and the disturbances button (LW-018)
 Did: the owner chose these two next. ADR 0031: an aimed pose settling more than 2 cm from
 the stop its program drove to sends the program back - the pose it drove in, a 25 cm run-up
