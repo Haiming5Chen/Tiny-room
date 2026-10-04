@@ -16,6 +16,7 @@ class AppModes:
         old.clear_keys();old.cancel_docking();old.events.clear()
         if old.runner.state=='running':old.pause_program()
         if not old.building:old.paused=True
+        if hasattr(old,'teach_drag'):old.teach_drag=False
         if hasattr(old,'tray_drag'):old.tray_drag=None;old.pending_source=None
         if not hasattr(host,'_workspaces'):host._workspaces={old.app_mode:old}
         target=host._workspaces.get(mode)

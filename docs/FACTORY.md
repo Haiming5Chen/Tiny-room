@@ -75,3 +75,55 @@ not connected. Products are two predefined rigid block shapes. This remains a
 Panda pick-and-place template, not an arbitrary line editor: no conveyors,
 multi-robot scheduling, arbitrary shape recognition or general collision-avoiding
 motion planner. Rearranged layouts can expose motion or grasp failures.
+
+## Teach a Panda position
+
+In **Real**, choose **Joint lab → Teach positions** with Panda selected.
+Drag the sphere horizontally; **Lower 2 cm / Raise 2 cm** changes its height.
+The hand orientation stays downward. Releasing the sphere checks reachability;
+**Preview reach** repeats that check without moving the robot. Gold means unchecked,
+green reachable, and red unreachable. **Move to target** runs the existing native
+servos; **Pause / Resume** freezes or continues, and **Reset** restores the robot.
+A reachable endpoint does not guarantee an unobstructed path.
+
+**Save position** records a named XYZ target. Reusing a name replaces that entry;
+**Recall position** loads and rechecks it, and **Delete saved position** removes the
+selected entry. Positions persist in `panda-positions.json` alongside the cell file.
+They survive experiment/robot/workspace changes. Saved positions currently support
+individual moves; integration into reusable multi-action task sequences is future
+work. Other robot families and arbitrary tool orientation are not supported yet.
+
+## Review precise changes and proposals from code
+
+In **Real → Pick and place**, click **Changes** beside Arrange and Set task.
+Move a tray precisely, change the route/product, or export/import a JSON draft.
+The review shows exact before/after values and checks performed; **Apply changes**
+commits the batch as one undo step. **Dismiss** leaves the scene untouched. Existing
+tray dragging and task buttons remain available. Any later edit or undo makes an
+older proposal stale. **Undo** is in the header; **Changes → Redo cell edit** restores
+an undone edit until a new change is made. History is in memory for this session;
+**Save cell** persists the current recipe as before.
+
+Exported draft files are never overwritten. Choose a new filename if one already
+exists. Edit the draft using Python or another editor, then import its path; do not
+alter the base snapshot or revision. For example:
+
+```python
+from pathlib import Path
+from little_world.factory.changes import CellRequest, CellChange
+
+snapshot = CellRequest.from_json(Path('factory-change-r0.json').read_text())
+proposal = CellRequest(snapshot.base, snapshot.revision, (
+    CellChange('tray', 'input', (0.40, 0.01)),
+    CellChange('task', 'route', ('input', 'Amber')),
+    CellChange('product', 'product', 'Tall block'),
+))
+Path('proposal.json').write_text(proposal.to_json())
+```
+
+Coordinates are world metres. Supported tray IDs are `input`, `Blue`, and `Amber`.
+The request is structured data, never executable Python. Importing only prepares a
+review; it does not run physics, save the cell, or silently update the layout.
+This is the first shared authoring interface, **not an AI connection or arbitrary
+factory generator**. See [AI_AUTHORING.md](AI_AUTHORING.md) for the researched design
+and remaining work for shared machine/scene construction, AI and process flows.

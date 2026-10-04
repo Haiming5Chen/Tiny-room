@@ -1,0 +1,29 @@
+{
+  "name": "Edit through visible controls, undo/redo, then physically place a product",
+  "actions": [
+    {"op":"click","label":"Changes"},
+    {"op":"click","label":"Change product"},
+    {"op":"click","label":"Tall block"},
+    {"op":"expect","equals":{"recipe.product":"Small block","proposal.after.product":"Tall block","revision":0}},
+    {"op":"click","label":"Apply changes"},
+    {"op":"expect","equals":{"recipe.product":"Tall block","undo_depth":1,"revision":1}},
+    {"op":"click","label":"Undo"},
+    {"op":"expect","equals":{"recipe.product":"Small block","redo_depth":1}},
+    {"op":"click","label":"Changes"},
+    {"op":"click","label":"Redo cell edit"},
+    {"op":"expect","equals":{"recipe.product":"Tall block","redo_depth":0}},
+    {"op":"click","label":"Changes"},
+    {"op":"click","label":"Change route"},
+    {"op":"fill","field":"Destination tray ID","value":"Amber"},
+    {"op":"click","label":"Apply"},
+    {"op":"expect","equals":{"recipe.destination":"Blue","proposal.after.destination":"Amber"}},
+    {"op":"click","label":"Apply changes"},
+    {"op":"click","label":"Preview path"},
+    {"op":"expect","equals":{"cycle.state":"planned","building":true}},
+    {"op":"click","label":"Run cycle"},
+    {"op":"advance","seconds":45},
+    {"op":"expect","equals":{"cycle.state":"completed","cycle.lift_verified":true,"paused":true},"between":{"product_position.0":[0.36,0.52],"product_position.1":[0.16,0.32],"product_position.2":[0.70,0.82]}},
+    {"op":"click","label":"Reset cell"},
+    {"op":"expect","equals":{"building":true,"recipe.destination":"Amber","recipe.product":"Tall block"}}
+  ]
+}

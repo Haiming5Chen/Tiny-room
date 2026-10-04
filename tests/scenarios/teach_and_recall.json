@@ -1,0 +1,23 @@
+{
+  "name":"Teach, move and name a Panda position using the real form input",
+  "actions":[
+    {"op":"click","label":"Joint lab"},
+    {"op":"click","label":"Teach positions"},
+    {"op":"click","label":"Move to target","error_contains":"disabled"},
+    {"op":"click","label":"Preview reach"},
+    {"op":"expect","equals":{"teaching.state":"ready","building":true}},
+    {"op":"click","label":"Save position"},
+    {"op":"fill","field":"Name","value":"Above bracket"},
+    {"op":"click","label":"Apply"},
+    {"op":"expect","equals":{"teaching.saved":["Above bracket"],"dialog":null}},
+    {"op":"click","label":"Move to target"},
+    {"op":"advance","seconds":12},
+    {"op":"expect","equals":{"teaching.state":"reached","paused":true}},
+    {"op":"click","label":"Reset"},
+    {"op":"click","label":"Recall position"},
+    {"op":"click","label":"Above bracket"},
+    {"op":"expect","equals":{"teaching.state":"ready","teaching.saved":["Above bracket"]}},
+    {"op":"click","label":"Delete saved position"},
+    {"op":"expect","equals":{"teaching.saved":[]}}
+  ]
+}

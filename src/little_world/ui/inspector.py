@@ -84,10 +84,10 @@ class PrecisionInspector:
         d=self.dialog
         try:
             d['apply']([v for _,v in d['fields']])
-        except (ValueError,KeyError,TypeError) as error:
+        except (ValueError,KeyError,TypeError,OSError) as error:
             d['error']=str(error)
         else:
-            self.dialog=None
+            if self.dialog is d:self.dialog=None
 
     def exact_form(self):
         b=self.editor.selected

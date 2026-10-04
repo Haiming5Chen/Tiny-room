@@ -44,13 +44,22 @@ class FactoryAuthoring:
         try:self.rebuild()
         except Exception:
             self.recipe=old;self.rebuild();raise
-        if remember:self.recipe_history.append(old)
+        self.recipe_revision+=1
+        if remember:
+            self.recipe_history.append(old);self.recipe_future.clear()
         self.authoring_note='Cell updated. Preview checks the robot motion.'
 
     def undo_recipe(self):
         if self.recipe_history:
-            previous=self.recipe_history[-1];self.apply_recipe(previous,False);self.recipe_history.pop()
+            previous=self.recipe_history[-1];current=self.recipe
+            self.apply_recipe(previous,False);self.recipe_history.pop();self.recipe_future.append(current)
             self.authoring_note='Last cell edit undone.'
+
+    def redo_recipe(self):
+        if self.recipe_future:
+            following=self.recipe_future[-1];current=self.recipe
+            self.apply_recipe(following,False);self.recipe_future.pop();self.recipe_history.append(current)
+            self.authoring_note='Cell edit restored.'
 
     def save_cell(self):
         self.recipe_path.parent.mkdir(parents=True,exist_ok=True)

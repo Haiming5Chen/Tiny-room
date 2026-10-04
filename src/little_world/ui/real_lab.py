@@ -6,7 +6,7 @@ from little_world.programming.program import Program,Block
 
 class RealLab:
     @property
-    def joint_lab(self):return self.experiment=='Joint lab'
+    def joint_lab(self):return self.experiment in ('Joint lab','Teach positions')
     @property
     def program_path(self):return self.recipe_path.with_name(self.robot_asset+'.program.json')
 
@@ -31,12 +31,13 @@ class RealLab:
 
     def select_experiment(self,name):
         if name=='Pick and place' and self.robot_asset!='franka_panda':raise ValueError('The pick-and-place experiment currently requires Panda and its gripper.')
-        if name not in ('Joint lab','Pick and place'):raise ValueError('Unknown experiment')
+        if name=='Teach positions' and self.robot_asset!='franka_panda':raise ValueError('Visual teaching currently supports Panda.')
+        if name not in ('Joint lab','Pick and place','Teach positions'):raise ValueError('Unknown experiment')
         if name==self.experiment:return
         if not self.building:self.state=self.world.reset()
         self.runner.stop();self.program_keys.clear();self.program_drive=None;self.clear_keys()
         self.experiment=name;self.guided=False;self.paused=False
-        self.control_panel=self.joint_lab;self.panel_mode='keys';self.bind_runtime()
+        self.control_panel=self.joint_lab and not self.teaching;self.panel_mode='keys';self.bind_runtime()
         self.status='Experiment ready.'
 
     def joint_example(self):
@@ -64,10 +65,11 @@ class RealLab:
         button('Operate robot',18,286,268,lambda:(setattr(self,'panel_mode','keys'),setattr(self,'control_panel',True)),active=self.panel_mode=='keys',h=36)
         button('Program sequence',18,330,268,lambda:(setattr(self,'panel_mode','program'),setattr(self,'control_panel',True)),active=self.panel_mode=='program',h=36)
         button('Load joint motion example',18,380,268,self.joint_example,self.runner.state not in ('running','paused'),h=32)
-        text('Original meshes, joints and servos.',18,437,11,(.66,.77,.79),270)
+        button('Teach positions',18,425,268,lambda:self.select_experiment('Teach positions'),self.robot_asset=='franka_panda',h=32)
+        text('Original meshes, joints and servos.',18,475,11,(.66,.77,.79),270)
         if self.robot_asset!='franka_panda':
-            text('Arm-only model: no gripper.',18,462,11,(.9,.72,.4),270)
-            text('Pick-and-place is validated for Panda.',18,485,11,(.66,.77,.79),270)
+            text('Arm-only model: no gripper.',18,498,11,(.9,.72,.4),270)
+            text('Pick-and-place is validated for Panda.',18,521,11,(.66,.77,.79),270)
         button('Reset experiment',18,wh-110,268,self.reset_cell,h=34)
         text(self.status,18,wh-24,11,(.66,.77,.79),ww-36)
         self.draw_control_panel(ui,button,text,ww,wh,fw,fh)
