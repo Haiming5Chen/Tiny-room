@@ -86,3 +86,29 @@ Candidate next development topic, not assigned or started: a shared factory-scen
 document with stable station IDs and reusable custom-machine Blueprints, so direct
 editing and future AI proposals address the same objects. See docs/AI_AUTHORING.md
 for scope and implementation order. The external brain's location remains unknown.
+
+### 2026-10-04 — Codex — shared factory document in progress
+
+Objective: implement the shared, portable factory scene document and revision-aware
+editor, with stable station/asset IDs and reuse of existing custom Blueprints.
+Intended scope: new factory document/editor modules, a non-windowed Python example,
+contract/native compilation tests, and related docs. Existing fixed-cell UI and
+Claude's entry-point documents are preserved. No work assigned to another agent.
+
+### 2026-10-04 — Codex — shared factory document completed
+
+Implementation commit: `3a4b309` — Add portable factory scene documents and reviewed
+station edits. Local, not pushed. The preceding in-progress scope is now complete;
+no active file reservation remains.
+
+- Added factory/document.py and document_editor.py: reusable embedded Blueprints,
+  stable station IDs/world poses, process links as intent, reference validation,
+  atomic reviewed changes, stale-revision protection and undo/redo.
+- Added examples/factory_layout.py and docs/FACTORY_DOCUMENT.md. Saved builder
+  machines can be reused at multiple stations without changing the original design.
+- Validation: 18 focused tests passed. Full default suite: **657 passed, 35 skipped**.
+  Native compilation is covered without graphics; the example compiled 67 bodies.
+  No windows were opened. Documentation and diff checks passed.
+- Remaining scope: general station selection/drag UI, process execution, AI provider,
+  collision/reach validation and external research-brain integration. The existing
+  fixed-cell UI is unchanged. No other agent was assigned work.
