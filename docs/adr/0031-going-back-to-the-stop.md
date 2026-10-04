@@ -45,9 +45,8 @@ Going back costs 8 to 10 s. Undisturbed, no run went back. The one 6 N s set-up 
 and the one 4 N s set-up lost going back where corrections alone had held, had both had
 the cube knocked by the jaws as the cart was shoved - moved 1 to 1.6 cm and tipped - and from
 the stop the jaws took it but lost it as it rose or on the way to the bin. Whether the 2 cm
-threshold or a
-larger one serves better is not settled by nine set-ups: corrections alone fetched the cube
-after pushes of up to 3.8 cm once, and failed after one of 3.7 cm.
+threshold or a larger one serves better is not settled by nine set-ups: corrections alone
+fetched the cube after pushes of up to 3.8 cm once, and failed after one of 3.7 cm.
 
 Undisturbed, the 59 drawn set-ups of ADR 0028 run again: every goal in all 71 runs, with the
 same times - no run went back (docs/sweeps/2026-10-03-fetch-mobile-manipulator-59-going-back.md).
