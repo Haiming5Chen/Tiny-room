@@ -77,16 +77,17 @@ camera: points at the top of the cube's near side faces pass for top face.
 
 Fetch, arm on a cart, MuJoCo 3.10.0: the disturbance sweep of ADR 0030 on its nine set-ups,
 the program looking (docs/sweeps/2026-10-04-fetch-mobile-manipulator-disturbed-looking.md),
-against the same program blind as ADR 0031 measured it on 3 October:
+and the same day blind (`--blind`, -disturbed-blind.md) - which gave, set-up for set-up, what
+ADR 0031 measured before the table had its camera stand:
 
-| Disturbance | blind (ADR 0031) | looking | camera saw it moved |
+| Disturbance | blind | looking | camera saw it moved |
 | --- | --- | --- | --- |
 | none | 9 of 9 | 9 of 9 | 0.1 cm |
 | shoved 4 N s at the table | 8 of 9 | 9 of 9, last goal +0.8 s | 0.1 cm |
 | shoved 6 N s at the table | 8 of 9 | 9 of 9, +11.3 s | 0.1 cm |
 | cube moved 3 cm sideways | 7 of 9 | 9 of 9 | 3.0 cm |
 | cube moved 5 cm sideways | none | **9 of 9** | 5.0 cm |
-| cube moved 5 cm sideways, 2 s later | - | none | 0.1 cm |
+| cube moved 5 cm sideways, 2 s later | none | none | 0.1 cm |
 
 Every sighting was within 1.8 mm of where the cube really was. ADR 0030 moves the cube 0.3 s
 after the cart has stopped, while the camera watches; moved 2 s later, as the jaws come over

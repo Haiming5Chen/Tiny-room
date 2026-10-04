@@ -1006,8 +1006,9 @@ back along its rays - and the poses at that stop aim where it was seen. Measured
 80 placements, up to 8 cm off its plan and turned up to 45 deg, found in every picture: within
 1.9 mm and 2.4 deg without noise, 2.4 mm and 6.0 deg with the D435's (median 1.3 mm and
 0.6 deg; 9 of 1600 pictures over 5 deg). Fetch, arm on a cart, nine set-ups, looking: the
-cube moved 5 cm as the cart stands at the table, 9 of 9 (none blind, ADR 0031); 3 cm, 9 of 9
-(7 of 9); shoved 4 and 6 N s, 9 of 9 each (8 of 9 each); moved 5 cm 2 s later, none;
+cube moved 5 cm as the cart stands at the table, 9 of 9 (none blind, run the same day as ADR
+0031 measured it); 3 cm, 9 of 9 (7 of 9); shoved 4 and 6 N s, 9 of 9 each (8 of 9 each); moved
+5 cm 2 s later, none (none);
 undisturbed 9 of 9, the cube in the bin 2.5 s later than blind. Set down elsewhere before the
 run: 13 of 14 placements fetched looking, 6 of 14 blind. Drawn 59 times undisturbed, looking:
 every goal in all 59 (at least 95 %), 2.5 s later than blind. Every sighting within 2.0 mm of

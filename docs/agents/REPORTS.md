@@ -29,8 +29,9 @@ blind); moved 3 cm, 9 of 9; shoved 4 and 6 N s, 9 of 9 each (going back alone lo
 the shove knocked the cube with the jaws, which now wait short of it); moved 5 cm 2 s later,
 none. Set down elsewhere before the run: 13 of 14 placements fetched looking, 6 of 14 blind.
 Looking costs 2.5 s; drawn 59 times undisturbed, it met every goal in all 59, as blind.
-Suites: 682 passed with a display, 643 headless. Still running when committed: the disturbance sweep run blind the same
-day, for a follow-up commit.
+Suites: 682 passed with a display, 643 headless. Run blind the same day (a follow-up commit),
+the disturbance sweep gave what ADR 0031 measured, set-up for set-up, and none of 9 for the
+cube moved 2 s later: the camera stand changed nothing for a program that does not look.
 Unfinished: LW-020 (a cube moved after the look is missed; FR-015 proposed), LW-021 (a cube
 seen beyond the arm's reach from its planned stop; FR-016 proposed), LW-010 (the factory
 cell). A look costs about 0.1 s of computing a picture: on a slow machine the window may

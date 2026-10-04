@@ -13,8 +13,7 @@ branch, commits and tree; this file says what they mean.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006 and FR-011 done; FR-004,
   FR-005, FR-007, FR-008, FR-012 to FR-016 wait for the owner; FR-009 and FR-010 not now (the
   owner).
-- **Uncommitted**: nothing. Running when ADR 0032 was committed, for a follow-up commit: the
-  disturbance sweep run blind on the same day.
+- **Uncommitted**: FR-015 (looking again; the owner accepted it 2026-10-04), in progress.
 - **Needs the owner's decision**: publishing the branch; the frontier proposals; the rest of
   radar phase two (LW-012: embeddings, a classifier); hardware for a servo calibration
   (LW-009); the Curb run's 20 mm curb (LW-015); a slippery floor patch (LW-018); looking
