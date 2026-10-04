@@ -51,8 +51,10 @@ physical cycle to evaluate the cell further.
 
 ## Subsequent implementation order
 
-1. Extend the shared document from the fixed cell to named stations and assets;
-   allow reuse of custom machine Blueprints from the interactive builder.
+1. Shared document data/API is implemented in `factory/document.py` and
+   `factory/document_editor.py`: stable stations, shared custom Blueprints, process
+   links as intent, reviewed transactions and undo/redo. See FACTORY_DOCUMENT.md.
+   General station drag/selection UI remains to be connected to this API.
 2. Add process connections and capability contracts; active conveyors and generic
    multi-station execution need implementations before AI may request them.
 3. Provide a model-facing snapshot/capabilities/propose interface. Supply selection,

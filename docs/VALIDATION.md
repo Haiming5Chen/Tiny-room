@@ -409,3 +409,17 @@ hidden no-vsync execution resolved those test-environment issues; all 674 tests
 passed together after these changes. See AGENT_TESTING.md for replay commands,
 JSON traces and the distinction between semantic tests, visual QA and future
 language-model evaluation. No AI provider or natural-language parser was tested.
+
+## Shared factory scene document — 2026-10-04
+
+Default regression suite: **657 passed, 35 skipped in 44.50 seconds**. Focused
+document suite: **18 passed**, including native compilation and a subprocess
+example that imports a saved custom machine, creates two instances, exports JSON
+and refuses to overwrite an existing file. No window was opened. Contract tests
+cover stable references, shared-asset impact, linked deletion, revision conflicts,
+undo/redo, portable proposal round trips, strict fields/units/poses, canonical order
+and detached diff reports. Simulation steps leave authored document data unchanged.
+
+The standalone example compiled a 67-body scene. This verifies the portable
+document and existing native backend composition, not station UI integration,
+collision clearance, reach, production flow execution or natural-language generation.

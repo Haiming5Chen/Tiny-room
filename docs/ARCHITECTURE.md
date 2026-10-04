@@ -372,3 +372,15 @@ per-step state and failures, and closes it. It does not attach to a user's unsav
 app or use personal saved designs. This interface tests behavior without pixel
 recognition; visual appearance still requires separate visual review. No AI model
 or language comprehension is implied by replaying agent-authored scenarios.
+
+## Shared factory scene document
+
+OpenUSD/Isaac Sim already address scene composition; reuse their architectural
+principle (stable objects and shared assets), not another physics solver. Extend
+our existing stdlib Blueprint/Entity/Scene representation with a portable authoring
+document. Embed machine Blueprints once per asset, reference them from named
+stations, and store world transforms explicitly. Process links are authored intent
+only and do not imply implemented conveyors, grasp planning or production physics.
+A revision-aware document editor previews diffs and atomically applies/undoes edits.
+Compiled runtime is still an ordinary Scene consumed by the existing backend.
+This first layer is a Python/data API; the fixed-cell UI is not silently migrated.
