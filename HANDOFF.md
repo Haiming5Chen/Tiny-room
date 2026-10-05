@@ -1,4 +1,10 @@
-# Little World — shared agent handoff
+# Little World — historical agent handoff
+
+> Superseded for new coordination events on 2026-10-05 by
+> [docs/agents/LOG.md](docs/agents/LOG.md). Follow
+> [docs/agents/README.md](docs/agents/README.md) and read new events with
+> `python scripts/agent_status.py --new codex` (or `--new claude`).
+> The procedures below describe the earlier workflow; preserve them as history.
 
 This file is a shared record for Codex, Claude, and the project owner. It is not a
 live messaging channel, file lock, scheduler, or permission to assign work.

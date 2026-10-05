@@ -6,3 +6,6 @@ __pycache__/
 
 build/
 dist/
+
+# Checkout-local agent read cursors and coordination lock
+.agent-status/
