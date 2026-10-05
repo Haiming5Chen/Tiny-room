@@ -3,7 +3,9 @@
 New papers, open models, repositories and releases of the libraries this project stands
 on, scored against its own decision records, roadmap and learning profile, and filed under
 the decision each could change ([ADR 0021](adr/0021-frontier-radar.md)). Standard library
-only; the store is one SQLite file outside the repository.
+only; the store is one SQLite file outside the repository, and what it filed or judged is
+kept in the repository's research collection, `docs/radar/collection.jsonl`
+([ADR 0034](adr/0034-the-radar-keeps-what-it-read.md)).
 
 ```
 python -m little_world.radar fetch                 # the feeds, into ~/.little_world/radar.sqlite
@@ -12,6 +14,11 @@ python -m little_world.radar rate <id> adopt|learn|watch|skip "why"
 python -m little_world.radar ingest found.jsonl    # items gathered by hand or by an assistant
 python -m little_world.radar topics                # what it looks for (docs/radar/profile.md)
 python -m little_world.radar brief                 # its section of docs/agents/FRONTIER.md
+python -m little_world.radar collect --add found.jsonl   # keep what was filed, judged or gathered
+python -m little_world.radar recall                # the collection back into a fresh store
+python -m little_world.radar search camera calibration   # the collection, by words (numpy)
+python -m little_world.radar related FR-016        # ... closest to a proposal or a topic
+python -m little_world.radar search --check        # how well it answers docs/radar/queries.jsonl
 ```
 
 The Markdown digest is short - verdicts and their reasons first, three items a topic. The
@@ -37,6 +44,25 @@ DOI. From the cloud workspace those feeds refused automated requests (IEEE Xplor
 Science 403), so the weekly reading the owner chose - a scheduled session - searches them
 with web search and writes its proposals outside the repository for the next agent session
 to bring in; `fetch` on the owner's machine reads them directly if they answer it.
+
+## The collection (ADR 0034)
+
+The radar's store lives and dies with a machine or a session; the collection is the
+project's memory of what was read. Each line of `docs/radar/collection.jsonl` is one entry -
+an item, the topics it was filed under, how much of it was read (`title`, `abstract`, `full`),
+and a verdict with its note and date - sorted by id, so two agents adding to it merge line by
+line and reading it back merges any entry added twice. It started on 5 October 2026 with 81
+entries: the 30 that the first run's digests name and the 51 that the first weekly reading
+judged. A session without the feeds - the weekly reading, or any agent with only a browser -
+writes what it read in the same shape and merges it with `collect --add`; one with the
+feeds runs `fetch`, judges with `rate`, then `collect`.
+
+`search` and `related` rank entries by the radar's own tf-idf cosine and name the words that
+matched. A latent-semantic cosine, learned from the collection and the project's own
+writing, can be mixed in with `--latent`: on the 20 questions in `docs/radar/queries.jsonl`
+words alone put an answer in the top three for 17, the mix for 15 to 19 depending on its
+settings and on what the project had written - not yet a reason to rank by it. `--check`
+measures again.
 
 ## First run - 27 September 2026
 

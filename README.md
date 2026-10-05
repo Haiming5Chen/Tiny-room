@@ -128,8 +128,11 @@ change the design, try again.** A desktop robotics sandbox on
   tables of contents too, and its brief feeds a file of numbered proposals - where an
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
-  [frontier](docs/agents/FRONTIER.md)).
-- **689 automated tests**, including OpenGL window tests that drive the interface
+  [frontier](docs/agents/FRONTIER.md)). What it and the weekly reading judged stays in the
+  repository - 81 papers, releases and engine changes so far, each with its verdict and why -
+  and can be searched: `python -m little_world.radar search camera calibration`
+  ([ADR 0034](docs/adr/0034-the-radar-keeps-what-it-read.md)).
+- **700 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

@@ -31,6 +31,13 @@ files or GUI source are copied into this repository. The core has no dependency
 on these UI packages.
 
 
+## Research collection (2026-10-05)
+
+`docs/radar/collection.jsonl` (ADR 0034) lists papers, releases and engine changes the
+project's agents read: titles, links, dates and identifiers, which are bibliographic facts,
+and verdicts, notes and summaries written by the agents. arXiv's metadata is released under
+CC0 1.0 (https://info.arxiv.org/help/license/index.html); no journal's abstract is copied.
+
 ## Bundled surface assets (2026-09-12)
 
 | Asset | Author | License | Upstream |

@@ -206,7 +206,11 @@ and word pairs, with the matched words as the reason; `store.py` keeps items and
 in one SQLite file; `digest.py` writes the Markdown page; `fetch.py` holds the feeds and
 the polite HTTP client; `brief.py` (ADR 0026) reads the proposals in
 `docs/agents/FRONTIER.md` and writes the radar's section of that file between two markers,
-leaving the rest to the agents. See docs/RADAR.md.
+leaving the rest to the agents. `collection.py` (ADR 0034) keeps what was filed or judged
+in `docs/radar/collection.jsonl`, one sorted line an entry that merges line by line, and
+moves it to and from a store; `search.py` searches it by the same tf-idf cosine and, when
+asked, a latent-semantic one - numpy, the radar's only module outside the standard library,
+imported only by the `search` and `related` commands. See docs/RADAR.md.
 
 ## Interactive construction
 

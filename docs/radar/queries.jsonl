@@ -1,0 +1,20 @@
+{"question": "a motor that gets weaker as it heats up", "expect": ["arxiv:2609.36182"]}
+{"question": "run the same trial twice, once with the disturbance and once without", "expect": ["arxiv:2609.36518"]}
+{"question": "how far can a mobile arm lean before it falls over", "expect": ["journal:https://www.mdpi.com/2076-3417/16/16/8136"]}
+{"question": "the camera was mounted a little off from where the program thinks it is", "expect": ["arxiv:2609.37150", "arxiv:2609.36779"]}
+{"question": "a language model writes code that controls the robot", "expect": ["arxiv:2603.22435", "web:anthropic.com/research/project-fetch-phase-two", "arxiv:2609.39018", "arxiv:2609.30233", "arxiv:2609.32416"]}
+{"question": "measure the friction of a real servo on a test bench", "expect": ["arxiv:2410.08650"]}
+{"question": "simulated objects with measured sizes and masses predict real success better", "expect": ["arxiv:2610.00731"]}
+{"question": "the camera stops updating", "expect": ["arxiv:2609.39145"]}
+{"question": "did the robot knock the object over", "expect": ["arxiv:2610.02802", "arxiv:2610.01351"]}
+{"question": "a moving belt that carries parts", "expect": ["mujoco:3.11.0#surfacevel", "web:drake.mit.edu/release_notes/v1.57.0"]}
+{"question": "where should the base stop so the arm can reach", "expect": ["arxiv:2609.33096", "arxiv:2609.39388"]}
+{"question": "open dataset format for robot learning", "expect": ["web:huggingface.co/blog/lerobot-release-v060"]}
+{"question": "choosing robot components with an AI", "expect": ["arxiv:2609.33423"]}
+{"question": "electric motor model with back-EMF in the physics engine", "expect": ["mujoco:3.7.0#dcmotor"]}
+{"question": "PID position controller built into the simulator", "expect": ["mujoco:3.12.0#pid"]}
+{"question": "fit a model's parameters from recordings of real hardware", "expect": ["mujoco:3.5.0#sysid", "arxiv:2410.08650"]}
+{"question": "policies trained only in simulation work on a real robot", "expect": ["web:allenai.org/blog/molmobot-robot-manipulation", "arxiv:2609.28969"]}
+{"question": "a robot's contacts give more than one point per pair of shapes", "expect": ["mujoco:3.8.0#multiccd", "mujoco:3.13.0#cylinder-multicontact"]}
+{"question": "how robust are policies when the scene is perturbed", "expect": ["arxiv:2510.13626", "arxiv:2609.36518", "arxiv:2610.01351"]}
+{"question": "estimate an object's mass and friction by pushing it until it tips", "expect": ["arxiv:2609.33138"]}

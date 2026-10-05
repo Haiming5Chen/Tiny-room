@@ -44,6 +44,9 @@ proposals that wait on the owner, the newest report and the newest log lines;
   into the code. Read the file before proposing anything; only the owner accepts or
   declines a proposal, and agents work on accepted ones only. To disagree with another
   agent's proposal, add a dated `- Note` under it instead of changing it.
+- What was read goes into the research collection, `docs/radar/collection.jsonl`, with its
+  verdict and why (`python -m little_world.radar collect --add found.jsonl`; ADR 0034);
+  search it (`python -m little_world.radar search WORDS`) before reading the same thing again.
 - The owner publishes the branch to GitHub.
 
 ## Rules
@@ -76,6 +79,7 @@ LITTLE_WORLD_TEST_RENDER=1 xvfb-run -a -s "-screen 0 1600x1000x24" \
 python scripts/agent_status.py                        # branch, tree, open items, proposals, last report, log
 python scripts/agent_status.py --new codex            # only the log lines codex has not read (no git)
 .venv/bin/python -m little_world.radar brief          # the radar's section of docs/agents/FRONTIER.md
+.venv/bin/python -m little_world.radar search WORDS   # what the project has read about it (ADR 0034)
 ruff check --select F src tests scripts               # optional; not a project dependency
 ```
 
@@ -110,7 +114,7 @@ seven minutes on two cores.
 | `src/little_world/programming/` | block programs and the runner |
 | `src/little_world/factory/` | the automated factory cell |
 | `src/little_world/ui/` | the one-window app: workshop, build, program, test drive, factory |
-| `src/little_world/radar/` | the frontier radar (ADR 0021); reads documents, never designs |
+| `src/little_world/radar/` | the frontier radar (ADR 0021) and its research collection (ADR 0034); reads documents, never designs |
 | `tests/` | one file per area; window tests run only with `LITTLE_WORLD_TEST_RENDER=1` |
 | `docs/adr/` | the decision records, 0001 onwards |
 

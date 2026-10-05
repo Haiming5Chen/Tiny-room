@@ -1036,3 +1036,26 @@ with a display, 648 headless.
 Not claimed: once per run; the check before the jaws go down is a single picture; a cube
 moved while the jaws are already going down may be knocked, and one beyond the arm's reach
 from its stop is not fetched (FR-016); the 2 cm and 1 cm thresholds are chosen.
+
+## The radar keeps what it read — 2026-10-05
+
+ADR 0034. What the radar files or an agent judges is kept in `docs/radar/collection.jsonl`:
+81 entries to start (the 30 named in the first run's digests, 18 of them judged; the 51 the
+first weekly reading judged), 69 judged - 7 adopt, 18 learn, 35 watch, 9 skip - and 43 read
+by title only. Checked: a line round-trips; two sightings of one paper merge into one entry
+(the longer summary, sources and topics joined, the earliest sighting, the newest verdict);
+a malformed line is refused by its number; no journal abstract is kept and a long summary is
+cut; `collect` keeps filed and judged items and files hand-gathered ones; `recall` restores
+verdicts into a fresh store, once. Search by words over the collection: on 20 questions
+written down before the first search, an answer in the top three for 17 (mean reciprocal rank
+0.794); with a latent-semantic cosine mixed in half and half, 18 (0.823) at this commit and
+between 15 and 19 as its settings and the project's writing changed, so words rank by
+default. A latent space with as many directions as its text has subjects finds an entry
+that shares no word with the question. Checked in `tests/test_radar_collection.py` (11).
+Suites on MuJoCo 3.10.0: **700 passed** with a display, 661 headless.
+
+Not claimed: the collection is what agents read, not what was published, and a verdict is an
+agent's reading; the first run's other 272 items are not recovered; latent semantic analysis
+is not an embedding model, and no embedding model was tried; MuJoCo changes taken from the
+digests carry hand-written ids.
+

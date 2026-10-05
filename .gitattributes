@@ -1,2 +1,4 @@
 # The agents' log is append-only: a merge keeps both sides' new lines (scripts/agent_status.py).
 docs/agents/LOG.md merge=union
+# The radar's collection: entries with one id merge when read back (radar/collection.py, ADR 0034).
+docs/radar/collection.jsonl merge=union
