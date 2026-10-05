@@ -129,7 +129,7 @@ change the design, try again.** A desktop robotics sandbox on
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
   [frontier](docs/agents/FRONTIER.md)).
-- **687 automated tests**, including OpenGL window tests that drive the interface
+- **689 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

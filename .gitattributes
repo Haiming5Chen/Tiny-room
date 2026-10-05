@@ -1,0 +1,2 @@
+# The agents' log is append-only: a merge keeps both sides' new lines (scripts/agent_status.py).
+docs/agents/LOG.md merge=union

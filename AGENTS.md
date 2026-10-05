@@ -15,13 +15,23 @@ What agents have done and left open:
 - `docs/agents/FRONTIER.md` - what papers, journals and releases offer that could change
   the project, filed by the radar, and agents' proposals for it, each waiting for the
   owner to accept or decline it (ADR 0026).
+- `docs/agents/LOG.md` - what each agent is doing as it happens, one dated line at a time:
+  started (and the files it will touch), committed, added to the frontier or the research
+  collection, stopped.
 
 `python scripts/agent_status.py` prints the branch, the tree, the open items, the
-proposals that wait on the owner and the newest report.
+proposals that wait on the owner, the newest report and the newest log lines;
+`--new NAME` prints only the log lines NAME has not read, and `--add WHO TEXT` writes one.
 
 ## Working alongside other agents
 
 - Take your tasks from the owner.
+- Keep the log as you go: read what is new (`python scripts/agent_status.py --new NAME`)
+  before you start and before you commit; add a line (`--add WHO TEXT`) when you start
+  something, naming the files it will touch, when you commit, when you add to the frontier
+  or the research collection, and when you stop. Files another agent's line says it is
+  changing are left alone until it logs a commit or a stop; if you need them, tell the
+  owner. Use what others logged as done (a new module, a new proposal) as it lands.
 - Report when you stop, even mid-task: a new entry at the top of `docs/agents/REPORTS.md`
   with what you did (commits), what you measured, and what is unfinished or doubtful.
   Write it for the owner; do not write instructions for other agents.
@@ -63,7 +73,8 @@ python3 -m venv .venv && .venv/bin/python -m pip install -e '.[workshop,dev]'
 LITTLE_WORLD_TEST_RENDER=1 xvfb-run -a -s "-screen 0 1600x1000x24" \
     .venv/bin/python -m pytest -q                     # adds the OpenGL window tests (Linux)
 .venv/bin/python examples/workshop.py                 # the app, in Anime (builder) mode
-python scripts/agent_status.py                        # branch, tree, open items, proposals, last report
+python scripts/agent_status.py                        # branch, tree, open items, proposals, last report, log
+python scripts/agent_status.py --new codex            # only the log lines codex has not read (no git)
 .venv/bin/python -m little_world.radar brief          # the radar's section of docs/agents/FRONTIER.md
 ruff check --select F src tests scripts               # optional; not a project dependency
 ```
