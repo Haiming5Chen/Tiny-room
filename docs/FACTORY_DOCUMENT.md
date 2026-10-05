@@ -1,9 +1,29 @@
 # Shared factory scene document
 
-This is the shared Python/data layer for future manual scene editing and AI
-proposals. It does not replace the existing Panda cell UI and does not connect a
-language model. Existing machine building continues to produce the same Blueprint
-files used by this document.
+The shared factory document powers the **Real → Factory layout** workspace and
+Python editing API. Robot lab remains available in the same window. No language
+model is connected. Existing machine building produces the same Blueprint files
+used by this document.
+
+## Edit a layout in the app
+
+- Open **Factory layout** from Real mode. **Robot lab** returns to arm experiments.
+  Switching Real/Anime preserves both workspaces.
+- Click a station to select it, then drag its actual geometry to move it with 1 cm
+  snapping. Escape cancels; releasing records one undoable edit. Empty space
+  operates the camera. **Exact position** accepts world XYZ metres and XYZ degrees.
+- **Add equipment** searches lab assemblies and sourced robot models.
+  **Use current Anime machine** copies the authored machine into this layout.
+  **Import saved machine** reads a Blueprint JSON file. Originals remain unchanged.
+- **Connect intended flow** records station relationships. Deleting a linked station
+  explicitly offers to remove its connected links in the same undoable edit.
+- **Undo**, **Redo**, **Open** and **Save layout** manage the layout. Open is undoable;
+  Save writes `factory-layout.json` beside the robot-lab recipe. Cmd/Ctrl-S and
+  Cmd/Ctrl-Z are also available.
+
+This workspace authors layouts only: flow lines do not execute production, and
+placement does not check clearance, robot reach or mounting. Candidate scenes are
+compiled before committing an edit; a failed rebuild preserves document history.
 
 ## What is stored
 
@@ -74,5 +94,5 @@ station then occurs in the same immutable candidate and undo transaction.
 `to_scene()` emits existing Entity objects with station IDs and embedded Blueprints.
 It intentionally contains geometry and controls described by those Blueprints;
 process links have no executor. The core, native physics adapter, fixed-cell editor,
-and builder formats remain independent. The next UI step is to expose these same
-transactions through station selection, drag placement and reviewed proposals.
+and builder formats remain independent. The layout workspace uses these same
+transactions for station selection, drag placement, precise poses and history.

@@ -50,7 +50,7 @@ class RealLab:
         ui.rect(0,0,ww,56,(.045,.065,.085));ui.rect(0,56,self.PANEL,wh-88,(.075,.099,.125))
         ui.rect(0,wh-32,ww,32,(.055,.077,.097))
         text('little world',18,17,19);self.draw_mode_switch(button)
-        text('REAL / '+('ROBOT LAB' if self.joint_lab else 'KNOWN-OBJECT SENSING'),322,20,11,(.4,.85,.72))
+        button('Factory layout',322,12,136,lambda:self.switch_real_view('Layout'),h=32)
         button('Robot: '+MODELS[self.robot_asset][2],ww-304,12,288,self.choose_robot,self.building,h=32)
 
     def draw_joint_lab(self,ui,button,text,ww,wh,fw,fh):

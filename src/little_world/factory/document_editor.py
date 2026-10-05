@@ -74,6 +74,11 @@ class FactoryEditor:
         if not isinstance(self.document,FactoryDocument):raise ValueError('Expected a factory document.')
         self.revision=0;self._past=[];self._future=[]
 
+    def clone(self):
+        copy=FactoryEditor(self.document)
+        copy.revision=self.revision;copy._past=list(self._past);copy._future=list(self._future)
+        return copy
+
     @property
     def can_undo(self):return bool(self._past)
     @property

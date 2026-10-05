@@ -54,7 +54,8 @@ physical cycle to evaluate the cell further.
 1. Shared document data/API is implemented in `factory/document.py` and
    `factory/document_editor.py`: stable stations, shared custom Blueprints, process
    links as intent, reviewed transactions and undo/redo. See FACTORY_DOCUMENT.md.
-   General station drag/selection UI remains to be connected to this API.
+   The same-window Factory layout workspace now uses this API for station selection,
+   drag placement, exact poses, machine reuse, flow intent and save/load.
 2. Add process connections and capability contracts; active conveyors and generic
    multi-station execution need implementations before AI may request them.
 3. Provide a model-facing snapshot/capabilities/propose interface. Supply selection,

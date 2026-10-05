@@ -1,0 +1,31 @@
+{
+  "name":"Lay out stations and reuse a builder machine in one hidden window",
+  "actions":[
+    {"op":"click","label":"Factory layout"},
+    {"op":"expect","equals":{"view":"Layout","selected":"work","revision":0}},
+    {"op":"click","label":"Exact position"},
+    {"op":"fill","field":"World X, Y, Z (metres)","value":"0.5, 0.2, 0"},
+    {"op":"click","label":"Apply"},
+    {"op":"expect","equals":{"stations.work.transform.position":[0.5,0.2,0.0],"revision":1}},
+    {"op":"click","label":"Undo"},
+    {"op":"expect","equals":{"stations.work.transform.position":[0.0,0.0,0.0]}},
+    {"op":"click","label":"Redo"},
+    {"op":"click","label":"Anime"},
+    {"op":"expect","equals":{"workspace":"Anime"}},
+    {"op":"click","label":"Real"},
+    {"op":"expect","equals":{"view":"Layout","stations.work.transform.position":[0.5,0.2,0.0]}},
+    {"op":"click","label":"Use current Anime machine"},
+    {"op":"expect","equals":{"selected":"station_1","stations.station_1.label":"Machine from builder"}},
+    {"op":"click","label":"Connect intended flow"},
+    {"op":"click","label":"Work station [work]"},
+    {"op":"expect","equals":{"links.0.source":"station_1","links.0.destination":"work"}},
+    {"op":"click","label":"Delete station"},
+    {"op":"click","label":"Remove station and 1 connected links"},
+    {"op":"expect","equals":{"links":[],"selected":null}},
+    {"op":"click","label":"Undo"},
+    {"op":"expect","equals":{"links.0.source":"station_1","stations.station_1.label":"Machine from builder"}},
+    {"op":"click","label":"Save layout"},
+    {"op":"click","label":"Robot lab"},
+    {"op":"expect","equals":{"workspace":"Real","recipe.product":"Small block"}}
+  ]
+}

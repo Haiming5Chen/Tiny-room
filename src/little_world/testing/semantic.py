@@ -14,6 +14,15 @@ def snapshot(app):
     view=None if dialog is None else dict(title=dialog.get('title','Review cell changes'),
         fields={name:value for name,value in dialog.get('fields',[])},error=dialog.get('error',''),
         choices=list(dialog.get('query') or ()))
+    if getattr(app,'layout_mode',False):
+        document=json.loads(app.layout.document.to_json())
+        return dict(window_visible=bool(glfw.get_window_attrib(app.window,glfw.VISIBLE)),workspace='Real',view='Layout',
+                    revision=app.layout.revision,stations={s['id']:s for s in document['stations']},links=document['links'],
+                    selected=app.selected_station,can_undo=app.layout.can_undo,can_redo=app.layout.can_redo,
+                    controls=controls,dialog=view,status=app.status)
+    if app.app_mode=='Anime':
+        return dict(window_visible=bool(glfw.get_window_attrib(app.window,glfw.VISIBLE)),workspace='Anime',
+                    blueprint=json.loads(app.editor.blueprint.to_json()),controls=controls,dialog=view,status=app.status)
     result=dict(window_visible=bool(glfw.get_window_attrib(app.window,glfw.VISIBLE)),workspace=app.app_mode,experiment=app.experiment,robot=app.robot_asset,
         building=app.building,paused=app.paused,revision=app.recipe_revision,
         recipe=json.loads(app.recipe.to_json()),trays={n:list(app.recipe.point(n)) for n in TRAYS},
@@ -46,14 +55,15 @@ class SemanticDriver:
     def __init__(self,app,draw):self.app=app;self.draw=draw
 
     def observe(self):
-        self.draw()
-        return snapshot(self.app)
+        active=self.app.active_workspace
+        self.draw() if active is self.app else active.draw()
+        return snapshot(active)
 
     def execute(self,action):
         from little_world.factory.changes import CellRequest
-        app=self.app;op=action['op']
+        app=self.app.active_workspace;op=action['op']
         if op=='click':
-            self.draw();matches=[b for b in app.buttons if b.label==action['label']]
+            self.observe();matches=[b for b in app.buttons if b.label==action['label']]
             if len(matches)!=1:raise ValueError('Control label must match exactly one visible button: '+action['label'])
             if not matches[0].enabled:raise ValueError('Control is disabled: '+action['label'])
             matches[0].action()
@@ -69,6 +79,7 @@ class SemanticDriver:
             for character in value:app.character(app.window,ord(character))
             if dialog['fields'][matches[0]][1]!=value:raise ValueError('The form did not accept the requested text.')
         elif op=='propose':
+            if not hasattr(app,'change_request'):raise ValueError('Cell proposals require the robot lab view.')
             # Full requests can be stale/malformed. A short changes list uses the current snapshot.
             request=action.get('request')
             if request is None:

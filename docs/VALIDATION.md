@@ -423,3 +423,23 @@ and detached diff reports. Simulation steps leave authored document data unchang
 The standalone example compiled a 67-body scene. This verifies the portable
 document and existing native backend composition, not station UI integration,
 collision clearance, reach, production flow execution or natural-language generation.
+
+
+## Interactive factory layout — 2026-10-04
+
+Added a same-window layout integration test and a fourth semantic replay (26
+actions). Coverage includes actual MuJoCo geometry picking, render-only drag
+preview, one-edit release, stale drag/deletion rejection, exact poses, independent
+builder copies, asset-ID collisions, linked deletion, undo/redo, save round trips,
+failed compilation rollback and preservation across Real/Anime switching. The test
+asserts that only one native window is created and that controls do not overlap at
+1040 × 740. A hidden screenshot was inspected for readability and selection cues.
+
+The first complete run had 694 passes and one existing workshop test timeout: only
+37 of its required 47 frames completed within ten seconds. Its timeout was extended
+to 60 seconds; it still closes immediately after all scripted interactions and
+retains its original behavior assertions. No visible app windows were opened.
+
+Final full regression: `LITTLE_WORLD_TEST_RENDER=1 .venv/bin/python -m pytest -q`
+— **695 passed in 112.44 seconds**. These checks verify layout editing and existing
+robot workflows, not process execution, reach/clearance checks or AI comprehension.

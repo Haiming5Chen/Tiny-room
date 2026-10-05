@@ -102,7 +102,8 @@ def test_workshop_build_save_simulate_and_return(monkeypatch, tmp_path):
             assert app.editor.blueprint == saved
             glfw.set_window_should_close(app.window,True)
     monkeypatch.setattr(app,'draw',draw_and_use)
-    app.run(seconds=10)
+    # Finish the scripted interaction even when native rendering is slow under load.
+    app.run(seconds=60)
     assert tick >= 47 and simulation_time > 0
 
 

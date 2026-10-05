@@ -137,3 +137,13 @@ def test_mutating_a_diff_does_not_mutate_the_reviewed_scene():
     view=proposal.changes;view[0]['after']['label']='wrong'
     editor.apply(proposal)
     assert editor.document.stations[0].label=='Feed'
+
+
+def test_editor_clone_keeps_history_independent():
+    doc=document();editor=FactoryEditor(doc)
+    editor.apply(editor.preview(doc.move_station('feed',Transform((.2,0,0)))))
+    copy=editor.clone();copy.undo()
+    assert copy.document==doc and copy.can_redo
+    assert editor.document!=doc and editor.can_undo and not editor.can_redo
+    copy.apply(copy.preview(doc.move_station('inspect',Transform((3,0,0)))))
+    assert not copy.can_redo and editor.revision==1

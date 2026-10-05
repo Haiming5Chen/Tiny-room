@@ -112,3 +112,28 @@ no active file reservation remains.
 - Remaining scope: general station selection/drag UI, process execution, AI provider,
   collision/reach validation and external research-brain integration. The existing
   fixed-cell UI is unchanged. No other agent was assigned work.
+
+### 2026-10-04 — Codex — interactive layout in progress
+
+Own scope: same-window Real layout workspace, station selection/drag/precise poses,
+reuse of Anime machine Blueprints, layout save/load and undo/redo. Intended files:
+new ui/layout_workspace.py, app_modes.py, real_lab.py, document_editor.py, focused
+hidden native tests and documentation. No tasks assigned to another agent.
+
+### 2026-10-04 — Codex — interactive layout completed
+
+The preceding scope is complete; no active file reservation remains. Changes are
+committed locally with this entry; no push and no tasks assigned to another agent.
+
+- Added Real → Factory layout alongside Robot lab in the same cached GLFW window.
+- Station geometry supports selection and drag preview, 1 cm snapping, exact poses,
+  equipment search, copied Anime machines and saved Blueprint imports.
+- Added intended flow links, explicit linked deletion, stale-operation guards,
+  atomic compilation before committing edits, undo/redo and JSON save/load.
+- Extended agent-readable snapshots and added a 26-action layout replay.
+- Full hidden native suite: **695 passed in 112.44 seconds**. A prior run passed
+  694 with an existing workshop ten-second frame-budget timeout; raised that test
+  limit to 60 seconds, preserving every assertion. Hidden visual QA and diff checks
+  passed. No visible windows were opened. See docs/VALIDATION.md.
+- Remaining: process capability/execution contracts, reach/clearance checks, AI
+  provider and external research-brain integration. Flow links remain intent only.

@@ -384,3 +384,13 @@ only and do not imply implemented conveyors, grasp planning or production physic
 A revision-aware document editor previews diffs and atomically applies/undoes edits.
 Compiled runtime is still an ordinary Scene consumed by the existing backend.
 This first layer is a Python/data API; the fixed-cell UI is not silently migrated.
+
+## Interactive station layouts
+
+Reuse the shared FactoryDocument/FactoryEditor and existing MuJoCo rendering in a
+third cached controller within the same GLFW window. The Real workspace exposes
+Robot lab and Factory layout views; Anime remains the machine builder. Layout
+editing compiles candidate scenes before committing editor/history state. Dragging
+translates render geometry only; release creates one authored transaction. Saved
+Blueprints and the current Anime design are copied into document assets explicitly.
+This view authors layouts; process links are visual intent and do not run a line.

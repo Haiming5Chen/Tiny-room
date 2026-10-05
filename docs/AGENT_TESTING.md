@@ -51,6 +51,12 @@ Example:
 ]}
 ```
 
+Snapshots follow the active workspace. Layout snapshots expose station/link records,
+selection, revision and undo/redo availability; Anime snapshots expose the authored
+Blueprint. `propose` remains specific to Robot lab. The
+`tests/scenarios/layout_edit_and_reuse.json` replay exercises precise station poses,
+mode switching, machine reuse, flow links, linked deletion, undo and saving.
+
 ## Coverage and interpretation
 
 The supplied agent-authored scenarios exercise editable forms, review before apply,
