@@ -1019,3 +1019,20 @@ Not claimed: the camera's pose is known exactly; its noise is the stereo error a
 holes, flying pixels or projected pattern; one look per stop, so a part moved after it is
 missed; the four-joint arm does not use the cube's turn; the program still stops where the
 cube was planned; the one-second watch and ten pictures a second are chosen.
+
+## Looking again — 2026-10-04
+
+ADR 0033 (FR-015, accepted by the owner). At a stop where the program looked, it looks again -
+back to the pose it drove in, the look, the reach - when one more picture just before the jaws
+go down finds the object more than 1 cm from where the look saw it or hidden, when a reach for
+it cannot settle, or when a grasp holds nothing (the jaws opened first); once per run.
+Measured: as first built, after a missed grasp only, it reached 1 of 9 set-ups of the cube
+moved 5 cm 2 s after the cart stopped. With the picture before the jaws go down: 9 of 9
+(none before), the jaws never touching the moved cube, 2.6 s later than undisturbed. Under
+the other disturbances and undisturbed, 9 of 9 each with the same median times and pushes as
+ADR 0032. Checked in `tests/test_look_again.py` (5). Suites on MuJoCo 3.10.0: **687 passed**
+with a display, 648 headless.
+
+Not claimed: once per run; the check before the jaws go down is a single picture; a cube
+moved while the jaws are already going down may be knocked, and one beyond the arm's reach
+from its stop is not fetched (FR-016); the 2 cm and 1 cm thresholds are chosen.

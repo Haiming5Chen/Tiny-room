@@ -190,9 +190,11 @@ planned and adds the sensor's noise; `perception/boxes.py` (numpy) finds a known
 support plane, clusters standing on it, top face laid back along its rays and fitted - and
 never reads the simulator's pose of the part. A `look` block (program version 3) hands the
 runner a `see` callback's sightings; once three in a row agree, the poses at that stop aimed
-near the part aim where it was seen (`Runner.aimed`). `sweep.run` records each look with where
-the part really was, for the reports; the program workspace draws the last picture through the
-canvas (`Canvas.pixels`).
+near the part aim where it was seen (`Runner.aimed`). Before a pose reaching for the part, the
+runner takes one more picture; a part moved or hidden, a reach that cannot settle or a grasp
+that holds nothing sends it back to the stop's approach to look again, once (`Runner.regrasp`,
+ADR 0033). `sweep.run` records each look with where the part really was, for the reports; the
+program workspace draws the last picture through the canvas (`Canvas.pixels`).
 
 ## Frontier radar
 

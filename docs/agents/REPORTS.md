@@ -11,6 +11,23 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-04 · Claude (Cowork) · FR-015: looking again
+Did: the owner accepted FR-015. ADR 0033: at a stop where the program looked, it looks again -
+back to the pose it drove in, where the jaws hide nothing, then the look and the reach - when
+one more picture just before the jaws go down finds the cube moved or hidden, when a reach
+for the cube cannot settle, or when a grasp holds nothing (the jaws opened first); once per
+run (`Runner(regrasps=)`, `--regrasps`, `Run.regrasped`, the report's "Looked again").
+Measured: built only as proposed (after a missed grasp), it reached 1 of 9 set-ups of "cube
+moved 5 cm 2 s later": the other 8 had failed with the jaws down on the moved cube, and the
+one had its cube knocked out of reach. With the picture before the jaws go down: 9 of 9,
+the jaws never touching the moved cube, 2.6 s later than undisturbed; under the other
+disturbances and undisturbed, 9 of 9 each with the same median times and pushes as before.
+Suites: 687 passed with a display, 648 headless.
+Unfinished: a cube knocked or moved beyond the arm's reach from its stop is seen and not
+fetched (LW-021, FR-016 proposed); a second move after the second look is missed (once per
+run).
+For the owner: FR-016 and the remaining proposals.
+
 ## 2026-10-04 · Claude (Cowork) · FR-011: a depth camera at the Fetch table
 Did: the owner accepted FR-011 (grasping from a camera, classical first). ADR 0032: an Intel
 RealSense D435 on a stand beyond the Fetch table with its maker's numbers; its pictures are

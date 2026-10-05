@@ -98,8 +98,10 @@ shoved, a part moved - to see what it recovers from (ADR 0030), from the run rep
 as the command line; and a program pushed off its stop drives back to it and reaches again
 (ADR 0031). The Fetch table has a depth camera, a RealSense D435 with its maker's numbers,
 and the Fetch program looks for its cube before it reaches - plane removed, box fitted, no
-learned model - and aims where it was seen (ADR 0032). Next: what the owner picks from the
-frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller
-conveyor for the factory's feeder (moving surfaces and the PID actuator need a release past
-3.10), one real servo calibrated with the system identification toolbox, the factory cell
-grasping from its own camera, and looking again when a grasp misses.
+learned model - and aims where it was seen (ADR 0032); it looks again before the jaws go
+down, when a reach is stopped and when a grasp misses (ADR 0033). Next: what the owner picks
+from the frontier proposals - among them planning the stop from where the camera sees the
+cube, the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
+feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
+calibrated with the system identification toolbox, and the factory cell grasping from its
+own camera.

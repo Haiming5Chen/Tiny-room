@@ -58,7 +58,8 @@ def test_a_look_waits_until_three_pictures_agree_then_its_poses_aim_where_it_was
     runner, aimed = run(Program((LOOK, ABOVE, AT, AWAY)), camera)
     assert runner.state == 'completed'
     looks = [t for t, *_ in camera.asked]
-    assert len(looks) == 11 and looks[-1] - looks[0] == pytest.approx(10 * PICTURE, abs=.02)  # a second's watch
+    assert len(looks) == 12 and looks[10] - looks[0] == pytest.approx(10 * PICTURE, abs=.02)  # a second's watch,
+    assert looks[11] > looks[10] + .1                     # then one more as the jaws reach down for it (ADR 0033)
     assert runner.seen == [(CUBE, PLANNED, (1.84, .05, .14))]
     # Both poses near the cube were solved for where it was seen before they moved; the
     # pose 40 cm away from it was not moved.

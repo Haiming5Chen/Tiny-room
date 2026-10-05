@@ -109,10 +109,15 @@ change the design, try again.** A desktop robotics sandbox on
   table's plane is removed, what stands on it gathered and the cube's top face fitted, with
   no learned model and no GPU. It finds the cube within 2.4 mm wherever it is set down up to
   8 cm off its plan, and the arm reaches where it was seen: moved 5 cm as the cart stands at
-  the table, the cube is fetched in 9 of 9 set-ups instead of none. Moved after the look, it
-  is still missed, and one set down beyond the arm's reach from its stop is seen but not
-  fetched ([ADR 0032](docs/adr/0032-a-camera-at-the-table.md)). The program shows the
-  camera's depth picture, the cube in green.
+  the table, the cube is fetched in 9 of 9 set-ups instead of none. One set down beyond the
+  arm's reach from its stop is seen but not fetched
+  ([ADR 0032](docs/adr/0032-a-camera-at-the-table.md)). The program shows the camera's depth
+  picture, the cube in green.
+- **And looks again.** Just before the jaws go down, the camera takes one more picture; if
+  the cube has moved, or a finger now hides it, the jaws go back and the program looks again
+  before touching it - as it does when a reach is stopped or the jaws close on nothing. The
+  cube moved 5 cm after the look is now fetched in 9 of 9 set-ups instead of none
+  ([ADR 0033](docs/adr/0033-looking-again.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -124,7 +129,7 @@ change the design, try again.** A desktop robotics sandbox on
   idea would go in this app, how we would know it worked, what it costs - that the owner
   accepts or declines ([ADR 0026](docs/adr/0026-frontier-brief-and-proposals.md),
   [frontier](docs/agents/FRONTIER.md)).
-- **682 automated tests**, including OpenGL window tests that drive the interface
+- **687 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

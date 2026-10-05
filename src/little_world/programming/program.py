@@ -17,6 +17,9 @@ STEADY=3        # a look ends once this many pictures in a row have seen its obj
 STILL=.005      # m: within this of where they saw it, together
 NEAR=.15        # m: a look re-aims the poses at its stop aimed within this of where its object was planned
 SHIFT=.005      # m: seen further than this from the plan, those poses are solved for it before they move
+REGRASPS=1      # times a program that looked may look again and reach again (ADR 0033)
+REACHING=.02    # m: an aimed pose this close to where a looked-at object was planned reaches for the object itself
+MOVED=.01       # m: seen this much further from where the look saw it, the object has been moved
 
 
 @dataclass(frozen=True)
@@ -159,16 +162,18 @@ def smoothstep(s):
 
 
 class Runner:
-    def __init__(self,corrections=CORRECTIONS,retries=RETRIES):
+    def __init__(self,corrections=CORRECTIONS,retries=RETRIES,regrasps=REGRASPS):
         # How often an aimed pose may be solved again (ADR 0025); 0 runs poses as taught.
         # How often a program may go back to a stop it was pushed off (ADR 0031); 0 never.
-        if corrections<0 or retries<0:raise ValueError('corrections and retries are counted from zero')
-        self.limit=corrections;self.retry_limit=retries;self.stop()
+        # How often a program that looked may look again after a missed grasp (ADR 0033).
+        if corrections<0 or retries<0 or regrasps<0:raise ValueError('corrections, retries and regrasps are counted from zero')
+        self.limit=corrections;self.retry_limit=retries;self.regrasp_limit=regrasps;self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
         self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
         self.retries=0;self.stop_at=None;self.stop_block=None;self.run_up=None
         self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.seen=[]
+        self.regrasps=0;self.reopen=None
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
@@ -202,6 +207,25 @@ class Runner:
         self.retries+=1;self.message=f'Pushed {100*off:.0f} cm off its stop: going back'
         self.elapsed=0.;self.index=start;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
         self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None
+    def regrasp(self,message,reopen=False):
+        """At a stop where the program looked, the object is not where the jaws are going:
+        if a regrasp is left, open the jaws when they closed - the action just before, run
+        backwards as long - and go back to the stop's approach as going back does (the pose it
+        drove in, the drive to the stop, which it is already at), to look again from where the
+        jaws hide nothing and reach again (ADR 0033). False when it cannot."""
+        if self.looked is None or self.stop_block is None or self.regrasps>=self.regrasp_limit:return False
+        blocks=self.program.blocks;close=blocks[self.index-1] if reopen and self.index>0 else None
+        start=self.stop_block
+        if start>0 and blocks[start-1].kind=='pose':start-=1
+        self.regrasps+=1;self.message=message
+        self.reopen=(close.target,-close.value,close.duration) if close is not None and close.kind=='action' else None
+        self.elapsed=0.;self.index=start;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
+        self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None
+        return True
+    def reaches_for(self,block):
+        """Whether an aimed pose reaches for the object a look at this stop looked for."""
+        return bool(block.point) and self.looked is not None and \
+            sum((p-q)**2 for p,q in zip(block.point,self.looked))<=REACHING**2
     def aimed(self,block):
         """Where a pose is aimed: its point, or - near where a look at this stop expected its
         object - its point moved as far as the object was seen to be from there (ADR 0032)."""
@@ -237,14 +261,28 @@ class Runner:
         output={'action':None,'drive':(0.,0.),'move':None,'pose':None,'base':None}
         if self.state!='running':return output
         b=self.program.blocks[self.index];self.elapsed+=dt
+        if self.reopen:
+            # Opening the jaws after a missed grasp, before going back to look again.
+            target,value,until=self.reopen;output['action']=(target,value)
+            if self.elapsed+1e-9>=until:self.reopen=None;self.elapsed=0.
+            return output
         if b.kind=='action':output['action']=(b.target,b.value)
-        elif b.kind=='drive':output['drive']=(b.value,b.secondary);self.offset=None
+        elif b.kind=='drive':output['drive']=(b.value,b.secondary);self.offset=None;self.looked=None
         elif b.kind=='move':output['move']=(b.target,b.value)
         elif b.kind=='pose':
             angles=angles or {}
             if self.pose_from is None:
                 missing=[a for a,_ in b.angles if a not in angles]
                 if missing:self.fail('Missing joint for pose: '+missing[0]);return output
+                # About to reach down for the object: one more picture, and if it is no longer
+                # where the look saw it - or hidden - look again before touching it (ADR 0033).
+                if see is not None and self.reaches_for(b):
+                    target,planned,where=self.seen[-1]
+                    sighting=see(target,planned)
+                    now=None if sighting is None else tuple(float(v) for v in sighting.centre)
+                    if (now is None or sum((a-c)**2 for a,c in zip(now,where))>MOVED**2) and \
+                            self.regrasp('Moved since the look: looking again'):
+                        return output
                 self.pose_from={a:tuple(angles[a])[:len(goal)] for a,goal in b.angles}
                 self.pose_goal=b.angles
                 # Its object was seen elsewhere: solve the pose for there before moving.
@@ -259,7 +297,7 @@ class Runner:
             if self.driver is None:
                 from math import radians
                 from little_world.control.navigation import GoTo
-                self.offset=None            # a new stop: what was seen at the last one is behind it
+                self.offset=None;self.looked=None   # a new stop: what was seen at the last one is behind it
                 if self.run_up and self.index==self.stop_block:
                     self.driver=GoTo(self.run_up,None,.03)
                 else:
@@ -285,7 +323,8 @@ class Runner:
         elif b.kind in ('move','contact','distance','grasp','goto'):
             if condition:self.advance()
             elif self.elapsed+1e-9>=b.duration:
-                self.fail('Nothing held: the grasp missed' if b.kind=='grasp' else 'Timed out: '+b.kind+' '+b.target)
+                if b.kind=='grasp' and self.regrasp('Nothing held: looking again',reopen=True):pass
+                else:self.fail('Nothing held: the grasp missed' if b.kind=='grasp' else 'Timed out: '+b.kind+' '+b.target)
         elif b.kind=='look':
             if condition:self.advance()
             elif self.elapsed+1e-9>=b.duration:
@@ -308,6 +347,7 @@ class Runner:
                 off=self.off_stop(base) if b.point else None
                 if self.corrections:self.advance()
                 elif off:self.reapproach(off)
+                elif self.reaches_for(b) and self.regrasp('Blocked reaching down: looking again'):pass
                 else:self.fail('Timed out: pose did not settle')
         elif self.elapsed+1e-9>=b.duration:self.advance()
         return output

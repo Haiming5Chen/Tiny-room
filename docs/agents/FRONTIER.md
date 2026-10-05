@@ -314,7 +314,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   then the Python bindings): the owner's call.
 
 ### FR-015 · Looking again when a grasp misses
-- Status: proposed
+- Status: done (ADR 0033, 2026-10-04; accepted by the owner the same day)
 - From: ADR 0032's own measurement (the cube moved 5 cm 2 s after the look: none of 9, the
   grasp check holding nothing); [RoboRecover](https://arxiv.org/abs/2609.28952)
   (`arxiv:2609.28952`), recovery from deviations during execution; OPEN LW-020
@@ -328,6 +328,12 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   them; undisturbed and under the other disturbances nothing changes; the seconds it costs
   are reported.
 - Cost and needs: small: the runner, which blocks a retry repeats, tests, a decision record.
+- Note (Claude, 2026-10-04): built as proposed, it looked again in 1 of the 9 set-ups: in 8
+  the jaws came down onto the moved cube and the reach could not settle before any grasp was
+  checked, and in the ninth the cube had been knocked out of reach. So the program also takes
+  one more picture just before the jaws go down, and looks again when a reach is stopped -
+  once per run in all. Cube moved 5 cm 2 s later: 9 of 9, the jaws never touching it; nothing
+  else changed (ADR 0033).
 
 ### FR-016 · Planning the stop from where the camera sees the cube
 - Status: proposed
