@@ -255,15 +255,16 @@ class ToolMotion:
         """For a pose aimed at a world point (ADR 0025): None when the tool is within
         `tolerance` of it, else the pose that puts it there from where the machine stands now
         - its base may have rocked onto another caster, or stopped off its mark, since the
-        pose was solved - keeping the tool pointed as the pose points it. Also None when the
-        point is out of reach from here: the pose stands."""
+        pose was solved - keeping the tool pointed as the pose points it. False when the
+        point is out of reach from here: the pose stands, and a runner that moved the point
+        to where a camera saw its object can say so (ADR 0035)."""
         now, _ = self.tool()
         if np.linalg.norm(np.asarray(point, dtype=float) - now) <= tolerance:
             return None
         planned = self.angles(pose)
         _, pointing = self.tool(angles=planned)
         angles, short = self.solve(point, planned, float(pointing[2]))
-        return self.pose(angles) if short <= tolerance / 2 else None
+        return self.pose(angles) if short <= tolerance / 2 else False
 
     # -- moving ------------------------------------------------------------------------
 
@@ -382,6 +383,10 @@ BACK_OFF = .25          # m to back away from the table before turning, so the a
 DROP = .03              # m above the bin's floor the object is let go from
 WATCH = 1.              # s a look at the object watches before it may end (ADR 0032)
 LOOKING = 5.            # s before a look that has not seen the object hold still fails
+KEEP_CLEAR = .01        # m a stop that follows its object keeps from what is fixed ahead of it (ADR 0035)
+SEARCH_WIDE = .25       # m round the plan a look searches when the stop will follow what it sees:
+                        # the Fetch table's half-width (the camera's own default is 12 cm)
+SKIM = .005             # m: parts overlapping less than this in height only touch, as wheels the floor
 
 
 def at_base(base_now, base_plan, point):
@@ -461,21 +466,64 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
     # the start, far from its point, and is a pose only.
     pose = lambda label, pace, aimed=True: Block('pose', value=pace, duration=2., angles=poses[label],
                                                  point=points[label] if aimed else ())
-    goto = lambda stop: Block('goto', value=.01, duration=60., point=(stop[0], stop[1], float(np.degrees(stop[2]))))
+    planned = tuple(float(v) for v in held)
+    # Looking, the stops at the object follow where the camera saw it - sideways as far as
+    # it moved, towards it no further than the machine keeps clear of what is ahead of the
+    # stop, the table the object stands on (ADR 0035).
+    follow = 0.
+    if look:
+        clear = _clear_ahead(backend, base, now, pick)
+        follow = max(clear - KEEP_CLEAR, .001) if np.isfinite(clear) else 0.
+    goto = lambda stop, at='': Block('goto', at, value=.01, duration=60., secondary=follow if at else 0.,
+                                     point=(stop[0], stop[1], float(np.degrees(stop[2]))))
+    at_object = target if look else ''
     # The arm takes its 'above' pose before the drive, so the open jaws arrive over the
     # object instead of pushing it off the table on the way in - or, looking, its 'ready'
     # pose short of it; once the camera has seen where the object is, the jaws come over it.
-    seen = (Block('look', target, value=WATCH, duration=LOOKING, point=tuple(float(v) for v in held)),
+    # The first look is before the drive, so the machine stops where the object is (ADR
+    # 0035); the look at the stop gives the jaws where it is now (ADR 0032, 0033).
+    first = (Block('look', target, value=0., duration=LOOKING, secondary=SEARCH_WIDE, point=planned),) if look else ()
+    seen = (Block('look', target, value=WATCH, duration=LOOKING, secondary=SEARCH_WIDE, point=planned),
             pose('above', speed)) if look else ()
     return Program((
-        Block('action', jaws, -1, .6), pose('ready' if look else 'above', speed, aimed=False),
-        goto(pick), *seen, pose('at', speed / 2),
+        Block('action', jaws, -1, .6), *first, pose('ready' if look else 'above', speed, aimed=False),
+        goto(pick, at_object), *seen, pose('at', speed / 2),
         Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5),
         pose('lift', speed / 2),
-        goto(retreat), goto(drop),
+        goto(retreat, at_object), goto(drop),
         pose('over', speed / 2), pose('down', speed / 2),
         Block('action', jaws, -1, .8),
         pose('retract', speed)))
+
+
+def _clear_ahead(backend, base, now, stop):
+    """How far a machine standing at `stop` (x, y, heading) could drive on along its heading
+    before one of its parts meets a part fixed to the world - the table in front of it (m;
+    inf when nothing is). Its parts are taken as they stand `now`, moved to the stop; a fixed
+    part counts when it is wholly ahead of a machine part and overlaps it across the heading
+    and in height (by more than SKIM, so the floor it stands on does not)."""
+    m, d = backend.model, backend.data
+    machine = m.body_rootid[base.left[0]]
+    u = np.array((np.cos(stop[2]), np.sin(stop[2])))
+    v = np.array((-u[1], u[0]))
+
+    def extent(points):
+        rel = points[:, :2] - np.array(stop[:2])
+        return (*(lambda a: (a.min(), a.max()))(rel @ u), *(lambda a: (a.min(), a.max()))(rel @ v),
+                points[:, 2].min(), points[:, 2].max())
+    ours, fixed = [], []
+    for g in range(m.ngeom):
+        body = int(m.geom_bodyid[g])
+        if m.body_rootid[body] == machine:
+            ours.append(extent(np.array([at_base(stop, now, p) for p in _corners(m, d, g)])))
+        elif m.body_weldid[body] == 0 and m.geom_type[g] != mj.mjtGeom.mjGEOM_PLANE:
+            fixed.append(extent(_corners(m, d, g)))
+    gap = np.inf
+    for a0, a1, b0, b1, z0, z1 in ours:
+        for c0, c1, e0, e1, w0, w1 in fixed:
+            if c0 >= a1 and min(b1, e1) > max(b0, e0) and min(z1, w1) - max(z0, w0) > SKIM:
+                gap = min(gap, c0 - a1)
+    return float(gap)
 
 
 def _corners(m, d, g):

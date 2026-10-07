@@ -17,7 +17,9 @@ TURNS = (0., 15., 30., 45.)
 # sideways (to its left), metres, and turned, degrees.
 PLACES = ((0., .03, 0.), (0., -.03, 0.), (0., .05, 0.), (0., -.05, 0.), (0., .08, 0.), (0., -.08, 0.),
           (.03, 0., 0.), (.06, 0., 0.), (-.02, 0., 0.), (.03, .05, 0.), (.03, -.05, 0.),
-          (0., 0., 20.), (0., 0., 40.), (0., .05, 30.))
+          (0., 0., 20.), (0., 0., 40.), (0., .05, 30.),
+          # further than the stop planned for it reaches (ADR 0035, FR-016)
+          (.08, 0., 0.), (.10, 0., 0.), (0., .15, 0.), (0., -.15, 0.), (.06, .15, 0.))
 
 
 def _yaw(quaternion):
@@ -134,7 +136,8 @@ def fetch_report(runs):
             return f'not run: {r.error}'
         if all(x.status in ('met', 'kept') for x in r.results):
             return f'every goal, {max(x.time for x in r.results if x.time is not None):.1f} s'
-        return 'missed: ' + ', '.join(x.label.lower() for x in r.results if x.status not in ('met', 'kept'))
+        missed = 'missed: ' + ', '.join(x.label.lower() for x in r.results if x.status not in ('met', 'kept'))
+        return missed + (f' ({r.message})' if r.program == 'failed' and r.message else '')
     for (dx, dy, turn), blind, looking in zip(PLACES, runs['blind'], runs['looking']):
         name = f'{100 * dx:+.0f} cm along, {100 * dy:+.0f} cm sideways' + (f', turned {turn:g} deg' if turn else '')
         seen = looking.seen[-1] if looking.seen else None

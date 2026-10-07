@@ -102,7 +102,7 @@ def test_an_arm_aims_a_pose_from_where_its_machine_stands_now():
         better = motion.aim(tuple(lower), here)
         reached, _ = motion.tool(angles=motion.angles(better))
         assert np.linalg.norm(reached - lower) < NEAR / 2
-        assert motion.aim((5., 0., .3), here) is None, 'out of reach: the pose stands'
+        assert motion.aim((5., 0., .3), here) is False, 'out of reach: the pose stands, and the runner is told (ADR 0035)'
 
 
 def test_a_loaded_cart_lifts_the_cube_clear_when_its_poses_are_aimed():

@@ -54,10 +54,10 @@ class Eye:
         self.pictures = 0
         self.last = None
 
-    def window(self, position, rotation, planned):
+    def window(self, position, rotation, planned, search=SEARCH):
         """The rows and columns whose pixels can see the search round `planned`."""
-        corners = [np.asarray(planned) + (dx, dy, dz) for dx in (-SEARCH, SEARCH)
-                   for dy in (-SEARCH, SEARCH) for dz in (-REACH, REACH)]
+        corners = [np.asarray(planned) + (dx, dy, dz) for dx in (-search, search)
+                   for dy in (-search, search) for dz in (-REACH, REACH)]
         seen = [self.sensor.pixel(rotation.T @ (c - position)) for c in corners]
         if any(p is None for p in seen):
             return (0, self.sensor.height), (0, self.sensor.width)
@@ -66,10 +66,10 @@ class Eye:
         left, right = max(0, int(np.floor(min(cols)))), min(self.sensor.width, int(np.ceil(max(cols))) + 1)
         return (top, bottom), (left, right)
 
-    def picture(self, planned):
+    def picture(self, planned, search=SEARCH):
         """A depth picture of the region round `planned`, with the sensor's noise."""
         position, rotation = self.backend.camera_pose(self.camera)
-        (top, bottom), (left, right) = self.window(position, rotation, planned)
+        (top, bottom), (left, right) = self.window(position, rotation, planned, search)
         rows, cols = np.arange(top, bottom), np.arange(left, right)
         if not len(rows) or not len(cols):
             return Picture((top, bottom), (left, right), np.zeros((0, 0)), position, rotation)
@@ -99,14 +99,17 @@ class Eye:
         local = directions[valid] * depth[valid, None]
         return picture.position + local @ picture.rotation.T, valid
 
-    def __call__(self, target, planned):
+    def __call__(self, target, planned, search=None):
+        """Where `target` is, looked for within `search` metres in plan of `planned` (None:
+        SEARCH), or None when it is not seen."""
+        search = SEARCH if search is None else float(search)
         if target not in self.sizes:
             raise ValueError(f'the camera does not know the size of {target}')
-        picture = self.picture(planned)
+        picture = self.picture(planned, search)
         points, valid = self.points(picture)
         tolerance = max(.002, 3 * self.sensor.sigma(float(np.linalg.norm(np.asarray(planned) - picture.position))))
         found = find_box(points, planned, self.sizes[target], tolerance, np.random.default_rng(self.pictures),
-                         picture.position)
+                         picture.position, search)
         self.last = picture
         if found is None:
             return None

@@ -141,6 +141,7 @@ class ProgramWorkspace:
             nx,ny=(numbers(v,1)[0] for v in values[:2])
             point=(nx,ny) if not values[2].strip() else (nx,ny,numbers(values[2],1)[0])
             b=Block('goto',value=numbers(values[3],1)[0],duration=numbers(values[4],1)[0],point=point)
+            if old is not None:b=replace(b,target=old.target,secondary=old.secondary)   # a stop at an object stays one (ADR 0035)
             blocks=list(self.program.blocks)
             if index is None:blocks.append(b)
             else:blocks[index]=b
@@ -228,7 +229,8 @@ class ProgramWorkspace:
             def apply(values):
                 watch,timeout=(numbers(v,1)[0] for v in values)
                 here=tuple(float(v) for v in self.data.xpos[self.model.body(name).id])
-                b=Block('look',name,watch,timeout,point=old.point if old and old.target==name else here)
+                b=Block('look',name,watch,timeout,secondary=old.secondary if old else 0.,
+                        point=old.point if old and old.target==name else here)
                 blocks=list(self.program.blocks)
                 if index is None:blocks.append(b)
                 else:blocks[index]=b
@@ -362,11 +364,14 @@ class ProgramWorkspace:
                 # Aimed: where the tool got to is checked and the pose solved again (ADR 0025).
                 if b.point:detail=f'{len(b.angles)} joints / {b.value:g} deg/s / aimed at a point {100*b.point[2]:.0f} cm up'
             elif b.kind=='grasp':detail=f'Holding {b.target.split(chr(47))[-1] if b.target else "anything"} / timeout {b.duration:g}s'
-            elif b.kind=='goto':detail=f'x {b.point[0]:.2f}  y {b.point[1]:.2f} m'+(f'  /  {round(b.point[2]):d} deg' if len(b.point)>2 else '')+f'  /  within {100*(b.value or .01):.0f} cm'
+            elif b.kind=='goto':
+                detail=f'x {b.point[0]:.2f}  y {b.point[1]:.2f} m'+(f'  /  {round(b.point[2]):d} deg' if len(b.point)>2 else '')+f'  /  within {100*(b.value or .01):.0f} cm'
+                # A stop at an object goes where the camera saw it (ADR 0035).
+                if b.target:detail=f'Stop at the {b.target.split(chr(47))[-1]}, where it is seen'+(f' / {100*b.secondary:.1f} cm nearer at most' if b.secondary else '')
             elif b.kind=='look':
                 seen=next((s for t,p,s in reversed(self.runner.seen) if p==b.point),None)
                 detail=(f'Seen {100*sum((a-c)**2 for a,c in zip(seen[:2],b.point[:2]))**.5:.1f} cm from the plan' if seen else
-                        f'Table camera / watches {b.value:g}s / timeout {b.duration:g}s')
+                        f'Table camera / watches {b.value:g}s / timeout {b.duration:g}s'+(f' / {100*b.secondary:.0f} cm round' if b.secondary else ''))
             text(detail,x+24,y+28,10,(.6,.74,.77),276)
             self.program_rows.append((i,x+16,y,294,38))
         if not self.program.blocks:text('Add blocks or load an example.',x+16,286,12,(.6,.74,.77),294)

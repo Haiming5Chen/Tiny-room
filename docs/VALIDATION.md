@@ -1160,3 +1160,25 @@ the default (`tests/test_agent_docs.py`, 8). Suites on MuJoCo 3.10.0 after the m
 passed** with a display, 893 headless. Not claimed: the two lines' features were tested side
 by side in one suite, not together in one scenario.
 
+## The stop follows the cube — 2026-10-07
+
+ADR 0035 (FR-016, accepted by the owner). The Fetch program looks before it drives - the
+table camera searching 25 cm round the plan - and its stop at the cube, and the stop it backs
+off to, move as the cube was seen to have moved: sideways fully, towards the table at most
+2.3 cm, so the cart's front stays 1 cm clear of the table's edge (measured from MuJoCo's
+geometry: 3.3 cm at the planned stop). Measured, the cube set down before the run: ADR 0032's
+14 placements, all 14 fetched (13 before); 6 and 7 cm further along the table, fetched (6 cm
+was missed); 15 cm to either side and 6 cm along with 15 cm to the side, fetched; 8 and 10 cm
+along, refused at the table with "out of the arm's reach from this stop", said before the arm
+moves - the arm reaches 28 cm ahead of its axle at the cube's height. Blind, 6 of the 19.
+Undisturbed, drawn 59 times: every goal in all 71 runs, the cube in the bin after 35.9 s
+median (35.8 s before); one run looked again though nothing had moved (OPEN LW-022).
+Disturbed on the same 9 set-ups: every disturbance 9 of 9, the median changes within 0.6 s
+of ADR 0033's. Checked in `tests/test_stop_follows.py` (13), with `test_look.py`,
+`test_look_again.py` and `test_aimed_poses.py` updated. Suites on MuJoCo 3.10.0: **953 passed** with a display, 906 headless.
+
+Not claimed: the stop moves without turning; a cube out of reach from every stop clear of the
+table is refused, not approached from another side; the clearance counts parts fixed to the
+world, from box corners, with the cart as it stood when the program was solved; the 25 cm
+search and the 1 cm margin are chosen.
+

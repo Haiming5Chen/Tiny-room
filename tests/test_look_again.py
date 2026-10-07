@@ -120,4 +120,5 @@ def test_the_cube_moved_after_the_look_is_fetched_by_looking_again():
     late = next(d for d in DEFAULTS['fetch'] if d.label == 'cube moved 5 cm sideways, 2 s later')
     result = field_run('fetch', design('mobile_manipulator'), disturbance=late)
     assert result.regrasped == 1 and all(r.status in ('met', 'kept') for r in result.results), (result.results, result.program)
-    assert len(result.seen) == 2 and abs(result.seen[-1][2][1] - result.seen[-1][3][1]) < .005
+    # Three looks: before the drive (ADR 0035), at the stop, and again once it had moved.
+    assert len(result.seen) == 3 and abs(result.seen[-1][2][1] - result.seen[-1][3][1]) < .005

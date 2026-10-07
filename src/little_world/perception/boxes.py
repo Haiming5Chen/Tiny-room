@@ -174,10 +174,10 @@ def _fit(top, height, size):
     return best
 
 
-def find_box(points, planned, size, tolerance, rng, camera=None):
+def find_box(points, planned, size, tolerance, rng, camera=None, search=SEARCH):
     """Where a box of `size` (m, its own x, y, z) stands among `points` (n x 3, the field's
-    frame), looked for within SEARCH along X and Y and REACH in height of `planned`, its centre as
-    planned. `tolerance` is how far off its plane a point of the support may lie: three times
+    frame), looked for within `search` along X and Y and REACH in height of `planned`, its centre
+    as planned. `tolerance` is how far off its plane a point of the support may lie: three times
     the camera's depth noise. Given where the `camera` was, the top face's points are laid on
     the top along the rays that saw them - a depth camera's error lies along its rays, so
     their place across the face is as sure as the pixels are. Returns (Sighting, indices of
@@ -186,7 +186,7 @@ def find_box(points, planned, size, tolerance, rng, camera=None):
     planned = np.asarray(planned, dtype=float)
     if not len(points):
         return None
-    near = np.all(np.abs(points - planned) <= (SEARCH, SEARCH, REACH), axis=1)
+    near = np.all(np.abs(points - planned) <= (search, search, REACH), axis=1)
     index = np.nonzero(near)[0]
     found = plane(points[index], tolerance, rng)
     if found is None:
@@ -210,7 +210,10 @@ def find_box(points, planned, size, tolerance, rng, camera=None):
             continue
         rise = height[members]
         top = float(np.percentile(rise, 95))
-        top = float(np.median(rise[np.abs(rise - top) <= tolerance]))
+        near_top = rise[np.abs(rise - top) <= tolerance]
+        if not len(near_top):           # a sparse group with nothing near its 95th percentile: no face
+            continue
+        top = float(np.median(near_top))
         face = members[np.abs(rise - top) <= band]
         if len(face) < 6:
             continue

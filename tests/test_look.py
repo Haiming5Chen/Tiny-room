@@ -155,7 +155,10 @@ def test_the_cube_moved_5_cm_as_the_cart_stands_at_the_table_is_fetched():
     moved = next(d for d in DEFAULTS['fetch'] if d.label == 'cube moved 5 cm sideways')
     result = field_run('fetch', design('mobile_manipulator'), disturbance=moved)
     assert all(r.status in ('met', 'kept') for r in result.results), (result.results, result.program)
-    (_, planned, seen, actual), = result.seen
+    # The look before the drive saw it where it was planned (ADR 0035); the look at the stop,
+    # after it was moved, 5 cm sideways.
+    (_, planned, before, _), (_, _, seen, actual) = result.seen
+    assert sum((a - b) ** 2 for a, b in zip(before, planned)) ** .5 < .005
     assert abs(seen[1] - planned[1] - .05) < .005 and sum((a - b) ** 2 for a, b in zip(seen, actual)) ** .5 < .005
 
 
@@ -181,7 +184,9 @@ def test_the_program_shows_what_the_table_camera_saw(monkeypatch, tmp_path):
             app.events.append(next(b for b in app.buttons if b.label == 'Fetch program').action)
         elif n == 2:
             kinds = [b.kind for b in app.program.blocks]
-            assert app.program.version == 3 and kinds.index('look') == kinds.index('goto') + 1
+            # It looks before it drives and again at the stop, which follows the cube (ADR 0035).
+            assert app.program.version == 4 and kinds.index('look') < kinds.index('goto')
+            assert kinds.index('look', kinds.index('goto')) == kinds.index('goto') + 1
             look = app.program.blocks[kinds.index('look')]
             app.eye = app.program_eye()
             app.backend.shift('objects/fetch_cube', (0., .05))

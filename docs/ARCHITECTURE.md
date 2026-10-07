@@ -194,7 +194,13 @@ near the part aim where it was seen (`Runner.aimed`). Before a pose reaching for
 runner takes one more picture; a part moved or hidden, a reach that cannot settle or a grasp
 that holds nothing sends it back to the stop's approach to look again, once (`Runner.regrasp`,
 ADR 0033). `sweep.run` records each look with where the part really was, for the reports; the
-program workspace draws the last picture through the canvas (`Canvas.pixels`).
+program workspace draws the last picture through the canvas (`Canvas.pixels`). A `goto` may
+name the object it drives to (program version 4): once a look has seen the object, the stop
+moves as it did, along the stop's heading at most `secondary` metres (`Runner.follow`), and
+a stop that followed is the one going back returns to; a look's `secondary` widens the
+camera's search round its plan. `ToolMotion.aim` answers False for a point out of reach, and
+a pose re-aimed there fails before it moves; `tool_motion._clear_ahead` measures how far a
+machine at a stop could drive on before it meets a part fixed to the world (ADR 0035).
 
 ## Frontier radar
 

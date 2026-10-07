@@ -11,6 +11,28 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-07 · Claude (Cowork) · FR-016: the stop follows the cube
+Did: the owner picked FR-016. ADR 0035: the Fetch program looks before it drives (the table
+camera searching 25 cm round the plan) and its stop at the cube moves as the cube was seen
+to have moved - sideways fully, towards the table at most 2.3 cm, the cart's front kept 1 cm
+clear of the table's edge as measured from MuJoCo's geometry; the stop it backs off to moves as
+that stop did. A `goto` may name the object it drives to (programs version 4); `aim` answers
+False for a point out of reach, and a pose re-aimed there fails before the arm moves, saying
+how far the cube was seen from its plan. The picture before the jaws go down is of where the
+look saw the cube.
+Measured: the cube set down before the run - ADR 0032's 14 placements all fetched (13
+before); 6 and 7 cm further along, fetched (6 cm was missed); 15 cm to either side, and 6 cm
+along with 15 cm to the side, fetched; 8 and 10 cm along refused at the table as out of the
+arm's reach (it reaches 28 cm ahead of its axle at the cube's height). Undisturbed, drawn 59
+times: 71 of 71, the cube in the bin after 35.9 s median (35.8 s). Disturbed on the same 9 set-ups:
+every disturbance 9 of 9, the median changes within 0.6 s of before (a first version that
+moved the backing-off stop with the cube's last sighting was 1.3 to 1.8 s slower after a cube
+moved at the table, and was changed).
+Unfinished: the stop moves without turning, so a cube out of reach from the front is not
+approached from another side. One run of the 71 looked again though nothing had moved: the
+single picture before the jaws go down missed the cube under them (OPEN LW-022).
+For the owner: FR-017 to FR-021 wait for you.
+
 ## 2026-10-07 · Claude (Cowork) · the shared log, the brain, and Codex's line of work merged
 Did: a766b5f a shared log for the agents (the owner's request); e8cac05 ADR 0034, the brain:
 the research collection `docs/radar/collection.jsonl` (81 entries, 69 judged) with

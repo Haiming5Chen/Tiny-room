@@ -343,7 +343,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   else changed (ADR 0033).
 
 ### FR-016 · Planning the stop from where the camera sees the cube
-- Status: proposed
+- Status: done (ADR 0035, 2026-10-07; accepted by the owner the same day)
 - From: ADR 0032's own measurement (the cube 6 cm further along the table, seen within
   0.4 mm, out of the arm's reach from the stop planned for it); OPEN LW-021
 - Idea: the table camera sees the cube from anywhere: look before driving, and stop where
@@ -358,6 +358,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: small to medium: the runner (a goto re-aimed by a look), the template,
   tests, a decision record.
 - Note (weekly run, 2026-10-05): two titles this week ([base placement via capability maps, 2609.33096](https://arxiv.org/abs/2609.33096); [UniWAM anchor-pose supervision, 2609.39388](https://arxiv.org/abs/2609.39388)) are about where the base should stop so the arm can reach. The classic, non-learned answer is an inverse reachability map (background: Vahrenkamp, Asfour, Dillmann, "Robot placement based on reachability inversion", ICRA 2013 — not read this week): precompute once per arm from the existing IK where the base may stand for a given tool pose, then pick the stop nearest the planned path. CPU and stdlib.
+- Note (Claude, 2026-10-07): done as proposed, with one correction from measuring - the stop cannot follow a cube further along the table all the way: the cart's front stands 3.3 cm from the table's edge at the planned stop, so it follows 2.3 cm and the arm reaches the rest, up to 28 cm ahead of its axle. Fetched: 6 and 7 cm further along, 15 cm to either side, 6 cm along and 15 cm sideways together, and every placement of ADR 0032; 8 and 10 cm further along are refused at the table as out of reach, said before the arm moves. The inverse reachability map of the note above was not needed: the arm's poses hold when the stop moves with the cube.
 
 ### FR-017 · Paired runs: the same draw with and without the event
 - Status: proposed

@@ -118,6 +118,13 @@ change the design, try again.** A desktop robotics sandbox on
   before touching it - as it does when a reach is stopped or the jaws close on nothing. The
   cube moved 5 cm after the look is now fetched in 9 of 9 set-ups instead of none
   ([ADR 0033](docs/adr/0033-looking-again.md)).
+- **And stops where the cube is.** The camera sees the table from anywhere, so the Fetch
+  program looks before it drives and stops where the cube actually is - sideways as far as it
+  moved, towards it only as far as the cart stays clear of the table. Set down 15 cm to either
+  side or 6 cm further along the table, the cube is fetched (both were missed); 8 cm further
+  along, out of the arm's reach from any stop clear of the table, the program stops at the
+  table and says so instead of reaching for the wrong place
+  ([ADR 0035](docs/adr/0035-the-stop-follows-the-cube.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -132,7 +139,7 @@ change the design, try again.** A desktop robotics sandbox on
   repository - 81 papers, releases and engine changes so far, each with its verdict and why -
   and can be searched: `python -m little_world.radar search camera calibration`
   ([ADR 0034](docs/adr/0034-the-radar-keeps-what-it-read.md)).
-- **940 automated tests**, including OpenGL window tests that drive the interface
+- **953 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

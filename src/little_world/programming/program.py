@@ -4,7 +4,8 @@ import json
 
 KINDS=('wait','action','drive','move','contact','distance','if_contact','pose','grasp','goto','look')
 # Blocks a version-1 reader does not know: a program that uses them is written as version 2,
-# which such a reader refuses instead of misreading (ADR 0016); a look, as version 3 (ADR 0032).
+# which such a reader refuses instead of misreading (ADR 0016); a look, as version 3 (ADR 0032);
+# a goto that follows an object it drives to, as version 4 (ADR 0035).
 VERSION_2_KINDS=('pose','grasp','goto')
 VERSION_3_KINDS=('look',)
 SETTLE=2.   # degrees: a joint this close to its target has arrived
@@ -36,7 +37,11 @@ class Block:
     angles: tuple = ()
     # goto: (x, y) in metres in the field's frame, or (x, y, heading in degrees). The
     # base's drive axle midpoint is brought within `value` metres of it (0: 1 cm),
-    # then turned to the heading; `duration` is the timeout (ADR 0017).
+    # then turned to the heading; `duration` is the timeout (ADR 0017). A goto with a
+    # `target` is a stop at that object: once a look has seen the object, the stop moves as
+    # far and the same way as the object did from where it was planned - but along its heading
+    # at most `secondary` metres towards it (0: no limit), so the machine keeps clear of what
+    # the object stands on (ADR 0035).
     # pose, optionally: (x, y, z), the point in the field's frame its tool was aimed at when
     # the angles were solved. A runner given an aim moves the joints there, then solves the
     # pose again for where the machine actually stands until the tool is at the point
@@ -44,7 +49,8 @@ class Block:
     # look: (x, y, z), where its object - `target` - was planned to be. The runner's camera
     # looks for it for `value` seconds, a picture every PICTURE, until STEADY pictures in a row
     # agree; the poses at this stop aimed near it are then aimed where it was seen (ADR 0032).
-    # `duration` is the timeout.
+    # `duration` is the timeout; `secondary`, how far round the plan the camera searches, in
+    # metres (0: the camera's own default; ADR 0035).
     point: tuple = ()
 
     def __post_init__(self):
@@ -56,10 +62,12 @@ class Block:
         if self.kind=='action' and self.value not in (-1,1):raise ValueError('Direction must be -1 or 1')
         if self.kind=='drive' and max(abs(self.value),abs(self.secondary))>12:raise ValueError('Wheel targets must be within +/-12 rad/s')
         if self.kind=='distance' and self.value<0:raise ValueError('Distance must be nonnegative')
+        if self.kind=='goto' and not 0<=self.secondary<=10:raise ValueError('A stop follows its object at most 0 to 10 m along its heading')
         if self.kind=='look':
             if not self.target:raise ValueError('A look names the object it looks for')
             if not 0<=self.value<=10:raise ValueError('A look watches for 0 to 10 seconds')
             if self.duration<self.value+PICTURE:raise ValueError('A look needs a timeout longer than it watches')
+            if not 0<=self.secondary<=1:raise ValueError('A look searches 0 to 1 m round its plan')
         try:
             angles=tuple((str(a) if isinstance(a,str) else None,tuple(float(v) for v in values)) for a,values in self.angles)
         except (TypeError,ValueError):
@@ -99,12 +107,13 @@ class Program:
 
     def __post_init__(self):
         object.__setattr__(self,'blocks',tuple(self.blocks))
-        if type(self.version) is not int or self.version not in (1,2,3):raise ValueError('Unsupported program version')
+        if type(self.version) is not int or self.version not in (1,2,3,4):raise ValueError('Unsupported program version')
         if type(self.repeat) is not int or not 1<=self.repeat<=100:raise ValueError('Repeat must be 1 to 100')
         if self.trigger not in ('F6','F7','F8'):raise ValueError('Trigger must be F6, F7 or F8')
         if len(self.blocks)>100 or any(not isinstance(b,Block) for b in self.blocks):raise ValueError('Program supports at most 100 blocks')
         if any(b.kind in VERSION_2_KINDS for b in self.blocks):object.__setattr__(self,'version',max(self.version,2))
-        if any(b.kind in VERSION_3_KINDS for b in self.blocks):object.__setattr__(self,'version',3)
+        if any(b.kind in VERSION_3_KINDS for b in self.blocks):object.__setattr__(self,'version',max(self.version,3))
+        if any(b.kind=='goto' and b.target for b in self.blocks):object.__setattr__(self,'version',4)
 
     def validate(self,blueprint,body_names=()):
         from little_world.core.component import RobotServo
@@ -138,6 +147,7 @@ class Program:
                 if b.target==b.other:raise ValueError('Choose two different bodies')
             if b.kind=='grasp' and b.target and b.target not in body_names:raise ValueError('Missing object to grasp: '+b.target)
             if b.kind=='look' and b.target not in body_names:raise ValueError('Missing object to look for: '+b.target)
+            if b.kind=='goto' and b.target and b.target not in body_names:raise ValueError('Missing object to drive to: '+b.target)
             if b.kind=='goto' and not any(c.kind=='differential_torque' and len(c.actuators)>=2 for c in specs.values()):raise ValueError('Driving to a point needs a two-wheel drive controller')
 
     def to_json(self):
@@ -173,7 +183,7 @@ class Runner:
         self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
         self.retries=0;self.stop_at=None;self.stop_block=None;self.run_up=None
         self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.seen=[]
-        self.regrasps=0;self.reopen=None
+        self.regrasps=0;self.reopen=None;self.followed={};self.goal=None
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
@@ -198,7 +208,7 @@ class Runner:
         drove in, if one came just before the goto, then the goto - and takes its aimed pose
         again from where the pose was planned (ADR 0031)."""
         from math import cos,radians,sin
-        blocks=self.program.blocks;start=self.stop_block;stop=blocks[start].point
+        blocks=self.program.blocks;start=self.stop_block;stop=self.followed.get(start,blocks[start].point)
         # Come in along the stop's own heading, as the first approach did: from the side, a
         # drive to a point accepts a few centimetres across its line (ADR 0018).
         if len(stop)>2:
@@ -226,6 +236,32 @@ class Runner:
         """Whether an aimed pose reaches for the object a look at this stop looked for."""
         return bool(block.point) and self.looked is not None and \
             sum((p-q)**2 for p,q in zip(block.point,self.looked))<=REACHING**2
+    def follow(self,block):
+        """Where a goto to an object stops: its point, or - once a look has seen the object -
+        its point moved as the object was seen to be moved from where it was planned, but along
+        its heading no more than `secondary` towards it (ADR 0035). Leaving a stop that followed
+        the same object, it moves as that stop did: the machine backs off from where it stood,
+        whatever was seen there since. A stop that followed is kept, so going back to it (ADR
+        0031, 0033) goes back to where it was moved."""
+        if not block.target:return block.point
+        last=self.stop_block
+        if last is not None and last!=self.index and last in self.followed and \
+                self.program.blocks[last].target==block.target:
+            was=self.program.blocks[last].point;moved=self.followed[last]
+            point=(block.point[0]+moved[0]-was[0],block.point[1]+moved[1]-was[1],*block.point[2:])
+            self.followed[self.index]=point
+            return point
+        if self.offset is None or not self.seen or self.seen[-1][0]!=block.target:
+            return self.followed.get(self.index,block.point)
+        from math import cos,radians,sin
+        dx,dy=self.offset[0],self.offset[1]
+        if len(block.point)>2 and block.secondary>0:
+            ux,uy=cos(radians(block.point[2])),sin(radians(block.point[2]))
+            beyond=dx*ux+dy*uy-block.secondary
+            if beyond>0:dx-=beyond*ux;dy-=beyond*uy
+        point=(block.point[0]+dx,block.point[1]+dy,*block.point[2:])
+        self.followed[self.index]=point
+        return point
     def aimed(self,block):
         """Where a pose is aimed: its point, or - near where a look at this stop expected its
         object - its point moved as far as the object was seen to be from there (ADR 0032)."""
@@ -237,7 +273,7 @@ class Runner:
         seen its object within STILL of their middle, after it has watched `value` seconds."""
         if self.elapsed+1e-9>=self.picture_at:
             self.picture_at+=PICTURE
-            sighting=see(block.target,block.point)
+            sighting=see(block.target,block.point,block.secondary) if block.secondary else see(block.target,block.point)
             self.sightings.append(None if sighting is None else tuple(float(v) for v in sighting.centre))
         last=self.sightings[-STEADY:]
         if self.elapsed+1e-9<block.value or len(last)<STEADY or None in last:return False
@@ -276,19 +312,26 @@ class Runner:
                 if missing:self.fail('Missing joint for pose: '+missing[0]);return output
                 # About to reach down for the object: one more picture, and if it is no longer
                 # where the look saw it - or hidden - look again before touching it (ADR 0033).
+                # The picture is of the place the look saw it, wherever that was (ADR 0035).
                 if see is not None and self.reaches_for(b):
                     target,planned,where=self.seen[-1]
-                    sighting=see(target,planned)
+                    sighting=see(target,where)
                     now=None if sighting is None else tuple(float(v) for v in sighting.centre)
                     if (now is None or sum((a-c)**2 for a,c in zip(now,where))>MOVED**2) and \
                             self.regrasp('Moved since the look: looking again'):
                         return output
                 self.pose_from={a:tuple(angles[a])[:len(goal)] for a,goal in b.angles}
                 self.pose_goal=b.angles
-                # Its object was seen elsewhere: solve the pose for there before moving.
+                # Its object was seen elsewhere: solve the pose for there before moving - and if
+                # the arm cannot reach there from where the machine stands, say so before it
+                # moves towards the object (ADR 0035).
                 if aim is not None and self.aimed(b)!=b.point and sum(v*v for v in self.offset)>SHIFT**2:
                     better=aim(self.aimed(b),b.angles)
                     if better:self.pose_goal=tuple(better)
+                    elif better is False:
+                        moved=sum(v*v for v in self.offset[:2])**.5
+                        self.fail(f'Seen {100*moved:.0f} cm from where it was planned: out of the arm\'s reach from this stop')
+                        return output
             travel=self.travel(b)
             u=smoothstep(self.elapsed/travel) if travel>0 else 1.
             output['pose']={a:tuple(s+(g-s)*u for s,g in zip(self.pose_from[a],goal)) for a,goal in self.pose_goal}
@@ -297,16 +340,17 @@ class Runner:
             if self.driver is None:
                 from math import radians
                 from little_world.control.navigation import GoTo
+                self.goal=self.follow(b)    # a stop at an object goes where it was seen (ADR 0035)
                 self.offset=None;self.looked=None   # a new stop: what was seen at the last one is behind it
                 if self.run_up and self.index==self.stop_block:
                     self.driver=GoTo(self.run_up,None,.03)
                 else:
-                    self.driver=GoTo(b.point[:2],radians(b.point[2]) if len(b.point)>2 else None,b.value or .01)
+                    self.driver=GoTo(self.goal[:2],radians(self.goal[2]) if len(self.goal)>2 else None,b.value or .01)
             forward,turn,arrived=self.driver.step(base)
             output['base']=(forward,turn)
             if arrived and self.run_up and self.index==self.stop_block and self.driver.goal==tuple(self.run_up):
                 self.run_up=None;self.driver=None;arrived=False      # backed off: now in to the stop
-            elif arrived:self.stop_at=b.point[:2];self.stop_block=self.index
+            elif arrived:self.stop_at=self.goal[:2];self.stop_block=self.index
         condition=False
         if b.kind=='move':condition=bool((angles or {}).get(b.target)) and all(abs(v-b.value)<=SETTLE for v in angles[b.target])
         elif b.kind=='pose':

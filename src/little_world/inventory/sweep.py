@@ -43,6 +43,7 @@ class Run:
     went_back: int = 0              # times the program went back to a stop it was pushed off (ADR 0031)
     seen: tuple = ()                # each look's (object, where planned, where seen, where it was) (ADR 0032)
     regrasped: int = 0              # times the program looked again after a missed grasp (ADR 0033)
+    message: str = ''               # the program's last word: why it stopped, when it failed
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -251,7 +252,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    kick.note() if kick is not None else '', kick.moved if kick is not None else None,
                    runner.retries if runner else 0,
                    tuple((*look, at) for look, at in zip(runner.seen, actual)) if runner else (),
-                   runner.regrasps if runner else 0)
+                   runner.regrasps if runner else 0, runner.message if runner else '')
 
 
 def eye(backend, field, scene, variation=Variation(), ideal=False):
