@@ -266,10 +266,22 @@ def test_items_are_filed_under_the_decision_they_touch_with_the_words_that_match
         Item('arxiv:2609.00009', 'arxiv', 'Protein Folding with Language Models',
              'We fold proteins with a large language model trained on sequences.')], everything)}
     assert found['arxiv:2609.00001'].topic.id == 'ADR 0017'
-    assert {'friction cone', 'creep'} & set(found['arxiv:2609.00001'].words)
+    assert {'friction cone', 'contact creep'} & set(found['arxiv:2609.00001'].words)    # a pair, not its words
     assert found['arxiv:2609.00002'].topic.id == 'ADR 0015'
     assert found['arxiv:2609.00004'].topic.id == 'Next: conveyor and feeder'
     assert found['arxiv:2609.00009'].topic is None
+
+
+def test_a_shared_word_pair_is_one_piece_of_evidence_whichever_of_its_words_weighs_most():
+    """Found when ADR 0036 joined the decision records: the weights moved, 'language' came to
+    weigh more than 'language model', and the protein paper above matched the topic of
+    language models that program robots on two pieces of evidence from one phrase."""
+    from little_world.radar.score import _concepts
+    topic = {'language model': .5, 'language': .6, 'model': .4, 'program': .5}
+    assert _concepts({'language model': .5, 'language': .1, 'model': .1, 'protein': .6}, topic) == ['language model']
+    assert _concepts({'language model': .1, 'language': .6, 'model': .5, 'protein': .6}, topic) == ['language model']
+    both = {'conveyor belt': .3, 'feeder': .2, 'belt': .4}
+    assert _concepts(both, both) == ['conveyor belt', 'feeder']           # the belt is the pair's
 
 
 def test_the_robot_models_the_app_imports_are_watched_under_the_decision_that_uses_them():
@@ -282,7 +294,7 @@ def test_the_robot_models_the_app_imports_are_watched_under_the_decision_that_us
                         'New collision meshes and actuator gains for the Franka FR3 arm model.', kind='release')],
                   topics())
     assert [m.topic.id for m in found] == ['ADR 0019', 'ADR 0019']
-    assert 'menagerie' in found[0].words
+    assert 'mujoco menagerie' in found[0].words
 
 
 def test_the_profile_reads_topics_and_refuses_a_heading_it_does_not_know(tmp_path):

@@ -103,13 +103,11 @@ class Match:
 
 def _concepts(vector, topic_vector):
     """The features two vectors share, heaviest first, a word pair standing for its words:
-    'language model' is one piece of evidence, not three."""
+    'language model' is one piece of evidence, not three - whichever of the three weighs
+    most, since the weights move whenever a document joins the texts."""
     weights = sorted(((w * topic_vector[f], f) for f, w in vector.items() if f in topic_vector), reverse=True)
-    picked = []
-    for _, f in weights:
-        if not any(f in p.split() or p in f.split() for p in picked):
-            picked.append(f)
-    return picked
+    paired = {word for _, f in weights if ' ' in f for word in f.split()}
+    return [f for _, f in weights if ' ' in f or f not in paired]
 
 
 def match(items, topics, least=LEAST, shown=4, evidence=2):

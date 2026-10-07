@@ -1182,3 +1182,15 @@ table is refused, not approached from another side; the clearance counts parts f
 world, from box corners, with the cart as it stood when the program was solved; the 25 cm
 search and the 1 cm margin are chosen.
 
+## Radar: one phrase, one piece of evidence — 2026-10-07
+
+ADR 0021 files an item only on two separate pieces of evidence, a word pair standing for its
+words, so that "language models" alone puts no protein paper under robot programming. The
+pair stood for its words only while it weighed more than they did, and the weights move
+whenever a document joins the texts: found while writing ADR 0036 - with it among the
+decision records, "language" outweighed "language model" and the test's protein paper was
+filed under "Learn: language models that program robots" on "language" and "models". Now a
+word inside a shared pair never counts apart from it, whatever the weights, and a match shows
+the pair ("contact creep", "mujoco menagerie") where it showed one of its words. Search
+scores are unchanged (`search --check`: 17 of 20 in the top three, words alone). Checked in
+`tests/test_radar.py` (one new test; two now expect the pair).
