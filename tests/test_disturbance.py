@@ -143,8 +143,10 @@ def test_the_report_compares_each_set_up_with_itself_undisturbed():
     page = disturbed_markdown(result)
     assert page.startswith('# Fetch, disturbed: arm on a cart')
     assert 'the same 4 set-ups - the design as designed and 3 drawn at random' in page
-    assert '| none | 4 of 4 | 3 of 3, at least 37 % | - | - | - | - |' in page
-    assert '| shoved 6 N s at the table | 3 of 4 | 2 of 3, at least 14 % | +8.0 s | 8.1 cm (8.1 to 8.1) | 2 | repeat 3 |' in page
+    assert '| none | 4 of 4 | 3 of 3, at least 37 % | - | - | - | - | - |' in page
+    # Repeat 3 met every goal undisturbed and missed one shoved: one of three broken (ADR 0036).
+    assert ('| shoved 6 N s at the table | 3 of 4 | 2 of 3, at least 14 % | 1 of 3, 1 to 91 %; p = 1.0000 | +8.0 s '
+            '| 8.1 cm (8.1 to 8.1) | 2 | repeat 3 |') in page
     assert '- **shoved 6 N s at the table**: a push.' in page
 
 

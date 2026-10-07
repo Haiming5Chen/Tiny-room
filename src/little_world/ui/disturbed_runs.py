@@ -3,8 +3,9 @@
 A workshop mixin beside `VariedRuns`. The design and the set-ups its sweep draws are run
 undisturbed and under each of the field's disturbances - a shove, a part moved - in another
 Python process (`little_world.inventory.sweep --disturb`), so the window stays live; the
-report then shows, per disturbance, in how many set-ups every goal was met and how much
-later. The design is copied into the other process; nothing here edits it.
+report then shows, per disturbance, in how many set-ups every goal was met, how much later,
+and how many of the drawn set-ups that succeeded undisturbed it broke (ADR 0036). The design
+is copied into the other process; nothing here edits it.
 """
 from pathlib import Path
 import sys
@@ -93,8 +94,10 @@ class DisturbedRuns:
             if y > wh - 110:
                 break
             later = '' if g.change is None or abs(g.change) < .05 else f'  {g.change:+.1f} s'
+            # Each drawn set-up against itself undisturbed (ADR 0036): what the event broke.
+            broke = f'  broke {g.broke} of {g.held}' if g.broke else ''
             text(f'{g.met}/{g.runs}', 16, y, 11, ACCENT if g.met == g.runs else WARN)
-            text(g.label + later, 52, y, 11, LIGHT, 220)
+            text(g.label + later + broke, 52, y, 11, LIGHT, 220)
             y += 17
         button('Copy the disturbances report', 12, y + 4, 264, self.copy_disturbances_report, h=26)
         return y + 38

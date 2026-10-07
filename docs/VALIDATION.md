@@ -1194,3 +1194,26 @@ word inside a shared pair never counts apart from it, whatever the weights, and 
 the pair ("contact creep", "mujoco menagerie") where it showed one of its words. Search
 scores are unchanged (`search --check`: 17 of 20 in the top three, words alone). Checked in
 `tests/test_radar.py` (one new test; two now expect the pair).
+
+## Paired runs — 2026-10-07
+
+ADR 0036 (FR-017, accepted by the owner). A set-up's undisturbed and disturbed runs are one
+run until the event, checked bit for bit - a digest of every joint's position and speed at
+every step - on the Sprint field (shoved 4 N s) and the Fetch field (the cube moved 2 s after
+the look): equal up to the event, different from it on. Each drawn set-up is then counted as
+a pair. Without looking again (ADR 0033 off), the cube moved 5 cm after the look broke 8 of
+8 drawn set-ups that succeeded undisturbed - at least 69 % of successes, exact McNemar p =
+0.0078 - where the two rates alone said 8 of 8 against 0 of 8. With it, on 59 drawn set-ups:
+1 of 59 broken (0 to 9 % of successes), none rescued, p = 1 - no effect shown; the cube in
+the bin 3.1 s later (median). The broken one, traced: the cube moved 26 ms after the picture
+before the jaws went down, a jaw came down on it, and the arm, rising off it to look again,
+dragged it over the table's edge (OPEN LW-023). Undisturbed, 59 of 59; two of the 60 looked
+again though nothing had moved (LW-022). Checked in `tests/test_paired_runs.py` (6): the exact
+test's values, the pairing with the as-designed set-up left out, a disturbance that breaks
+nothing, a rescue, and the two runs of a pair equal step for step until the event on the
+Sprint and Fetch fields; `tests/test_disturbance.py`'s report row has the new column.
+Suites on MuJoCo 3.10.0: **960 passed** with a display, 913 headless.
+
+Not claimed: pairs are exact on one machine and MuJoCo build; the test is about outcomes, not
+times; the as-designed set-up is chosen and stays out of the count.
+

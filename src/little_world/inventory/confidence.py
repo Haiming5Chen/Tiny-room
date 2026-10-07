@@ -8,9 +8,14 @@ eight draws do not make that rate 100 %: they make it at least 69 %, with 95 % c
 
 The bounds are Clopper and Pearson's (1934, Biometrika 26, 404-413): exact, never claiming
 more than the count allows. Each is found by bisection on the binomial distribution, summed
-in logarithms so that any number of runs works. Standard library only.
+in logarithms so that any number of runs works.
+
+A disturbance is tried on the same set-ups as the undisturbed runs, and the simulator is
+deterministic, so each set-up is a matched pair: the two runs are the same run until the
+event, and a set-up whose outcome differs was changed by the event alone. `mcnemar` is the
+exact test on those pairs (ADR 0036). Standard library only.
 """
-from math import ceil, exp, lgamma, log, log1p
+from math import ceil, comb, exp, lgamma, log, log1p
 
 CONFIDENCE = .95
 
@@ -82,3 +87,19 @@ def runs_needed(failing, confidence=CONFIDENCE):
     while (1. - confidence) ** (1. / n) < 1. - failing:      # guard the rounding
         n += 1
     return n
+
+
+def mcnemar(broke, rescued):
+    """The exact two-sided McNemar test on matched pairs (McNemar 1947, Psychometrika 12,
+    153-157): of the pairs whose two outcomes differ, `broke` succeeded without the event and
+    failed with it, `rescued` the other way. If the event changed nothing, each such pair is a
+    coin toss; this is the chance of a split at least as uneven - 2 P(X <= min) for X ~
+    Binomial(broke + rescued, 1/2), at most 1. Nine broken and none rescued give 0.0039: the
+    event did it, from nine pairs. Pairs whose outcomes agree say nothing either way."""
+    if not (isinstance(broke, int) and isinstance(rescued, int)) or broke < 0 or rescued < 0:
+        raise ValueError(f'counts of pairs are whole and not negative, not {broke} and {rescued}')
+    n = broke + rescued
+    if n == 0:
+        return 1.
+    tail = sum(comb(n, i) for i in range(min(broke, rescued) + 1)) / 2 ** n
+    return min(1., 2. * tail)

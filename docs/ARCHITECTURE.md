@@ -180,6 +180,9 @@ happens partway through a run - a push on the machine's base, a loose part moved
 the adapter applies it (`MujocoBackend.push`, `MujocoBackend.shift`), and `sweep.disturb`
 runs the design and its drawn set-ups undisturbed and under each disturbance. The run report
 starts those too (`ui/disturbed_runs.py`, sharing the process handling of `ui/varied_runs.py`).
+Each drawn set-up is a pair - its two runs are one run until the event, which `sweep.run`'s
+`trace` shows step by step and `Run.event` dates - and `sweep.summaries` counts what the event
+broke and rescued, tested exactly by `confidence.mcnemar` (ADR 0036).
 
 A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
 names a Blueprint camera in the field and its sensor, whose numbers are in

@@ -11,6 +11,28 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-07 · Claude (Cowork) · FR-017: paired runs
+Did: the owner picked FR-017. ADR 0036: every drawn set-up of a disturbance sweep is a pair,
+its undisturbed run and its disturbed run, one run until the event - `sweep.run` can record a
+digest of every joint's position and speed at every step, and the tests show a pair equal bit
+for bit up to the event and different from it on, on the Sprint and the Fetch fields. The
+report gains "Broken by it": of the drawn set-ups that met every goal undisturbed, how many the
+event broke, with the share of successes it breaks (95 %), how many failures it turned round,
+and the exact McNemar p (`confidence.mcnemar`, standard library). `sweep --disturb --only
+LABEL` runs one disturbance; the run report's panel says "broke k of n".
+Measured: the cube moved 5 cm sideways 2 s after the look. Without looking again (ADR 0033
+off): 8 of 8 drawn successes broken, at least 69 %, p = 0.0078 (FR-017 expected nine and
+0.0039; the as-designed set-up is chosen, not drawn). With it, 59 drawn set-ups: 1 of 59
+broken (0 to 9 %), p = 1, the cube in the bin 3.1 s later (median). The broken pair (repeat 9),
+traced: the cube moved 26 ms after the picture before the jaws went down, a jaw came down on
+it, the reach was stopped, and the arm, rising to its ready pose to look again, dragged the
+cube over the table's edge.
+Unfinished: LW-023 (new), that drag; LW-022 again, in 2 of the 60 undisturbed set-ups. The
+proposal's `--paired` flag and cache of twins were not built: every disturbance sweep already
+runs each set-up undisturbed, so every report pairs.
+For the owner: LW-022 and LW-023 are faults in how the Fetch program looks again; FR-004,
+FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-018 to FR-021 wait for you.
+
 ## 2026-10-07 · Claude (Cowork) · FR-016: the stop follows the cube
 Did: the owner picked FR-016. ADR 0035: the Fetch program looks before it drives (the table
 camera searching 25 cm round the plan) and its stop at the cube moves as the cube was seen

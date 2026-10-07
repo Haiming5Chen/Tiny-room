@@ -101,9 +101,10 @@ and the Fetch program looks for its cube before it reaches - plane removed, box 
 learned model - and aims where it was seen (ADR 0032); it looks again before the jaws go
 down, when a reach is stopped and when a grasp misses (ADR 0033). What the radar and the
 weekly reading judge now stays in the repository, searchable by every agent (ADR 0034). The
-Fetch program looks before it drives and stops where the cube is (ADR 0035).
-Next: what the owner picks from the frontier proposals - among them runs paired with and
-without their disturbance, a camera that can fail, how gently a part is handled, the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
+Fetch program looks before it drives and stops where the cube is (ADR 0035). A disturbance
+sweep pairs each set-up with itself undisturbed - the same run until the event, step for
+step - and says how many successes the event broke and how sure that is (ADR 0036).
+Next: what the owner picks from the frontier proposals - among them a camera that can fail, how gently a part is handled, the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its
 own camera.

@@ -16,7 +16,7 @@ import time
 from little_world.fields import FIELDS
 from little_world.fields.disturbance import DEFAULTS, Disturbing
 from little_world.fields.variation import Ranges, Variation, friction, payload_site, plan, varied
-from little_world.inventory.confidence import CONFIDENCE, lower_bound, runs_needed
+from little_world.inventory.confidence import CONFIDENCE, interval, lower_bound, mcnemar, runs_needed, upper_bound
 
 # Field -> (protocol, seconds). Fields not listed have no protocol a machine can follow alone.
 PROTOCOLS = {'tilt': ('hold', 33.), 'fetch': ('program', 60.), 'pick_place': ('program', 40.),
@@ -44,6 +44,7 @@ class Run:
     seen: tuple = ()                # each look's (object, where planned, where seen, where it was) (ADR 0032)
     regrasped: int = 0              # times the program looked again after a missed grasp (ADR 0033)
     message: str = ''               # the program's last word: why it stopped, when it failed
+    event: float | None = None      # when the disturbance began, simulated seconds; None if it never did
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -145,14 +146,16 @@ def ranges_for(field_id):
 
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
-        retries=None, ideal=False, regrasps=None):
+        retries=None, ideal=False, regrasps=None, trace=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
     often the program may go back to a stop it was pushed off (ADR 0031) and `regrasps` how
     often it may look again after a missed grasp (ADR 0033); None: the runner's own.
     A program that looks does so with the field's camera, its sensor's noise drawn for this
-    set-up, or without noise if `ideal` (ADR 0032)."""
+    set-up, or without noise if `ideal` (ADR 0032). `trace`, a list, gets each step's time and
+    a digest of every body's position and speed: what makes a set-up's undisturbed and
+    disturbed runs one run until the event (ADR 0036)."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -192,6 +195,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             tracker.update(state)
             if kick is not None:
                 kick.tick(backend, state, state.time - tracker.start, tracker.met)
+            if trace is not None:
+                trace.append((state.time, _digest(backend)))
         if protocol == 'program':
             from little_world.programming.execution import apply, base_targets, joint_angles, needs_grasp
             from little_world.programming.observations import Observations
@@ -252,7 +257,15 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    kick.note() if kick is not None else '', kick.moved if kick is not None else None,
                    runner.retries if runner else 0,
                    tuple((*look, at) for look, at in zip(runner.seen, actual)) if runner else (),
-                   runner.regrasps if runner else 0, runner.message if runner else '')
+                   runner.regrasps if runner else 0, runner.message if runner else '',
+                   kick.began + tracker.start if kick is not None and kick.began is not None else None)
+
+
+def _digest(backend):
+    """A short digest of every joint's position and speed, bit for bit."""
+    from hashlib import blake2b
+    d = backend.data
+    return blake2b(d.qpos.tobytes() + d.qvel.tobytes(), digest_size=8).hexdigest()
 
 
 def eye(backend, field, scene, variation=Variation(), ideal=False):
@@ -391,10 +404,38 @@ class Group:
     missed: tuple           # the set-ups that missed a goal
     seen: tuple = ()        # how far from its plan each set-up's last look saw its object, m, sorted
     again: int = 0          # set-ups whose program looked again after a missed grasp (ADR 0033)
+    # Each drawn set-up is a pair: its undisturbed run and this one, one run until the event
+    # (ADR 0036). Of the drawn set-ups that met every goal undisturbed (`held`), how many the
+    # event broke; of those that missed undisturbed, how many met every goal with it.
+    held: int = 0
+    broke: int = 0
+    rescued: int = 0
 
     @property
     def low(self):
         return lower_bound(self.drawn_met, self.drawn) if self.drawn else 0.
+
+    @property
+    def p(self):
+        """The exact McNemar test on the drawn pairs whose outcomes differ."""
+        return mcnemar(self.broke, self.rescued)
+
+    @property
+    def breaks_at_most(self):
+        """The share of undisturbed successes the event breaks is at most this (95 %)."""
+        return upper_bound(self.broke, self.held) if self.held else 1.
+
+    def breaks(self):
+        """The share of undisturbed successes the event breaks, as sure as the pairs make it:
+        at most, when it broke none; at least, when it broke all; else the 95 % interval."""
+        if not self.held:
+            return '-'
+        if self.broke == 0:
+            return f'0 of {self.held}, at most {100 * self.breaks_at_most:.0f} %'
+        if self.broke == self.held:
+            return f'{self.broke} of {self.held}, at least {100 * lower_bound(self.broke, self.held):.0f} %'
+        lo, hi = interval(self.broke, self.held)
+        return f'{self.broke} of {self.held}, {100 * lo:.0f} to {100 * hi:.0f} %'
 
 
 def summaries(result):
@@ -405,6 +446,8 @@ def summaries(result):
         sample = [r for r in runs if not r.error and r.variation.label.startswith('repeat')]
         changes = [_last(r) - _last(u) for r, u in zip(runs, undisturbed)
                    if _last(r) is not None and _last(u) is not None]
+        pairs = [(_last(u) is not None, _last(r) is not None) for r, u in zip(runs, undisturbed)
+                 if r.variation.label.startswith('repeat') and not r.error and not u.error]
         out.append(Group(label, sum(1 for r in runs if _last(r) is not None), len(runs),
                          sum(1 for r in sample if _last(r) is not None), len(sample),
                          median(changes) if i and changes else None,
@@ -412,7 +455,9 @@ def summaries(result):
                          sum(1 for r in runs if r.went_back),
                          tuple(r.variation.label for r in runs if _last(r) is None),
                          tuple(sorted(off(r.seen[-1]) for r in runs if r.seen)),
-                         sum(1 for r in runs if r.regrasped)))
+                         sum(1 for r in runs if r.regrasped),
+                         sum(1 for was, _ in pairs if was), sum(1 for was, now in pairs if was and not now),
+                         sum(1 for was, now in pairs if now and not was)))
     return out
 
 
@@ -461,18 +506,20 @@ def disturbed_markdown(result):
     lines = [f'# {field.title}, disturbed: {result.design}', '',
              f'Each disturbance tried on the same {n} set-ups - the design as designed and {drawn_count} drawn at '
              f'random within the ranges of ADR 0024 - {what}.{capped}', '',
-             '| Disturbance | Every goal met | Drawn at random | Last goal, median change | Pushed | Went back |'
-             + (' Looked again | Camera saw it moved |' if looked else '') + ' Missed in |',
-             '| --- | --- | --- | --- | --- | --- |' + (' --- | --- |' if looked else '') + ' --- |']
-    for g in groups:
+             '| Disturbance | Every goal met | Drawn at random | Broken by it | Last goal, median change | Pushed |'
+             ' Went back |' + (' Looked again | Camera saw it moved |' if looked else '') + ' Missed in |',
+             '| --- | --- | --- | --- | --- | --- | --- |' + (' --- | --- |' if looked else '') + ' --- |']
+    for i, g in enumerate(groups):
         sure = f'{g.drawn_met} of {g.drawn}, at least {100 * g.low:.0f} %' if g.drawn else '-'
+        broken = '-' if not i or not g.held else \
+            g.breaks() + (f'; rescued {g.rescued}' if g.rescued else '') + (f'; p = {g.p:.4f}' if g.broke or g.rescued else '')
         change = '-' if g.change is None else f'{g.change:+.1f} s'
         pushed = '-' if not g.pushes else \
             f'{100 * median(g.pushes):.1f} cm ({100 * g.pushes[0]:.1f} to {100 * g.pushes[-1]:.1f})'
         lost = '-' if not g.missed else 'every set-up' if len(g.missed) == g.runs else ', '.join(g.missed)
         seen = ('' if not looked else f' {g.again or "-"} |' + (' - |' if not g.seen else
                 f' {100 * median(g.seen):.1f} cm ({100 * g.seen[0]:.1f} to {100 * g.seen[-1]:.1f}) |'))
-        lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
+        lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {broken} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
@@ -480,6 +527,11 @@ def disturbed_markdown(result):
               '. "Last goal, median change" compares each set-up with itself undisturbed. "Pushed" is how '
               'far the machine\'s base went the way it was pushed, a second after the push; "Went back", in how '
               'many set-ups the program drove back to a stop it had been pushed off (ADR 0031). '
+              + '"Broken by it" pairs each drawn set-up with itself undisturbed - the two are one run until '
+              'the event, step for step (ADR 0036) - and counts those that met every goal undisturbed and '
+              'missed one with it, with the share of successes it breaks (95 % confidence); "rescued" counts the '
+              'set-ups it turned the other way, and p is the exact McNemar test on the set-ups whose outcomes '
+              'differ. '
               + ('"Looked again", in how many the program, its grasp missed, opened its jaws, looked and reached '
                  'again (ADR 0033). "Camera saw it moved" is how far from where it was planned the table camera '
                  f'last saw the cube (ADR 0032); every sighting was within {1000 * worst:.1f} mm of where the cube '
@@ -501,7 +553,7 @@ def _run(r):
                tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'], r['program'], r['error'],
                r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0),
                tuple((look[0], *(tuple(v) for v in look[1:])) for look in r.get('seen', ())),
-               r.get('regrasped', 0))
+               r.get('regrasped', 0), r.get('message', ''), r.get('event'))
 
 
 def from_json(text):
@@ -777,6 +829,8 @@ def main(argv=None):
     parser.add_argument('--name', help='what to call the design in the report (default: --design)')
     parser.add_argument('--disturb', action='store_true',
                         help="instead: the design and the drawn set-ups, undisturbed and under the field's disturbances")
+    parser.add_argument('--only', action='append', default=None, metavar='LABEL',
+                        help="with --disturb: only this one of the field's disturbances, by its label (repeatable)")
     parser.add_argument('--corrections', type=int, default=None,
                         help='cap an aimed pose\'s corrections (0: run poses as taught; default: the runner\'s own)')
     parser.add_argument('--retries', type=int, default=None,
@@ -793,7 +847,15 @@ def main(argv=None):
     def progress(done, total, r):
         print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
     if args.disturb:
-        result = disturb(args.field, bp, None, args.name or args.design, args.samples, args.seed, args.jobs,
+        chosen = None
+        if args.only:
+            known = {d.label: d for d in DEFAULTS.get(args.field, ())}
+            unknown = [label for label in args.only if label not in known]
+            if unknown:
+                parser.error(f'no disturbance called {unknown[0]!r} for {args.field}; there are: '
+                             + '; '.join(known))
+            chosen = tuple(known[label] for label in args.only)
+        result = disturb(args.field, bp, chosen, args.name or args.design, args.samples, args.seed, args.jobs,
                          progress, args.corrections, args.retries, args.blind, args.regrasps)
         text = disturbed_markdown(result)
     else:
