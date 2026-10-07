@@ -11,6 +11,35 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-07 · Claude (Cowork) · the shared log, the brain, and Codex's line of work merged
+Did: a766b5f a shared log for the agents (the owner's request); e8cac05 ADR 0034, the brain:
+the research collection `docs/radar/collection.jsonl` (81 entries, 69 judged) with
+`radar collect`, `recall`, `search`, `related` and `search --check`; the weekly reading of
+5 October (re-fired by hand after the scheduled run failed) brought in as FR-017 to FR-021 and
+notes on eight older proposals. Then, at the owner's decision (5 October, 19:40 UTC), Codex's
+`main` (six commits: Panda teaching, reviewable cell changes, semantic testing with hidden
+windows, the factory scene document and layout editing, its shared log) merged into this
+branch, copied read-only from the Mac. Thirteen files overlapped and five conflicted; each
+kept both sides: `scripts/agent_status.py` is Codex's log code unchanged with this branch's
+status summary as the default; AGENTS.md keeps Codex's "Multi-agent coordination" section
+word for word; VALIDATION.md keeps both sets of sections; LOG.md holds every event of both
+sides in time order. `Publish to GitHub.command` on the Mac now keeps the agents' uncommitted
+log lines across its branch switch (git refuses the switch otherwise; the old script is in
+`build/`).
+Measured: both suites on the merge: 940 passed with a display, 893 headless (700 and 661
+before; Codex's line had 695 with hidden windows). Search: words alone answer 17 of 20 test
+questions in the top three; a latent-semantic half, 15 to 19 depending on its settings, so
+words rank by default.
+Unfinished: Codex's reader keeps a byte position, so after a merge that changes the log
+before that position it replays the whole log once, with a notice (it will, once, after this
+merge). The weekly reading's entries reach the collection only when an agent merges them
+(`collect --add`; the brain-context document now asks the weekly run for them in that
+shape). `HANDOFF.md`, Codex's record, still says the brain's location is unknown - left as
+Codex wrote it; the log says where it is. LW-012 (an embedding model) is still the owner's.
+For the owner: run Publish to GitHub.command when you like - it now carries the log; after
+it, the Mac's folder is on this branch, which holds Codex's work too. FR-016 to FR-021 wait
+for you.
+
 ## 2026-10-04 · Claude (Cowork) · FR-015: looking again
 Did: the owner accepted FR-015. ADR 0033: at a stop where the program looked, it looks again -
 back to the pose it drove in, where the jaws hide nothing, then the look and the reach - when

@@ -28,10 +28,14 @@ def test_sourced_arm_keeps_mechanics_and_moves(asset):
 
 
 @pytest.mark.skipif(os.environ.get('LITTLE_WORLD_TEST_RENDER')!='1',reason='requires OpenGL')
-def test_mesh_ghost_follows_cursor_places_exactly_and_cancels(tmp_path):
+def test_mesh_ghost_follows_cursor_places_exactly_and_cancels(tmp_path,monkeypatch):
     import glfw
     from little_world.ui.workshop import Workshop
     from little_world.construction.editor import starter_blueprint
+    # This test supplies synthetic cursor coordinates. Desktop focus/cursor
+    # events must not cancel or move its drag between scripted frames.
+    monkeypatch.setattr(glfw,'set_cursor_pos_callback',lambda *args:None)
+    monkeypatch.setattr(glfw,'set_window_focus_callback',lambda *args:None)
     app=Workshop(tmp_path/'drag.json',starter_blueprint());app.open_bench();draw=app.draw
     before=app.editor.blueprint;tick=0;pose=None;model=None;point=None
     def use():

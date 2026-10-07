@@ -6,12 +6,11 @@ with unique numbers, known statuses and who found each, the reports keep the new
 first, every proposal in the frontier file has its six fields and a known status, and the
 log is one dated line per entry that each agent can read from where it left off.
 """
-from datetime import datetime, timezone
+from datetime import datetime
 from importlib import util
 from pathlib import Path
 import re
 
-import pytest
 
 from little_world.radar.brief import BEGIN, END, FIELDS, STATUSES, proposals
 
@@ -28,7 +27,7 @@ def status_module():
 def test_the_notes_point_to_every_file_and_they_exist():
     notes = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
     for name in ('docs/agents/STATE.md', 'docs/agents/REPORTS.md', 'docs/agents/OPEN.md', 'docs/agents/FRONTIER.md',
-                 'docs/agents/LOG.md', 'scripts/agent_status.py'):
+                 'docs/agents/LOG.md', 'docs/agents/README.md', 'scripts/agent_status.py'):
         assert name in notes and (ROOT / name).exists(), name
     assert '@AGENTS.md' in (ROOT / 'CLAUDE.md').read_text(encoding='utf-8')
 
@@ -55,7 +54,7 @@ def test_the_reports_keep_the_newest_first():
 def test_the_status_script_prints_open_items_and_the_last_report(capsys):
     status = status_module()
     rows = status.open_items((ROOT / 'docs' / 'agents' / 'OPEN.md').read_text(encoding='utf-8'))
-    assert status.main() == 0
+    assert status.main([]) == 0
     printed = capsys.readouterr().out
     listed = {line.split()[0] for line in printed.splitlines() if line.startswith('  LW-')}
     assert listed == {item_id for item_id, *_, state in rows if state == 'open'}
@@ -83,7 +82,7 @@ def test_the_status_script_lists_the_proposals_that_wait_on_the_owner(capsys):
     status = status_module()
     text = (ROOT / 'docs' / 'agents' / 'FRONTIER.md').read_text(encoding='utf-8')
     assert status.frontier(text) == [p[:3] for p in proposals(text)]
-    assert status.main() == 0
+    assert status.main([]) == 0
     listed = {line.split()[0]: line.split()[1] for line in capsys.readouterr().out.splitlines()
               if line.startswith('  FR-')}
     assert listed == {pid: state for pid, _, state, _ in proposals(text) if state in ('proposed', 'accepted', 'doing')}
@@ -99,40 +98,20 @@ def test_the_log_is_one_dated_line_per_entry_and_merges_keep_both_sides():
     for when, who, what, _ in entries:
         assert datetime.strptime(when, '%Y-%m-%d %H:%M') and who and what
     assert 'docs/agents/LOG.md merge=union' in (ROOT / '.gitattributes').read_text(encoding='utf-8')
-    assert '.agents/' in (ROOT / '.gitignore').read_text(encoding='utf-8').split()
+    assert '.agent-status/' in (ROOT / '.gitignore').read_text(encoding='utf-8').split()
 
 
-def test_new_prints_only_what_a_reader_has_not_read_and_never_runs_git(tmp_path, monkeypatch, capsys):
-    """Each reader sees a line once, in the order the file has it, whatever order a merge
-    left the lines in; a writer has read its own lines; neither command touches git."""
+def test_reading_and_writing_the_log_never_run_git(tmp_path, monkeypatch, capsys):
+    """`--new` and `--add` (Codex's, tests/test_agent_status.py) work in any checkout, git or
+    not; only the status summary asks git, and only to read."""
     status = status_module()
-    log = tmp_path / 'LOG.md'
-    log.write_text('# Log\n\nFormat: `- YYYY-MM-DD HH:MM UTC · who · what`\n\n'
-                   '- 2026-10-05 10:00 UTC · Codex · started: the factory cell (factory/)\n'
-                   '- 2026-10-05 11:00 UTC · Claude (Cowork) · committed abc1234 a log\n', encoding='utf-8')
-    monkeypatch.setattr(status, 'LOG', log)
-    monkeypatch.setattr(status, 'MARKS', tmp_path / 'marks')
+    monkeypatch.setattr(status, 'ROOT', tmp_path)
 
     def no_git(*args):
         raise AssertionError(f'git {args}')
     monkeypatch.setattr(status, 'git', no_git)
-
-    def new(name):
-        assert status.main(['--new', name]) == 0
-        return [line for line in capsys.readouterr().out.splitlines() if line.startswith('- ')]
-
-    assert new('claude') == log.read_text(encoding='utf-8').splitlines()[-2:]
-    assert new('claude') == []
-    assert status.main(['--add', 'Codex', 'committed def5678 the factory cell']) == 0
-    added = capsys.readouterr().out.strip()
-    assert status.ENTRY.match(added) and added.endswith('· Codex · committed def5678 the factory cell')
-    assert log.read_text(encoding='utf-8').endswith(added + '\n')
-    assert new('codex') == [line for line in log.read_text(encoding='utf-8').splitlines() if line.startswith('- ')][:2]
-    assert new('claude') == [added]
-    lines = log.read_text(encoding='utf-8').splitlines()
-    log.write_text('\n'.join(lines[:4] + lines[:3:-1]) + '\n', encoding='utf-8')   # a merge's order
-    assert new('claude') == new('codex') == []
-    with pytest.raises(SystemExit):
-        status.main(['--new', '42'])
-    when = datetime(2026, 10, 5, 23, 59, tzinfo=timezone.utc)
-    assert status.add('Codex', 'stopped', log=log, marks=tmp_path / 'marks', now=when).startswith('- 2026-10-05 23:59 UTC')
+    assert status.main(['--add', 'Claude (Cowork)', 'started: a test (tests/)']) == 0
+    added = capsys.readouterr().out
+    assert status.ENTRY.match(added.rstrip('\n')) and (tmp_path / 'docs/agents/LOG.md').read_text() == added
+    assert status.main(['--new', 'codex']) == 0 and capsys.readouterr().out == added
+    assert status.main(['--new', 'codex']) == 0 and capsys.readouterr().out == ''

@@ -802,7 +802,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.follow=not self.follow
         self.camera.type=mj.mjtCamera.mjCAMERA_FREE
 
-    def run(self, seconds=None, screenshot=None):
+    def run(self, seconds=None, screenshot=None, *, visible=True):
         if sys.platform=='darwin':
             from mujoco import viewer
             if viewer._MJPYTHON is not None:
@@ -810,12 +810,13 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         if not glfw.init():
             raise RuntimeError('Could not initialize GLFW')
         try:
+            glfw.window_hint(glfw.VISIBLE,glfw.TRUE if visible else glfw.FALSE)
             self.window = glfw.create_window(1200,780,'Little World | Workshop',None,None)
             if not self.window:
                 raise RuntimeError('Could not open workshop window')
             glfw.set_window_size_limits(self.window,1040,740,glfw.DONT_CARE,glfw.DONT_CARE)
             glfw.make_context_current(self.window)
-            glfw.swap_interval(1)
+            glfw.swap_interval(1 if visible else 0)
             self.rebuild()
             self.home(True)
             if self.initial_camera is not None:

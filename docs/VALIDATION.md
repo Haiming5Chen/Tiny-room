@@ -1059,3 +1059,104 @@ agent's reading; the first run's other 272 items are not recovered; latent seman
 is not an embedding model, and no embedding model was tried; MuJoCo changes taken from the
 digests carry hand-written ids.
 
+
+## Panda visual position teaching — 2026-10-01
+
+Added portable named-position round-trip/validation tests, scratch-preview checks
+that preserve live qpos/ctrl, unreachable-target rejection, physical servo arrival,
+and native UI coverage for drag, save/recall, robot restrictions and minimum-size
+layout. The interface was visually checked in `docs/media/panda-teaching.png`.
+
+The full native suite produced **466 passed, 2 failed**: an existing builder test
+exceeded its 10-second deadline and a synthetic spatial-drag test received desktop
+cursor/focus events. The builder test passed on isolated rerun. The drag test now
+isolates its scripted input from real cursor/focus callbacks; it and all three new
+teaching tests passed together (**4 passed**). Thus every test passed across these
+runs, but there was no single all-green full-suite run after the test isolation fix.
+Teaching verifies a downward Panda endpoint within 12 mm, not collision-free paths,
+other robot models, arbitrary tool orientation or multi-action task sequences.
+
+## Shared cell change proposals — 2026-10-02
+
+Default suite: **443 passed, 31 skipped** (`.venv/bin/python -m pytest -q`).
+Explicit native checks: **9 passed**, covering cell proposal contracts/review,
+physical factory execution, direct tray/task authoring, guided operation, and Panda
+teaching. The shared-window/robot-switch test also passed in the earlier focused
+run (**7 passed** including proposal tests). Contract checks cover strict wire
+fields/units, exact before/after values, atomic multi-tray swaps, invalid batches,
+stale manual edits/undo revisions, no-op requests and preservation on rebuild
+failure. Export refuses to overwrite files; import prepares review without applying.
+The final review was visually inspected in `docs/media/cell-change-review.png`.
+This validates the existing fixed cell's structured edit boundary, not an AI
+provider, language understanding, arbitrary factories or motion planning.
+
+## Semantic agent testing and hidden native windows — 2026-10-03
+
+Final full native suite: **674 passed in 154.37 seconds**, using
+`LITTLE_WORLD_TEST_RENDER=1 .venv/bin/python -m pytest -q`.
+All native windows were hidden. Tests use synthetic cursor coordinates and no
+presentation synchronization; regular application launches retain visible windows
+and normal synchronization. This removes desktop typing/focus interference and
+avoids moving the user's pointer.
+
+Added 195 adversarial cases, including 1,200 seeded valid transactions and 80
+invalid batches, plus semantic scenario and harness-failure checks. Extreme integer
+coordinates exposed an uncaught OverflowError; they now produce a controlled
+validation rejection. Three agent-authored scenarios use real UI callbacks and
+form character handling to exercise review/apply/undo/redo, stale/ambiguous/invalid
+requests, physical placement with independently bounded product coordinates, and
+Panda teaching save/recall. A deliberately wrong expectation correctly fails and
+halts the remaining actions. Snapshots explicitly verify window_visible=false.
+
+Earlier visible-window testing passed 673 tests but received real keyboard input
+in a search test. Initial hidden-window testing exposed OS-cursor assumptions and
+presentation timing in existing tests. The final synthetic-cursor fixture and
+hidden no-vsync execution resolved those test-environment issues; all 674 tests
+passed together after these changes. See AGENT_TESTING.md for replay commands,
+JSON traces and the distinction between semantic tests, visual QA and future
+language-model evaluation. No AI provider or natural-language parser was tested.
+
+## Shared factory scene document — 2026-10-04
+
+Default regression suite: **657 passed, 35 skipped in 44.50 seconds**. Focused
+document suite: **18 passed**, including native compilation and a subprocess
+example that imports a saved custom machine, creates two instances, exports JSON
+and refuses to overwrite an existing file. No window was opened. Contract tests
+cover stable references, shared-asset impact, linked deletion, revision conflicts,
+undo/redo, portable proposal round trips, strict fields/units/poses, canonical order
+and detached diff reports. Simulation steps leave authored document data unchanged.
+
+The standalone example compiled a 67-body scene. This verifies the portable
+document and existing native backend composition, not station UI integration,
+collision clearance, reach, production flow execution or natural-language generation.
+
+
+## Interactive factory layout — 2026-10-04
+
+Added a same-window layout integration test and a fourth semantic replay (26
+actions). Coverage includes actual MuJoCo geometry picking, render-only drag
+preview, one-edit release, stale drag/deletion rejection, exact poses, independent
+builder copies, asset-ID collisions, linked deletion, undo/redo, save round trips,
+failed compilation rollback and preservation across Real/Anime switching. The test
+asserts that only one native window is created and that controls do not overlap at
+1040 × 740. A hidden screenshot was inspected for readability and selection cues.
+
+The first complete run had 694 passes and one existing workshop test timeout: only
+37 of its required 47 frames completed within ten seconds. Its timeout was extended
+to 60 seconds; it still closes immediately after all scripted interactions and
+retains its original behavior assertions. No visible app windows were opened.
+
+Final full regression: `LITTLE_WORLD_TEST_RENDER=1 .venv/bin/python -m pytest -q`
+— **695 passed in 112.44 seconds**. These checks verify layout editing and existing
+robot workflows, not process execution, reach/clearance checks or AI comprehension.
+
+## Two lines of work merged — 2026-10-07
+
+Codex's line (the Mac's `main`: Panda teaching, reviewable cell changes, semantic testing with
+hidden windows, the factory scene document and layout editing, its shared event log) merged
+into `contact-pair-friction`, which holds everything above from 2026-09-24 on. The shared log
+keeps Codex's reader and writer (`tests/test_agent_status.py`, 10) with the status summary as
+the default (`tests/test_agent_docs.py`, 8). Suites on MuJoCo 3.10.0 after the merge: **940
+passed** with a display, 893 headless. Not claimed: the two lines' features were tested side
+by side in one suite, not together in one scenario.
+

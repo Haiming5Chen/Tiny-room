@@ -1,19 +1,8 @@
-# Log
+# Shared agent events
 
-What the agents are doing, as it happens, oldest first. Add a line when you start something
-(what, and the files it will touch), when you commit, when you add to the frontier or the
-research collection, and when you stop. Then the other agent can see what is being changed
-before it changes the same files, and can use new work as soon as it lands.
-
-Read only what is new to you, and write a line, with:
-
-    python scripts/agent_status.py --new codex                       # the lines codex has not read yet
-    python scripts/agent_status.py --add "Codex" "started: ... (files)"   # appends one, dated now in UTC
-
-Neither runs git. Format: `- YYYY-MM-DD HH:MM UTC · who · what`, one line each, appended at
-the end; details belong in the commit, the report or the decision record. Earlier lines are
-not edited, and a merge keeps both sides' new lines (`.gitattributes`). A line reports; it
-does not ask the other agent to do anything - the owner decides (AGENTS.md).
+One line per event, oldest first, appended with `python scripts/agent_status.py --add WHO TEXT`
+and read from where you left off with `--new NAME`; the protocol is in README.md beside this
+file. Events report; the owner decides.
 
 - 2026-10-03 21:51 UTC · Claude (Cowork) · committed 11009ec going back to the stop (ADR 0031) and 8601971 "Repeat with disturbances" (LW-018)
 - 2026-10-04 02:41 UTC · Claude (Cowork) · committed a303c40 a depth camera at the Fetch table, programs that look (ADR 0032, FR-011); perception/ is new
@@ -21,6 +10,12 @@ does not ask the other agent to do anything - the owner decides (AGENTS.md).
 - 2026-10-05 19:10 UTC · Claude (Cowork) · committed 942a287 looking again before the jaws go down, when stopped, when they miss (ADR 0033, FR-015)
 - 2026-10-05 19:12 UTC · Claude (Cowork) · the weekly brain run failed at 00:52 UTC (no output); fired it again by hand
 - 2026-10-05 19:15 UTC · Claude (Cowork) · started: this log and `agent_status.py --new` (docs/agents/LOG.md, scripts/agent_status.py, AGENTS.md, tests/test_agent_docs.py), then the radar's research collection and search (src/little_world/radar/, docs/radar/, docs/RADAR.md)
+- 2026-10-05 19:31 UTC · Codex · started: implement shared event log and unread cursors (scripts/agent_status.py, tests/test_agent_status.py, docs/agents/LOG.md, docs/agents/README.md, AGENTS.md, CLAUDE.md, HANDOFF.md, .gitignore)
 - 2026-10-05 19:33 UTC · Claude (Cowork) · committed a766b5f the shared log: read new lines with --new NAME, write with --add WHO TEXT (no git)
+- 2026-10-05 19:34 UTC · Codex · committed 863720e: shared log, incremental reader and coordination rules; released scripts/agent_status.py, tests/test_agent_status.py, docs/agents/, AGENTS.md, CLAUDE.md, HANDOFF.md, .gitignore; 668 tests passed, 37 graphics tests skipped; local, not pushed
+- 2026-10-05 19:34 UTC · Codex · stopped: coordination setup complete; no active scope; commit/stop events remain in the local log tail for the next checkpoint
 - 2026-10-05 19:37 UTC · Claude (Cowork) · found: my line of work is branch contact-pair-friction (eef1a37 + 37 commits, ADR 0010-0033, in the cloud; shipped as build/incoming.bundle, not yet published) and holds the brain: src/little_world/radar/ (ADR 0021, 0026) and docs/agents/FRONTIER.md. It added the same shared log at 19:33 UTC (a766b5f, same commands and line format) as 863720e here. main and that branch overlap in 13 files; asked the owner how the two lines come together
 - 2026-10-05 19:37 UTC · Claude (Cowork) · started: the brain's research collection and its search, on contact-pair-friction only (src/little_world/radar/, docs/radar/, docs/RADAR.md, tests/test_radar*.py): files main does not have
+- 2026-10-05 21:56 UTC · Claude (Cowork) · committed e8cac05 the brain's research collection and its search (ADR 0034): docs/radar/collection.jsonl (81 entries, 69 judged), radar collect/recall/search/related; the weekly reading's proposals are FR-017 to FR-021 in docs/agents/FRONTIER.md; released src/little_world/radar/, docs/radar/, docs/RADAR.md; 700/661 tests passed; local, not pushed
+- 2026-10-05 22:25 UTC · Claude (Cowork) · committed e8cac05 on contact-pair-friction (cloud): the brain's research collection and its search (ADR 0034; docs/radar/collection.jsonl, 81 entries; radar collect/recall/search/related; weekly proposals as FR-017 to FR-021); 700/661 tests passed; not shipped yet
+- 2026-10-05 22:25 UTC · Claude (Cowork) · started (the owner's decision, 19:40 UTC): merging main (863720e, Codex) into contact-pair-friction in the cloud, keeping both; scope: .gitignore, AGENTS.md, CLAUDE.md, docs/ARCHITECTURE.md, docs/FACTORY.md, docs/VALIDATION.md, docs/agents/LOG.md, scripts/agent_status.py, src/little_world/ui/factory_workspace.py, ui/inspector.py, ui/workshop.py, tests/test_spatial_drag.py, tests/test_workshop.py; copied main read-only (build/codex-git.tar, no git on this Mac)

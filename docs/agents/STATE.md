@@ -1,15 +1,16 @@
 # State
 
-Updated 2026-10-05 by Claude (Cowork). `python scripts/agent_status.py` prints the live
+Updated 2026-10-07 by Claude (Cowork). `python scripts/agent_status.py` prints the live
 branch, commits and tree; this file says what they mean. What each agent is doing right
 now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what is new).
 
-- **Branch** `contact-pair-friction`, ahead of `main` (the public import). Not yet on
-  GitHub; the owner publishes it.
+- **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
+  of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
+  owner's decision. Not yet on GitHub; the owner publishes it.
 - **Decision records** 0001 to 0034. The newest: 0034 the radar keeps what it read (the
   research collection, `docs/radar/collection.jsonl`, and its search).
-- **Tests**: on MuJoCo 3.10.0, 700 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 661 headless.
+- **Tests**: on MuJoCo 3.10.0, 940 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 893 headless.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006, FR-011 and FR-015 done;

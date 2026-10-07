@@ -1,0 +1,19 @@
+{
+  "name":"Reject ambiguous targets, unsupported operations, invalid batches and stale requests",
+  "actions":[
+    {"op":"click","label":"Undo","error_contains":"disabled"},
+    {"op":"propose","changes":[{"kind":"tray","target":"that tray","value":[0.4,0]}],"error_contains":"Unknown tray"},
+    {"op":"propose","changes":[{"kind":"weld","target":"car door","value":true}],"error_contains":"Unsupported"},
+    {"op":"propose","changes":[{"kind":"product","target":"product","value":"Tall block"},{"kind":"tray","target":"Blue","value":[0,0]}],"error_contains":"robot base"},
+    {"op":"expect","equals":{"recipe.product":"Small block","revision":0,"undo_depth":0,"dialog":null}},
+    {"op":"propose","changes":[{"kind":"tray","target":"input","value":[0.4,0.01]}]},
+    {"op":"click","label":"Dismiss"},
+    {"op":"expect","equals":{"trays.input":[0.45,0.0],"revision":0}},
+    {"op":"click","label":"Tall block"},
+    {"op":"propose","revision":0,"changes":[{"kind":"tray","target":"input","value":[0.4,0.01]}],"error_contains":"cell changed"},
+    {"op":"expect","equals":{"recipe.product":"Tall block","trays.input":[0.45,0.0],"revision":1}},
+    {"op":"click","label":"Undo"},
+    {"op":"propose","revision":0,"changes":[{"kind":"tray","target":"input","value":[0.4,0.01]}],"error_contains":"cell changed"},
+    {"op":"expect","equals":{"recipe.product":"Small block","revision":2}}
+  ]
+}

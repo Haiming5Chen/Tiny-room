@@ -13,16 +13,33 @@ class AppModes:
         if mode not in ('Real','Anime'):raise ValueError('Unknown workspace mode')
         host=self.workspace_host;old=host.active_workspace
         if mode==old.app_mode:return
+        self._switch_view(getattr(host,'_last_real_view','Real') if mode=='Real' else 'Anime')
+
+    def switch_real_view(self,view):
+        if view not in ('Real','Layout'):raise ValueError('Unknown Real view')
+        self._switch_view(view)
+
+    def _switch_view(self,mode):
+        host=self.workspace_host;old=host.active_workspace
+        old_key='Layout' if getattr(old,'layout_mode',False) else old.app_mode
+        if mode==old_key:return
         old.clear_keys();old.cancel_docking();old.events.clear()
         if old.runner.state=='running':old.pause_program()
         if not old.building:old.paused=True
+        if hasattr(old,'teach_drag'):old.teach_drag=False
         if hasattr(old,'tray_drag'):old.tray_drag=None;old.pending_source=None
-        if not hasattr(host,'_workspaces'):host._workspaces={old.app_mode:old}
+        if hasattr(old,'station_drag'):old.station_drag=None
+        if not hasattr(host,'_workspaces'):host._workspaces={old_key:old}
         target=host._workspaces.get(mode)
         if target is None:
             if mode=='Real':
                 from .factory_workspace import FactoryWorkshop
                 target=FactoryWorkshop(getattr(host,'factory_recipe_path',None))
+            elif mode=='Layout':
+                from .layout_workspace import LayoutWorkshop
+                from pathlib import Path
+                recipe=Path(getattr(host,'factory_recipe_path',getattr(old,'recipe_path',Path.home()/'Library/Application Support/Little World/factory-cell.json')))
+                target=LayoutWorkshop(recipe.with_name('factory-layout.json'))
             else:
                 from .workshop import Workshop
                 from little_world.construction.editor import starter_blueprint
@@ -37,6 +54,7 @@ class AppModes:
                 target.close_resources();raise
             host._workspaces[mode]=target
         host._active_workspace=target
+        if mode in ('Real','Layout'):host._last_real_view=mode
         glfw.set_window_title(host.window,'Little World | '+mode)
         target.status=mode+' workspace'+(' / simulation paused' if not target.building else '')
 

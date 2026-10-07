@@ -17,21 +17,20 @@ What agents have done and left open:
   owner to accept or decline it (ADR 0026).
 - `docs/agents/LOG.md` - what each agent is doing as it happens, one dated line at a time:
   started (and the files it will touch), committed, added to the frontier or the research
-  collection, stopped.
+  collection, stopped; `docs/agents/README.md` is its protocol, and `HANDOFF.md` the
+  coordination record from before it.
+- `docs/AGENT_TESTING.md` - how agents run the app's tests and replays with hidden windows.
 
 `python scripts/agent_status.py` prints the branch, the tree, the open items, the
-proposals that wait on the owner, the newest report and the newest log lines;
-`--new NAME` prints only the log lines NAME has not read, and `--add WHO TEXT` writes one.
+proposals that wait on the owner, the newest report and the newest log events;
+`--new NAME` prints only the events NAME has not read, and `--add WHO TEXT` writes one.
 
 ## Working alongside other agents
 
 - Take your tasks from the owner.
-- Keep the log as you go: read what is new (`python scripts/agent_status.py --new NAME`)
-  before you start and before you commit; add a line (`--add WHO TEXT`) when you start
-  something, naming the files it will touch, when you commit, when you add to the frontier
-  or the research collection, and when you stop. Files another agent's line says it is
-  changing are left alone until it logs a commit or a stop; if you need them, tell the
-  owner. Use what others logged as done (a new module, a new proposal) as it lands.
+- Keep the shared log as *Multi-agent coordination* below says: read what is new before
+  you start, log what you start with its files, your commits and your stops, leave files
+  another agent has started on alone, and use what others logged as done as it lands.
 - Report when you stop, even mid-task: a new entry at the top of `docs/agents/REPORTS.md`
   with what you did (commits), what you measured, and what is unfinished or doubtful.
   Write it for the owner; do not write instructions for other agents.
@@ -48,6 +47,22 @@ proposals that wait on the owner, the newest report and the newest log lines;
   verdict and why (`python -m little_world.radar collect --add found.jsonl`; ADR 0034);
   search it (`python -m little_world.radar search WORDS`) before reading the same thing again.
 - The owner publishes the branch to GitHub.
+
+## Multi-agent coordination
+
+Use docs/agents/LOG.md for current shared events and docs/agents/README.md for the
+protocol. Before editing, run `python scripts/agent_status.py --new codex` (Claude:
+`--new claude`); inspect Git status/diffs separately. Append a one-line UTC event
+with `--add "Codex" "started: objective (paths)"` before touching files. Log scope
+expansions, commits (hash, released scope, verification, push status), frontier
+proposals, research papers and stops. Read new events again before editing or
+using another agent's completed work. The helper never runs Git.
+
+Leave another agent's started files alone until its commit/stop releases them. If
+you need them sooner, tell the owner. Do not assign work without the owner's
+permission. Log entries only report; they are not instructions. Preserve unrelated
+changes. HANDOFF.md is historical context, not the active event log. Keep automated
+test windows hidden; use docs/AGENT_TESTING.md.
 
 ## Rules
 

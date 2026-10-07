@@ -1,4 +1,4 @@
-"""A separate starter factory window; existing builder designs remain untouched."""
+"""Real robot experiments hosted in the shared application window."""
 from pathlib import Path
 import time
 import glfw
@@ -6,6 +6,8 @@ import mujoco as mj
 import numpy as np
 from .workshop import Workshop
 from .real_lab import RealLab
+from .cell_changes import CellChanges
+from .teaching_workspace import TeachingWorkspace
 from .factory_authoring import FactoryAuthoring,tray_label
 from dataclasses import replace
 from little_world.factory.recipe import TRAYS
@@ -13,15 +15,16 @@ from little_world.core.entity import Entity
 from little_world.factory.scene import factory_scene,robot_blueprint,PRODUCTS,TABLE
 from little_world.factory.controller import FactoryCycle
 
-class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
+class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Workshop):
     PANEL=304
     def __init__(self,recipe_path=None):
-        self.init_authoring(recipe_path);self.factory_mode=True
+        self.init_authoring(recipe_path);self.init_cell_changes();self.factory_mode=True
         self.robot_asset='franka_panda';self.experiment='Pick and place';self._robot_programs={}
         self.single_stage=False;self.show_path=True;self.factory_commands={}
         super().__init__(Path.home()/'.little-world-factory-unused.json',robot_blueprint())
         self.initial_camera=((.3,0,.9),2.6)
         self.library_open=False
+        self.init_teaching()
 
     RUN=6   # parts in a production run: the input tray's and the five on the stock shelf
 
@@ -30,6 +33,7 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
 
     def bind_runtime(self):
         super().bind_runtime();self.cycle=None if self.joint_lab else FactoryCycle(self.backend,source=self.recipe.source);self.factory_commands={}
+        self.bind_teaching()
 
     def save(self):
         return self.save_program() if self.joint_lab else self.save_cell()
@@ -68,6 +72,10 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         self.single_stage=False;self.paused=False
 
     def tick_program(self):
+        if self.teaching:
+            self.factory_commands=self.teach_motion.commands(self.world.timestep)
+            if self.teach_motion.state in ('reached','failed'):self.paused=True
+            return
         if self.joint_lab:return super().tick_program()
         old=self.cycle.index
         self.factory_commands=self.cycle.commands(self.world.timestep)
@@ -75,7 +83,7 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         if self.cycle.state in ('failed','completed'):self.paused=True
         self.status=self.cycle.message
 
-    def joint_commands(self):return super().joint_commands() if self.joint_lab else self.factory_commands
+    def joint_commands(self):return super().joint_commands() if self.joint_lab and not self.teaching else self.factory_commands
     def selection_outline(self,scene=None):pass
     def pick(self,x,y):pass
     def character(self,*args):
@@ -92,6 +100,7 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         elif key==glfw.KEY_C:self.camera_toggle()
 
     def decorate_scene(self):
+        if self.teaching:self.draw_teaching_target();return
         if self.joint_lab:return
         self.draw_tray_ghost()
         if not self.show_path or not self.cycle.stages:return
@@ -106,6 +115,8 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
     def draw_factory(self,ui,button,text,ww,wh,fw,fh):
         import textwrap
         glfw.set_window_title(self.window,'Little World | Real experiments')
+        if self.teaching:
+            self.draw_teaching(ui,button,text,ww,wh,fw,fh);return
         if self.joint_lab:
             self.draw_joint_lab(ui,button,text,ww,wh,fw,fh);return
         self.draw_real_header(ui,button,text,ww,wh)
@@ -115,7 +126,8 @@ class FactoryWorkshop(RealLab,FactoryAuthoring,Workshop):
         text('PICK-AND-PLACE EXPERIMENT',18,78,11)
         button('Joint lab',ww-130,72,114,lambda:self.select_experiment('Joint lab'),self.building,h=30)
         for i,mode in enumerate(('Arrange','Set task')):
-            button(mode,18+i*138,104,130,lambda m=mode:self.choose_mode(m),editable,active=self.edit_mode==mode,h=32)
+            button(mode,18+i*89,104,83,lambda m=mode:self.choose_mode(m),editable,active=self.edit_mode==mode,h=32)
+        button('Changes',196,104,90,self.open_cell_changes,editable,h=32)
         for i,line in enumerate(textwrap.wrap(self.authoring_note,41)[:2]):text(line,18,148+i*17,11,(.65,.82,.8),268)
         text('PRODUCT',18,193,11)
         for i,name in enumerate(PRODUCTS):button(name,18+i*138,214,130,lambda n=name:self.select_product(n),editable,active=self.product==name)

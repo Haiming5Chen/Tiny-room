@@ -474,3 +474,60 @@ unsaved data and runtime state. Callbacks route to the active workspace; shutdow
 releases both worlds before destroying the one window. No subprocess is launched.
 Real exposes experiments and programming for registered arms; Anime exposes kit
 construction. Panda pick-and-place is separate from the general joint/program lab.
+
+## Visual position teaching
+
+MuJoCo already provides forward kinematics and Jacobians; reuse the existing Panda
+scratch-data IK adapter and native position servos. The new contribution is direct
+3D target authoring, named portable positions, and explicit preview/move feedback.
+TeachingBook is immutable stdlib-only JSON, separate from Blueprint and runtime.
+The first version fixes the hand orientation downward and checks joint reachability;
+it does not plan collision-free paths. Preview never changes live physics. Motion
+uses bounded interpolated servo targets and reports failure if the hand does not
+arrive. No new solver, dependency, or geometry format is introduced.
+
+## Reviewable factory edits
+
+Existing scene systems (OpenUSD, Isaac Sim) and planning scenes (MoveIt) motivate
+shared data, explicit diffs and separate validation levels; see AI_AUTHORING.md.
+Wrap the existing immutable CellRecipe and Blueprint scene builder, not a new
+solver. A stdlib-only request describes allowed cell operations against a precise
+base recipe and edit revision. Preview constructs a fully validated candidate;
+apply checks freshness and uses the same undoable transaction as direct edits.
+This is the communication boundary for future AI/code authorship; natural language
+and arbitrary factory generation are not connected yet. No solver handles or
+executable request content enter the portable document.
+
+## Semantic agent testing
+
+Reuse the existing UI commands, immutable recipes, MuJoCo runtime and pytest; do
+not implement a shadow editor or second physics system. A test-only semantic driver
+exposes labeled controls, form fields, recipe revisions, proposal state and physical
+observations as JSON. Agents supply allowlisted data actions, never eval or code.
+Scenario execution creates an isolated temporary cell and a test window, records
+per-step state and failures, and closes it. It does not attach to a user's unsaved
+app or use personal saved designs. This interface tests behavior without pixel
+recognition; visual appearance still requires separate visual review. No AI model
+or language comprehension is implied by replaying agent-authored scenarios.
+
+## Shared factory scene document
+
+OpenUSD/Isaac Sim already address scene composition; reuse their architectural
+principle (stable objects and shared assets), not another physics solver. Extend
+our existing stdlib Blueprint/Entity/Scene representation with a portable authoring
+document. Embed machine Blueprints once per asset, reference them from named
+stations, and store world transforms explicitly. Process links are authored intent
+only and do not imply implemented conveyors, grasp planning or production physics.
+A revision-aware document editor previews diffs and atomically applies/undoes edits.
+Compiled runtime is still an ordinary Scene consumed by the existing backend.
+This first layer is a Python/data API; the fixed-cell UI is not silently migrated.
+
+## Interactive station layouts
+
+Reuse the shared FactoryDocument/FactoryEditor and existing MuJoCo rendering in a
+third cached controller within the same GLFW window. The Real workspace exposes
+Robot lab and Factory layout views; Anime remains the machine builder. Layout
+editing compiles candidate scenes before committing editor/history state. Dragging
+translates render geometry only; release creates one authored transaction. Saved
+Blueprints and the current Anime design are copied into document assets explicitly.
+This view authors layouts; process links are visual intent and do not run a line.

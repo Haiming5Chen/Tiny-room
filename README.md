@@ -132,7 +132,7 @@ change the design, try again.** A desktop robotics sandbox on
   repository - 81 papers, releases and engine changes so far, each with its verdict and why -
   and can be searched: `python -m little_world.radar search camera calibration`
   ([ADR 0034](docs/adr/0034-the-radar-keeps-what-it-read.md)).
-- **700 automated tests**, including OpenGL window tests that drive the interface
+- **940 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 
