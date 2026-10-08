@@ -68,6 +68,32 @@ class Variation:
 
 
 @dataclass(frozen=True)
+class CameraError:
+    """How far a field's camera stands off the pose its programs believe it at (ADR 0039):
+    shifted `shift` metres along the field's X, Y and Z, then turned `turn` degrees about its
+    own axes - pan about its up axis, tilt about its right axis, roll about its view. A stand
+    set up by hand is off by millimetres; a bumped one, by degrees."""
+    shift: tuple = (0., 0., 0.)
+    turn: tuple = (0., 0., 0.)
+
+    def __post_init__(self):
+        object.__setattr__(self, 'shift', tuple(float(v) for v in self.shift))
+        object.__setattr__(self, 'turn', tuple(float(v) for v in self.turn))
+        if len(self.shift) != 3 or len(self.turn) != 3 or not all(isfinite(v) for v in self.shift + self.turn):
+            raise ValueError('a camera error is three finite metres and three finite degrees')
+
+    @property
+    def nominal(self):
+        return not any(self.shift + self.turn)
+
+    def describe(self):
+        """'5 mm along X, panned +1.0 deg' - or 'where it is believed to be'."""
+        parts = [f'{1000 * v:+.0f} mm along {axis}' for axis, v in zip('XYZ', self.shift) if v]
+        parts += [f'{name} {v:+.1f} deg' for name, v in zip(('panned', 'tilted', 'rolled'), self.turn) if v]
+        return ', '.join(parts) or 'where it is believed to be'
+
+
+@dataclass(frozen=True)
 class Ranges:
     """How far the variations go, each way. The defaults are stated assumptions, not
     measurements: a machine set down by hand on a marked spot lands within 2 cm and 3

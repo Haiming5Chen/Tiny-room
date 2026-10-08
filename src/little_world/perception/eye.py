@@ -61,8 +61,12 @@ class Eye:
 
     FAULTS = ('freeze', 'dark')
 
-    def __init__(self, backend, camera, sensor, sizes, seed=0, ideal=False):
+    def __init__(self, backend, camera, sensor, sizes, seed=0, ideal=False, believed=None):
         self.backend, self.camera, self.sensor = backend, camera, sensor
+        # Where the program believes the camera is - (position, rotation) as `camera_pose`
+        # gives them - when that is not where it is (ADR 0039): its pictures are cast from the
+        # camera as it stands and read as if it stood there. None: it stands where believed.
+        self.believed = None if believed is None else tuple(np.array(v, dtype=float) for v in believed)
         self.sizes = {k: tuple(float(v) for v in s) for k, s in dict(sizes).items()}
         self.rng = np.random.default_rng(seed)
         self.ideal = ideal
@@ -107,8 +111,10 @@ class Eye:
         return self._take(planned, search, dark=self.fault == 'dark')
 
     def _take(self, planned, search=SEARCH, dark=False):
-        """A new frame of the region round `planned`: cast, with noise - or, dark, without depth."""
-        position, rotation = self.backend.camera_pose(self.camera)
+        """A new frame of the region round `planned`: cast, with noise - or, dark, without depth.
+        The rays leave the camera as it stands; the picture says it was taken from where the
+        camera is believed to be, which is all a program has to read it by."""
+        position, rotation = self.believed or self.backend.camera_pose(self.camera)
         (top, bottom), (left, right) = self.window(position, rotation, planned, search)
         rows, cols = np.arange(top, bottom), np.arange(left, right)
         self.frames += 1

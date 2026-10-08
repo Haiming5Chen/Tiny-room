@@ -1267,3 +1267,23 @@ Not claimed: a picture's number and its depth are checked, not what it shows - a
 numbers a stuck picture afresh, or a camera knocked off its mount, passes; a frame frozen within
 one picture interval of its first use is used once; dark means less than half of the picture
 with depth.
+
+## How well the camera must be mounted — 2026-10-08
+
+ADR 0039 (FR-021, accepted by the owner). The table camera is set off its believed pose in
+MuJoCo (`MujocoBackend.move_camera`) while the program reads its pictures as if it stood where
+believed (`Eye(believed=...)`, `sweep --camera-error`). Closed form (`perception.calibration`):
+a shift d makes the cube seen -d away; a degree of pan 15.3 mm sideways, of tilt 13.1 mm along
+the table and 7.8 mm down, of roll 0.3 mm. As designed, 67 single errors: the cube seen within
+2.5 mm of the closed form; the jaws' margins from shifting the camera - 10.5 mm too far along
+(14.8 drops the cube on the way), 25 mm sideways (30 fails), 10.3 mm too low (12.8 fails), at
+least 38 mm towards the cart and 29 mm too high; pan held at 1.75 degrees and failed at 2, tilt
+up held at 0.75 and failed at 1 - where the closed form and the margins put them; tilt down held
+at 3. On 59 drawn set-ups each (predictions written before): panned 1.5 degrees, tilted up 0.5,
+raised 10 mm - 59 of 59, at least 95 %; 10 mm towards the cart, 58 of 59; tilted up 1 degree, 8
+of 59. Two combined errors were seen within 2.4 mm of the closed form; one near two margins at
+once missed. Checked in `tests/test_camera_error.py` (4). Suites on MuJoCo 3.10.0: **985 passed** with a
+display, 938 headless.
+
+Not claimed: one camera, one field and one gripper; errors certified one at a time; the program
+does not notice its own calibration error.

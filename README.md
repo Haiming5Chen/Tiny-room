@@ -143,6 +143,14 @@ change the design, try again.** A desktop robotics sandbox on
   camera's picture is not new", in all 9 set-ups and in all 59 drawn ones, and every
   undisturbed run is as it was to the millisecond: no false alarm
   ([ADR 0038](docs/adr/0038-a-camera-that-can-fail.md)).
+- **How well the camera must be mounted.** The table camera can be set off where the program
+  believes it - shifted, panned, tilted - to see how far a hand-set or bumped stand may be off.
+  A closed form says how far off the cube is then seen (15 mm sideways per degree of pan at
+  the camera's 0.88 m; 13 mm along and 8 mm down per degree of tilt), and shifting the camera
+  measures how far off the jaws may be aimed: 10 mm too far or too low, 25 mm to either side,
+  more the other ways. Over 59 drawn set-ups each, panned 1.5 degrees, tilted up 0.5 or
+  raised 10 mm, every one was fetched (at least 95 %); 10 mm towards the cart, 58 of 59; tilted
+  up a degree, 8 of 59 ([ADR 0039](docs/adr/0039-how-well-the-camera-must-be-mounted.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -157,7 +165,7 @@ change the design, try again.** A desktop robotics sandbox on
   repository - 81 papers, releases and engine changes so far, each with its verdict and why -
   and can be searched: `python -m little_world.radar search camera calibration`
   ([ADR 0034](docs/adr/0034-the-radar-keeps-what-it-read.md)).
-- **981 automated tests**, including OpenGL window tests that drive the interface
+- **985 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

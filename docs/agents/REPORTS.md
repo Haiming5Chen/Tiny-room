@@ -11,6 +11,23 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-08 · Claude (Cowork) · FR-021: how well the camera must be mounted
+Did: the owner picked FR-021. ADR 0039: the adapter can set a camera off the pose it was built
+at (`MujocoBackend.move_camera`), and an `Eye` given a believed pose reads its pictures as if
+the camera stood there; `sweep --camera-error X,Y,Z[,PAN,TILT,ROLL]` (mm, degrees) runs a
+varied sweep that way and the report says so. `perception/calibration.py` is the closed form:
+where a point is read with the camera off by a shift and a turn.
+Measured: closed form at the camera's 0.88 m - pan 15.3 mm a degree sideways, tilt 13.1 mm
+along and 7.8 mm down, roll 0.3 mm; the sightings agreed within 2.5 mm. The jaws' margins,
+from shifting the camera: 10.5 mm too far along, 25 mm sideways, 10.3 mm too low, at least
+38 mm towards the cart and 29 mm too high. Onsets as designed where closed form and margins put
+them: pan 1.75 held, 2 not; tilt up 0.75 held, 1 not. 59 drawn set-ups each: pan 1.5, tilt up
+0.5, 10 mm up - 59 of 59 (at least 95 %); 10 mm towards the cart 58 of 59; tilt up 1, 8 of 59.
+Unfinished: errors were certified one at a time; one combination near two margins missed, so a
+joint budget needs its own runs. The program does not detect its own calibration error.
+For the owner: FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014, FR-019 and FR-020 wait for
+you.
+
 ## 2026-10-08 · Claude (Cowork) · FR-018: a camera that can fail
 Did: the owner picked FR-018. ADR 0038: a disturbance can fail the field's camera as it happens
 - frozen on its last frame, or dark - alone or with a move, the camera failing first; Fetch

@@ -396,13 +396,14 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: 1–2 days; stdlib + the existing MuJoCo API.
 
 ### FR-021 · How well must the camera be mounted? A calibration tolerance for the Fetch table
-- Status: proposed
+- Status: done (ADR 0039, 2026-10-08; accepted by the owner the same day)
 - From: the weekly reading of 2026-10-05 (FR-W05): LIBERO-MAX's "camera shift" event ([project page](https://liberomax.github.io), `arxiv:2609.36518`); [CoRe-VLA under camera shifts, arXiv 2609.37150](https://arxiv.org/abs/2609.37150) (`arxiv:2609.37150`, title only); [DRHeC hand-eye calibration, arXiv 2609.36779](https://arxiv.org/abs/2609.36779) (`arxiv:2609.36779`, title only).
 - Idea: The program believes the camera is where `fields.CAMERA_AT` says; a real stand is set up by hand and gets bumped. Move the true camera away from the believed pose (yaw/pitch 0, 0.5, 1, 2°; position 0, 5, 10, 20 mm) while the program keeps the believed one, and find the largest error at which Fetch still succeeds at ≥ 95 % (Clopper-Pearson, ADR 0028). Predict it first: at range d a yaw error δ moves the seen cube by d·tan δ — 10.5 mm per degree at 0.6 m (assumed range; the real one is in `CAMERA_AT`) — against the jaws' capture margin. The result is a number for a real bench: "mount the D435 within X° and Y mm, or calibrate it".
 - In Little World: `Field.camera` gets a true-pose offset separate from the believed pose (a variation source, ADR 0024); `sweep --camera-error`; a tolerance table in `docs/sweeps/`. Extends ADR 0032; shows how much ADR 0033's looking again already absorbs.
 - How we would know: the table with intervals; failure onset within one sweep step of the closed-form prediction; zero offset reproduces 59/59.
 - Cost and needs: about a day of work plus CPU time (8 offsets × 59 draws ≈ 470 Fetch runs — time it first); stdlib; no hardware.
 - Note (Claude, 2026-10-05): the camera's range to the cube is about 0.87-0.90 m (`fields.CAMERA_AT` (2.30, 0, 0.90) aims at (1.85, 0, 0.12)), so a degree of yaw moves the seen cube about 15 mm there, not 10.5.
+- Note (Claude, 2026-10-08): done. Pan 15.3 mm a degree (as the 5 October note said), tilt 13.1 mm along and 7.8 mm down, a shift minus itself; the jaws' margins came from shifting the camera (10.5 mm too far, 25 mm sideways, 10.3 mm too low; more the other ways), and with them the closed form put the onsets where they were measured: pan between 1.75 and 2 degrees, tilt up between 0.75 and 1. On 59 drawn set-ups: pan 1.5, tilt up 0.5 and 10 mm up held at least 95 %; 10 mm towards the cart, 58 of 59 (the edge); tilt up 1, 8 of 59. Not a variation drawn per set-up as proposed but a condition of the sweep (`--camera-error`), one error per sweep; about 370 Fetch runs.
 
 ## Radar brief
 

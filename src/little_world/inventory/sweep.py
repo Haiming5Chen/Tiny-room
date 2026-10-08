@@ -15,7 +15,7 @@ import time
 
 from little_world.fields import FIELDS
 from little_world.fields.disturbance import DEFAULTS, Disturbing
-from little_world.fields.variation import Ranges, Variation, friction, payload_site, plan, varied
+from little_world.fields.variation import CameraError, Ranges, Variation, friction, payload_site, plan, varied
 from little_world.inventory.confidence import CONFIDENCE, interval, lower_bound, mcnemar, runs_needed, upper_bound
 
 # Field -> (protocol, seconds). Fields not listed have no protocol a machine can follow alone.
@@ -59,6 +59,7 @@ class Sweep:
     site: tuple | None
     ranges: Ranges
     runs: tuple
+    camera: CameraError | None = None   # the field's camera off where it is believed to be (ADR 0039)
 
 
 def design(name):
@@ -146,7 +147,7 @@ def ranges_for(field_id):
 
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
-        retries=None, ideal=False, regrasps=None, trace=None, checks=None):
+        retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -154,7 +155,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     often it may look again after a missed grasp (ADR 0033); None: the runner's own.
     A program that looks does so with the field's camera, its sensor's noise drawn for this
     set-up, or without noise if `ideal` (ADR 0032); `checks` False takes every picture as new
-    and lit (ADR 0038; None: the runner's own). `trace`, a list, gets each step's time and
+    and lit (ADR 0038; None: the runner's own). `camera_error` sets the field's camera off the
+    pose the program believes it at (ADR 0039). `trace`, a list, gets each step's time and
     a digest of every body's position and speed: what makes a set-up's undisturbed and
     disturbed runs one run until the event (ADR 0036)."""
     from little_world import Entity, World
@@ -217,7 +219,13 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             runner = Runner(**caps)
             runner.start(program)
             try:
-                see = eye(backend, field, scene, variation, ideal) if any(b.kind == 'look' for b in program.blocks) else None
+                believed = None
+                if camera_error is not None and not camera_error.nominal and field.camera:
+                    name = f'field/{field.camera[0]}'
+                    believed = backend.camera_pose(name)        # as calibrated
+                    backend.move_camera(name, camera_error.shift, camera_error.turn)
+                see = (eye(backend, field, scene, variation, ideal, believed)
+                       if any(b.kind == 'look' for b in program.blocks) else None)
                 if kick is not None:
                     kick.camera = see       # what a camera fault fails (ADR 0038)
             except ValueError as error:
@@ -272,7 +280,7 @@ def _digest(backend):
     return blake2b(d.qpos.tobytes() + d.qvel.tobytes(), digest_size=8).hexdigest()
 
 
-def eye(backend, field, scene, variation=Variation(), ideal=False):
+def eye(backend, field, scene, variation=Variation(), ideal=False, believed=None):
     """The field's depth camera for a program's looks (ADR 0032), its noise drawn from a
     seed of the set-up's own, so a set-up sees the same noise however it is disturbed."""
     from zlib import crc32
@@ -281,7 +289,8 @@ def eye(backend, field, scene, variation=Variation(), ideal=False):
     if not field.camera:
         raise ValueError(f'the {field.id} field has no camera to look with')
     camera, sensor = field.camera
-    return Eye(backend, f'field/{camera}', SENSORS[sensor], sizes_in(scene), crc32(variation.label.encode()), ideal)
+    return Eye(backend, f'field/{camera}', SENSORS[sensor], sizes_in(scene), crc32(variation.label.encode()), ideal,
+               believed)
 
 
 def _one(args):
@@ -289,10 +298,11 @@ def _one(args):
 
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
-          ranges=Ranges(), corrections=None, retries=None, blind=False, regrasps=None):
+          ranges=Ranges(), corrections=None, retries=None, blind=False, regrasps=None, camera_error=None):
     """Every variation's run of a field (by default the plan for `ranges`);
     `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections;
-    `blind` runs the program without its looks (ADR 0032)."""
+    `blind` runs the program without its looks (ADR 0032); `camera_error` sets the field's
+    camera off where the program believes it, in every run (ADR 0039)."""
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
@@ -304,7 +314,8 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
             site = None     # each loaded run then reports why it could not be loaded
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
-    work = [(field_id, blueprint, v, program, site, None, corrections, retries, False, regrasps) for v in variations]
+    work = [(field_id, blueprint, v, program, site, None, corrections, retries, False, regrasps, None, None, camera_error)
+            for v in variations]
     runs = []
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -318,7 +329,8 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
             runs.append(_one(w))
             if progress:
                 progress(len(runs), len(work), runs[-1])
-    return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs))
+    return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs),
+                 camera_error if camera_error is not None and not camera_error.nominal else None)
 
 
 @dataclass(frozen=True)
@@ -585,7 +597,9 @@ def from_json(text):
     d = json.loads(text)
     runs = tuple(_run(r) for r in d['runs'])
     site = tuple(d['site']) if d['site'] is not None else None
-    return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs)
+    camera = d.get('camera')
+    return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs,
+                 CameraError(**camera) if camera else None)
 
 
 # -- reading a sweep ---------------------------------------------------------------------------
@@ -671,6 +685,8 @@ def markdown(sweep):
              f'{len(ran)} runs, {what}' + (f'; {len(skipped)} could not run' if skipped else '') + '.']
     if sweep.site is not None:
         lines.append(f'Payload site: ({sweep.site[0]:.3f}, {sweep.site[1]:.3f}) m in plan, a steel block of the payload\'s mass.')
+    if sweep.camera is not None:
+        lines.append(f'The field\'s camera stood off where the program believed it: {sweep.camera.describe()} (ADR 0039).')
     by_goal = {rate.label: rate for rate in rates(sweep)[1:]}
     lines += ['', '| Goal | Met | Drawn at random | Times (fastest / median / slowest) | Not met in |',
               '| --- | --- | --- | --- | --- |']
@@ -859,6 +875,9 @@ def main(argv=None):
                         help='cap an aimed pose\'s corrections (0: run poses as taught; default: the runner\'s own)')
     parser.add_argument('--retries', type=int, default=None,
                         help='cap how often a program goes back to a stop it was pushed off (0: never; default: the runner\'s own)')
+    parser.add_argument('--camera-error', metavar='X,Y,Z[,PAN,TILT,ROLL]',
+                        help="the field's camera off where the program believes it: millimetres along the "
+                             'field\'s axes, then degrees about its own (ADR 0039)')
     parser.add_argument('--unchecked-camera', action='store_true',
                         help='take every picture as new and lit, as before ADR 0038 (to measure what the checks change)')
     parser.add_argument('--regrasps', type=int, default=None,
@@ -868,6 +887,17 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.unchecked_camera and not args.disturb:
         parser.error('--unchecked-camera is for --disturb: only a disturbance makes the camera fail')
+    camera_error = None
+    if args.camera_error:
+        if args.disturb:
+            parser.error('--camera-error is for a varied sweep, not --disturb')
+        try:
+            values = [float(v) for v in args.camera_error.split(',')]
+            if len(values) not in (3, 6):
+                raise ValueError
+            camera_error = CameraError(tuple(v / 1000 for v in values[:3]), tuple(values[3:]) or (0., 0., 0.))
+        except ValueError:
+            parser.error(f'--camera-error takes three millimetres and optionally three degrees, not {args.camera_error!r}')
     bp = design(args.design)
     ranges = ranges_for(args.field)
     variations = plan(ranges, samples=args.samples, seed=args.seed)
@@ -890,7 +920,7 @@ def main(argv=None):
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
                        ranges=ranges, corrections=args.corrections, retries=args.retries, blind=args.blind,
-                       regrasps=args.regrasps)
+                       regrasps=args.regrasps, camera_error=camera_error)
         text = markdown(result)
     print(text)
     from pathlib import Path

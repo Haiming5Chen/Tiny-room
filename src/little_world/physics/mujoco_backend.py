@@ -620,6 +620,31 @@ class MujocoBackend:
         i = self._camera_ids[camera]
         return self.data.cam_xpos[i].copy(), self.data.cam_xmat[i].reshape(3, 3).copy()
 
+    def move_camera(self, camera, shift=(0., 0., 0.), turn=(0., 0., 0.)):
+        """Set a camera off the pose it was built at: `shift` metres along the world's axes,
+        then turned `turn` degrees about its own axes - pan about its up axis, tilt about its
+        right axis, roll about its view - as a stand set up by hand, or bumped, puts it (ADR
+        0039). Only the camera moves; what a program believes of its pose is the program's."""
+        self._ready()
+        if camera not in self._camera_ids:
+            raise ValueError(f"unknown camera: {camera}")
+        shift, turn = np.asarray(shift, dtype=float), np.asarray(turn, dtype=float)
+        if shift.shape != (3,) or turn.shape != (3,) or not (np.isfinite(shift).all() and np.isfinite(turn).all()):
+            raise ValueError('a camera is shifted by three finite metres and turned by three finite degrees')
+        i = self._camera_ids[camera]
+        body = self.model.cam_bodyid[i]
+        self.model.cam_pos[i] += self.data.xmat[body].reshape(3, 3).T @ shift
+        pan, tilt, roll = np.radians(turn) / 2
+        quat = self.model.cam_quat[i].copy()
+        for axis, half in ((1, pan), (0, tilt), (2, roll)):     # about y (up), then x (right), then z
+            q = np.zeros(4)
+            q[0], q[1 + axis] = np.cos(half), np.sin(half)
+            out = np.zeros(4)
+            mj.mju_mulQuat(out, quat, q)
+            quat = out
+        self.model.cam_quat[i] = quat / np.linalg.norm(quat)
+        mj.mj_camlight(self.model, self.data)
+
     def cast(self, camera, directions, cutoff=10.):
         """Rays from a camera to the first visible surface (ADR 0032): `directions` (n x 3)
         in the camera's frame. Returns how far along each direction the surface is - the hit

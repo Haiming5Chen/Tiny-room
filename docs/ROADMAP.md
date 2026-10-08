@@ -107,7 +107,9 @@ step - and says how many successes the event broke and how sure that is (ADR 003
 first such sweep found two faults in looking again, both mended: a reach stopped on the cube
 rises off it before going back, and a cube the jaws hide is not taken for gone (ADR 0037).
 The table camera can fail - frozen or dark - and the program stops and names it instead of
-grasping where a stale picture shows the cube (ADR 0038).
+grasping where a stale picture shows the cube (ADR 0038). How far that camera may stand off
+where the program believes it is measured against a closed form: 1.5 degrees of pan, half a
+degree of upward tilt, 10 mm (ADR 0039).
 Next: what the owner picks from the frontier proposals - among them how gently a part is handled, the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its
