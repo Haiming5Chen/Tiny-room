@@ -21,6 +21,9 @@ SHIFT=.005      # m: seen further than this from the plan, those poses are solve
 REGRASPS=1      # times a program that looked may look again and reach again (ADR 0033)
 REACHING=.02    # m: an aimed pose this close to where a looked-at object was planned reaches for the object itself
 MOVED=.01       # m: seen this much further from where the look saw it, the object has been moved
+LIT=.5          # share of a picture's pixels with depth below which the camera is dark (ADR 0038)
+# What the program says of a camera whose picture it cannot use (ADR 0038).
+TROUBLE={'stale':"the camera's picture is not new",'dark':"the camera's picture has no depth"}
 
 
 @dataclass(frozen=True)
@@ -172,25 +175,26 @@ def smoothstep(s):
 
 
 class Runner:
-    def __init__(self,corrections=CORRECTIONS,retries=RETRIES,regrasps=REGRASPS):
+    def __init__(self,corrections=CORRECTIONS,retries=RETRIES,regrasps=REGRASPS,checks=True):
         # How often an aimed pose may be solved again (ADR 0025); 0 runs poses as taught.
         # How often a program may go back to a stop it was pushed off (ADR 0031); 0 never.
         # How often a program that looked may look again after a missed grasp (ADR 0033).
+        # Whether each picture is checked for a camera that is stuck or dark (ADR 0038).
         if corrections<0 or retries<0 or regrasps<0:raise ValueError('corrections, retries and regrasps are counted from zero')
-        self.limit=corrections;self.retry_limit=retries;self.regrasp_limit=regrasps;self.stop()
+        self.limit=corrections;self.retry_limit=retries;self.regrasp_limit=regrasps;self.checks=bool(checks);self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
         self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
         self.retries=0;self.stop_at=None;self.stop_block=None;self.run_up=None
         self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.seen=[]
         self.regrasps=0;self.reopen=None;self.followed={};self.goal=None
-        self.above=None;self.rising=None
+        self.above=None;self.rising=None;self.frame=None;self.faults=[]
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
     def advance(self,skip=1):
         self.elapsed=0.;self.index+=skip;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
-        self.sightings=[];self.picture_at=0.
+        self.sightings=[];self.picture_at=0.;self.faults=[]
         if self.index>=len(self.program.blocks):
             self.cycle+=1
             if self.cycle>=self.program.repeat:self.state='completed';self.message='Completed';return
@@ -217,7 +221,7 @@ class Runner:
         if start>0 and blocks[start-1].kind=='pose':start-=1
         self.retries+=1;self.message=f'Pushed {100*off:.0f} cm off its stop: going back'
         self.elapsed=0.;self.index=start;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
-        self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None
+        self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.faults=[]
     def regrasp(self,message,reopen=False,rise=False):
         """At a stop where the program looked, the object is not where the jaws are going:
         if a regrasp is left, open the jaws when they closed - the action just before, run
@@ -235,7 +239,7 @@ class Runner:
         self.reopen=(close.target,-close.value,close.duration) if close is not None and close.kind=='action' else None
         self.rising=self.above if rise else None;self.above=None
         self.elapsed=0.;self.index=start;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
-        self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None
+        self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.faults=[]
         return True
     def reaches_for(self,block):
         """Whether an aimed pose reaches for the object a look at this stop looked for."""
@@ -273,13 +277,30 @@ class Runner:
         if not block.point or self.offset is None:return block.point
         if sum((p-q)**2 for p,q in zip(block.point,self.looked))>NEAR**2:return block.point
         return tuple(p+o for p,o in zip(block.point,self.offset))
+    def trouble(self,see):
+        """What is wrong with the camera's last picture (ADR 0038): 'stale' when its frame
+        number has not moved on from the last picture the program used - a stream that has
+        stopped sends its last frame again - and 'dark' when less than LIT of it has depth.
+        None for a new picture with depth, when pictures are not checked, or when they carry no
+        frame number (a test's stand-in camera)."""
+        frame=getattr(getattr(see,'last',None),'frame',None)
+        if not self.checks or frame is None:return None
+        if self.frame is not None and frame<=self.frame:return 'stale'
+        self.frame=frame
+        return 'dark' if see.last.valid<LIT else None
     def look(self,block,see):
         """A look's next picture, when one is due; True once STEADY pictures in a row have
-        seen its object within STILL of their middle, after it has watched `value` seconds."""
+        seen its object within STILL of their middle, after it has watched `value` seconds.
+        STEADY pictures in a row the camera could not have taken now, or without depth, end
+        the look: the program fails, naming the camera's fault, and moves nothing (ADR 0038)."""
         if self.elapsed+1e-9>=self.picture_at:
             self.picture_at+=PICTURE
             sighting=see(block.target,block.point,block.secondary) if block.secondary else see(block.target,block.point)
-            self.sightings.append(None if sighting is None else tuple(float(v) for v in sighting.centre))
+            fault=self.trouble(see)
+            self.faults=self.faults+[fault] if fault else []
+            self.sightings.append(None if sighting is None or fault else tuple(float(v) for v in sighting.centre))
+            if len(self.faults)>=STEADY:
+                self.fail(f"Looked for {block.target.split('/')[-1]}: {TROUBLE[fault]}");return False
         last=self.sightings[-STEADY:]
         if self.elapsed+1e-9<block.value or len(last)<STEADY or None in last:return False
         middle=tuple(sorted(v[i] for v in last)[STEADY//2] for i in range(3))
@@ -334,6 +355,15 @@ class Runner:
                 if see is not None and self.reaches_for(b):
                     target,planned,where=self.seen[-1]
                     sighting=see(target,where)
+                    fault=self.trouble(see)
+                    if fault:
+                        # A picture the camera did not take now, or one without depth, says
+                        # nothing of where the object is: look again, which names the fault if it
+                        # lasts - or stop here (ADR 0038).
+                        name=target.split('/')[-1]
+                        if not self.regrasp(f'Reaching for {name}: {TROUBLE[fault]}: looking again'):
+                            self.fail(f'Reaching for {name}: {TROUBLE[fault]}')
+                        return output
                     if sighting is not None:
                         now=tuple(float(v) for v in sighting.centre)
                         gone=sum((a-c)**2 for a,c in zip(now,where))>MOVED**2
@@ -389,6 +419,7 @@ class Runner:
         elif b.kind=='look':
             if see is None:self.fail('No camera to look with');return output
             condition=self.look(b,see)
+            if self.state!='running':return output
         if b.kind=='if_contact':self.advance(1 if condition else 2)
         elif b.kind in ('move','contact','distance','grasp','goto'):
             if condition:self.advance()

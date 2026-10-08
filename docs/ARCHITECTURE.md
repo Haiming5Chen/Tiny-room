@@ -199,7 +199,10 @@ nothing sends it back to the stop's approach to look again, once (`Runner.regras
 from a reach that went down, first back up to the pose it reached from (`Runner.above`). A
 picture that finds nothing asks the camera what it shows where the part was seen
 (`Eye.place`, `boxes.place`: the depth the part's shape would give against the depth
-measured - there, empty or hidden), and only empty looks again (ADR 0037). `sweep.run` records each look with where the part really was, for the reports; the
+measured - there, empty or hidden), and only empty looks again (ADR 0037). A disturbance can
+fail the field's camera (`Eye.fail`: frozen on its last frame, or dark); each picture carries a
+frame number, when it was taken and the share of it with depth, and the runner ends a look on
+three in a row that are not new or are dark, naming the camera (`Runner.trouble`, ADR 0038). `sweep.run` records each look with where the part really was, for the reports; the
 program workspace draws the last picture through the canvas (`Canvas.pixels`). A `goto` may
 name the object it drives to (program version 4): once a look has seen the object, the stop
 moves as it did, along the stop's heading at most `secondary` metres (`Runner.follow`), and

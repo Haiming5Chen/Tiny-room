@@ -7,16 +7,16 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0037. The newest: 0037 looking again rises off the cube first
-  and reads the place before doubting it (LW-022, LW-023); 0036 paired runs (each drawn set-up
-  of a disturbance sweep against itself undisturbed, an exact McNemar test).
-- **Tests**: on MuJoCo 3.10.0, 970 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 923 headless.
+- **Decision records** 0001 to 0038. The newest: 0038 a camera that can fail - frozen or dark
+  - and the program that names it (FR-018); 0037 looking again rises off the cube first and
+  reads the place before doubting it (LW-022, LW-023).
+- **Tests**: on MuJoCo 3.10.0, 981 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 934 headless.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006, FR-011 and FR-015 to
-  FR-017 done; FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-018 to FR-021 wait for the
-  owner (FR-018 to FR-021 from the weekly reading of 5 October); FR-009 and FR-010 not now (the
+  FR-018 done; FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-019 to FR-021 wait for the
+  owner (FR-019 to FR-021 from the weekly reading of 5 October); FR-009 and FR-010 not now (the
   owner).
 - **Uncommitted**: nothing.
 - **Needs the owner's decision**: publishing the branch; the frontier proposals; the rest of

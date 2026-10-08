@@ -49,6 +49,12 @@ def test_each_drawn_set_up_is_paired_with_itself_undisturbed():
     assert '| Broken by it |' in text and '8 of 8, at least 69 %; p = 0.0078' in text
 
 
+def test_a_p_too_small_for_four_places_is_printed_as_below_them():
+    """Twenty drawn set-ups broken and none rescued: p = 2 / 2^20, about 0.000002."""
+    text = disturbed_markdown(result([True] * 21, [False] * 21))
+    assert '20 of 20, at least 86 %; p < 0.0001 |' in text
+
+
 def test_a_disturbance_that_breaks_nothing_bounds_how_much_it_could():
     none, moved = summaries(result([True] * 9, [True] * 9))
     assert (moved.held, moved.broke, moved.rescued, moved.p) == (8, 0, 0, 1.)

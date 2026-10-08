@@ -1244,3 +1244,26 @@ Not claimed: the place is read for a part standing as its size says, square to t
 is taken for there, so a part moved under the jaws' cover is found by the grasp, not before;
 rising retraces the reach in the joints, not in space; a reach pushed off its stop still goes
 straight back to it.
+
+## A camera that can fail — 2026-10-08
+
+ADR 0038 (FR-018, accepted by the owner). A disturbance can freeze the field's camera on its
+last frame or make it dark; each picture carries a frame number, when it was taken and the share
+of it with depth, and three pictures in a row that are not new, or are dark, end a look with the
+camera named and nothing moved. Fetch, the nine set-ups of ADR 0030: frozen as the cube is moved
+5 cm, taken on trust (`--unchecked-camera`), 0 of 9 - in every set-up the jaws went down twice
+where the frozen picture showed the cube, ending "Timed out: pose did not settle" (5) or
+"Nothing held: the grasp missed" (4); checked, 0 of 9, every one "Looked for fetch_cube: the
+camera's picture is not new", nothing grasped. Dark at the table: on trust "it would not keep
+still" after 5 s; checked, "the camera's picture has no depth", 0.3 s after it went dark. The
+other six rows (none and five disturbances): all 54 runs met their last goal at the same time as
+before. Frozen, on 59 drawn set-ups: all 59 stopped at the look, named; the 60 undisturbed runs
+at the same time as before to the millisecond - no false alarm. A p too small for four places
+now reads "p < 0.0001". Checked in `tests/test_camera_faults.py` (10) and
+`tests/test_paired_runs.py` (one more). Suites on MuJoCo 3.10.0: **981 passed** with a
+display, 934 headless.
+
+Not claimed: a picture's number and its depth are checked, not what it shows - a stream that
+numbers a stuck picture afresh, or a camera knocked off its mount, passes; a frame frozen within
+one picture interval of its first use is used once; dark means less than half of the picture
+with depth.

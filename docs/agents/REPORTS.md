@@ -11,6 +11,26 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-08 · Claude (Cowork) · FR-018: a camera that can fail
+Did: the owner picked FR-018. ADR 0038: a disturbance can fail the field's camera as it happens
+- frozen on its last frame, or dark - alone or with a move, the camera failing first; Fetch
+gains "camera frozen as the cube is moved 5 cm" and "camera dark at the table". Each picture
+carries a frame number, when it was taken and the share of it with depth; the runner ends a
+look on three pictures in a row that are not new or are dark, naming the camera, and before
+the jaws go down treats such a picture as no evidence (it looks again, or stops).
+`Runner(checks=False)` and `sweep --unchecked-camera` take pictures on trust, to measure the
+difference. The disturbance report now quotes what the program said where set-ups missed, and
+prints a p below 0.0001 as such.
+Measured: frozen, on trust: 0 of 9, the jaws down twice at the stale place in every set-up;
+checked: 0 of 9, all named at the look, nothing grasped. Dark: on trust "it would not keep
+still" after 5 s; checked "has no depth" 0.3 s after it went dark. The other 54 runs of the
+nine-set-up sweep, and the 60 undisturbed runs of the 59-draw sweep, met their last goal at
+the same time as before: no false alarm.
+Unfinished: the frame number decides, not the picture's time, so a frame frozen within one
+picture interval of its first use is used once; a camera knocked off its mount is FR-021's.
+For the owner: FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-019 to FR-021 wait for
+you.
+
 ## 2026-10-08 · Claude (Cowork) · LW-022 and LW-023: looking again without dragging or doubting
 Did: the owner picked LW-022 and LW-023, the two faults ADR 0036's paired runs showed. ADR
 0037: a reach for the cube that is stopped, and a grasp that holds nothing, first rise back to

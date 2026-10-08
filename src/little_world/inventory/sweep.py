@@ -146,14 +146,15 @@ def ranges_for(field_id):
 
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
-        retries=None, ideal=False, regrasps=None, trace=None):
+        retries=None, ideal=False, regrasps=None, trace=None, checks=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
     often the program may go back to a stop it was pushed off (ADR 0031) and `regrasps` how
     often it may look again after a missed grasp (ADR 0033); None: the runner's own.
     A program that looks does so with the field's camera, its sensor's noise drawn for this
-    set-up, or without noise if `ideal` (ADR 0032). `trace`, a list, gets each step's time and
+    set-up, or without noise if `ideal` (ADR 0032); `checks` False takes every picture as new
+    and lit (ADR 0038; None: the runner's own). `trace`, a list, gets each step's time and
     a digest of every body's position and speed: what makes a set-up's undisturbed and
     disturbed runs one run until the event (ADR 0036)."""
     from little_world import Entity, World
@@ -210,12 +211,15 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 aim = ToolMotion(backend, bp, control).aim     # aimed poses checked (ADR 0025)
             except ValueError:
                 aim = None
-            caps = {k: v for k, v in (('corrections', corrections), ('retries', retries), ('regrasps', regrasps))
+            caps = {k: v for k, v in (('corrections', corrections), ('retries', retries), ('regrasps', regrasps),
+                                      ('checks', checks))
                     if v is not None}
             runner = Runner(**caps)
             runner.start(program)
             try:
                 see = eye(backend, field, scene, variation, ideal) if any(b.kind == 'look' for b in program.blocks) else None
+                if kick is not None:
+                    kick.camera = see       # what a camera fault fails (ADR 0038)
             except ValueError as error:
                 return Run(variation, error=str(error))
             actual = []         # where each looked-for object really was: measured, not seen
@@ -331,6 +335,7 @@ class Disturbed:
     retries: int | None = None      # going back to a stop, capped (ADR 0031); None: the runner's own
     blind: bool = False             # the program ran without its looks (ADR 0032)
     regrasps: int | None = None     # looking again after a missed grasp, capped (ADR 0033); None: the runner's own
+    checks: bool | None = None      # False: every picture taken as new and lit (ADR 0038); None: the runner's own
 
 
 def setups(ranges=Ranges(), samples=8, seed=1):
@@ -340,7 +345,7 @@ def setups(ranges=Ranges(), samples=8, seed=1):
 
 
 def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, seed=1, jobs=1, progress=None,
-            corrections=None, retries=None, blind=False, regrasps=None):
+            corrections=None, retries=None, blind=False, regrasps=None, checks=None):
     """Every set-up run undisturbed and then under each disturbance (by default the field's
     own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each."""
     if field_id not in PROTOCOLS:
@@ -361,7 +366,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     tried = (None, *disturbances)
-    work = [(field_id, blueprint, v, program, site, d, corrections, retries, False, regrasps)
+    work = [(field_id, blueprint, v, program, site, d, corrections, retries, False, regrasps, None, checks)
             for d in tried for v in variations]
     runs = []
     if jobs > 1:
@@ -379,7 +384,8 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     n = len(variations)
     groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
                    for i, d in enumerate(tried))
-    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries, blind, regrasps)
+    return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries, blind, regrasps,
+                     checks)
 
 
 def _last(run):
@@ -410,6 +416,7 @@ class Group:
     held: int = 0
     broke: int = 0
     rescued: int = 0
+    why: str = ''           # what the program said when it stopped, in most of the set-ups that missed
 
     @property
     def low(self):
@@ -457,8 +464,21 @@ def summaries(result):
                          tuple(sorted(off(r.seen[-1]) for r in runs if r.seen)),
                          sum(1 for r in runs if r.regrasped),
                          sum(1 for was, _ in pairs if was), sum(1 for was, now in pairs if was and not now),
-                         sum(1 for was, now in pairs if now and not was)))
+                         sum(1 for was, now in pairs if now and not was),
+                         _why(r for r in runs if _last(r) is None)))
     return out
+
+
+def _p(p):
+    """An exact p as a report prints it: four places, or below the smallest of them."""
+    return '< 0.0001' if p < 1e-4 else f'= {p:.4f}'
+
+
+def _why(missed):
+    """What the program said last in most of these runs, if it said why it stopped."""
+    from collections import Counter
+    said = Counter(r.message for r in missed if r.message and r.message not in ('Completed', 'Running'))
+    return said.most_common(1)[0][0] if said else ''
 
 
 def off(look):
@@ -481,7 +501,8 @@ def disturbed_from_json(text):
     groups = tuple((label, description, tuple(_run(r) for r in runs)) for label, description, runs in d['groups'])
     site = tuple(d['site']) if d['site'] is not None else None
     return Disturbed(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']),
-                     d['corrections'], groups, d.get('retries'), d.get('blind', False), d.get('regrasps'))
+                     d['corrections'], groups, d.get('retries'), d.get('blind', False), d.get('regrasps'),
+                     d.get('checks'))
 
 
 def disturbed_markdown(result):
@@ -499,7 +520,8 @@ def disturbed_markdown(result):
          f' A program went back to a stop it was pushed off at most {result.retries} times (ADR 0031; the runner allows 1).') + \
         (' The program ran without its looks (`--blind`, ADR 0032).' if result.blind else '') + \
         ('' if result.regrasps is None else
-         f' A program looked again after a missed grasp at most {result.regrasps} times (ADR 0033; the runner allows 1).')
+         f' A program looked again after a missed grasp at most {result.regrasps} times (ADR 0033; the runner allows 1).') + \
+        (' The program took every picture as new and lit (`--unchecked-camera`, ADR 0038).' if result.checks is False else '')
     groups = summaries(result)
     looked = any(g.seen for g in groups)
     worst = max((missed_by(r.seen[-1]) or 0. for _, _, runs in result.groups for r in runs if r.seen), default=0.)
@@ -512,11 +534,13 @@ def disturbed_markdown(result):
     for i, g in enumerate(groups):
         sure = f'{g.drawn_met} of {g.drawn}, at least {100 * g.low:.0f} %' if g.drawn else '-'
         broken = '-' if not i or not g.held else \
-            g.breaks() + (f'; rescued {g.rescued}' if g.rescued else '') + (f'; p = {g.p:.4f}' if g.broke or g.rescued else '')
+            g.breaks() + (f'; rescued {g.rescued}' if g.rescued else '') + (f'; p {_p(g.p)}' if g.broke or g.rescued else '')
         change = '-' if g.change is None else f'{g.change:+.1f} s'
         pushed = '-' if not g.pushes else \
             f'{100 * median(g.pushes):.1f} cm ({100 * g.pushes[0]:.1f} to {100 * g.pushes[-1]:.1f})'
         lost = '-' if not g.missed else 'every set-up' if len(g.missed) == g.runs else ', '.join(g.missed)
+        if g.why:
+            lost += f': "{g.why}"'
         seen = ('' if not looked else f' {g.again or "-"} |' + (' - |' if not g.seen else
                 f' {100 * median(g.seen):.1f} cm ({100 * g.seen[0]:.1f} to {100 * g.seen[-1]:.1f}) |'))
         lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {broken} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
@@ -835,11 +859,15 @@ def main(argv=None):
                         help='cap an aimed pose\'s corrections (0: run poses as taught; default: the runner\'s own)')
     parser.add_argument('--retries', type=int, default=None,
                         help='cap how often a program goes back to a stop it was pushed off (0: never; default: the runner\'s own)')
+    parser.add_argument('--unchecked-camera', action='store_true',
+                        help='take every picture as new and lit, as before ADR 0038 (to measure what the checks change)')
     parser.add_argument('--regrasps', type=int, default=None,
                         help='cap how often a program that looked looks again after a missed grasp (0: never; default: the runner\'s own)')
     parser.add_argument('--blind', action='store_true',
                         help="run the field's program without looking with the field's camera (ADR 0032)")
     args = parser.parse_args(argv)
+    if args.unchecked_camera and not args.disturb:
+        parser.error('--unchecked-camera is for --disturb: only a disturbance makes the camera fail')
     bp = design(args.design)
     ranges = ranges_for(args.field)
     variations = plan(ranges, samples=args.samples, seed=args.seed)
@@ -856,7 +884,8 @@ def main(argv=None):
                              + '; '.join(known))
             chosen = tuple(known[label] for label in args.only)
         result = disturb(args.field, bp, chosen, args.name or args.design, args.samples, args.seed, args.jobs,
-                         progress, args.corrections, args.retries, args.blind, args.regrasps)
+                         progress, args.corrections, args.retries, args.blind, args.regrasps,
+                         False if args.unchecked_camera else None)
         text = disturbed_markdown(result)
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,

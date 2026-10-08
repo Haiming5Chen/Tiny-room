@@ -135,6 +135,14 @@ change the design, try again.** A desktop robotics sandbox on
   along, out of the arm's reach from any stop clear of the table, the program stops at the
   table and says so instead of reaching for the wrong place
   ([ADR 0035](docs/adr/0035-the-stop-follows-the-cube.md)).
+- **A camera that fails, noticed.** The table camera can freeze on its last picture, or go
+  dark, as a disturbance. Each picture carries its frame number and how much of it has depth,
+  and a program that gets three in a row that are not new, or have no depth, stops at the look
+  and says why - before it moves. Frozen as the cube is moved 5 cm, the program used to grasp
+  twice where the stale picture showed the cube; now it stops at the look and says "the
+  camera's picture is not new", in all 9 set-ups and in all 59 drawn ones, and every
+  undisturbed run is as it was to the millisecond: no false alarm
+  ([ADR 0038](docs/adr/0038-a-camera-that-can-fail.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -149,7 +157,7 @@ change the design, try again.** A desktop robotics sandbox on
   repository - 81 papers, releases and engine changes so far, each with its verdict and why -
   and can be searched: `python -m little_world.radar search camera calibration`
   ([ADR 0034](docs/adr/0034-the-radar-keeps-what-it-read.md)).
-- **970 automated tests**, including OpenGL window tests that drive the interface
+- **981 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

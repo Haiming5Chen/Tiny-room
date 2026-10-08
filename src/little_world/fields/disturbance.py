@@ -1,15 +1,18 @@
-"""Things that happen to a run partway through: a shove, a part moved (ADR 0030).
+"""Things that happen to a run partway through: a shove, a part moved, a camera that fails
+(ADR 0030, 0038).
 
 ADR 0024 varies the conditions a run starts in. A lab also does things to a robot while it
-works: someone bumps the cart, a part is moved after the robot looked. A disturbance says
-what happens and when - so many seconds after a goal is met, or after the start - and a
-`Disturbing` applies it to a running world through the adapter (`push`, `shift`) and notes
-what it did. Standard library only.
+works: someone bumps the cart, a part is moved after the robot looked, a camera's stream
+stops or goes dark. A disturbance says what happens and when - so many seconds after a goal
+is met, or after the start - and a `Disturbing` applies it to a running world through the
+adapter (`push`, `shift`) or to the field's camera (`fail`) and notes what it did. Standard
+library only.
 """
 from dataclasses import dataclass
 from math import atan2, cos, radians, sin
 
-KINDS = ('push', 'move')
+KINDS = ('push', 'move', 'camera')
+FAULTS = ('freeze', 'dark')   # a camera that keeps sending its last picture; one whose pictures have no depth
 SETTLED = 1.0   # s after a push ends, when how far it moved the machine is read
 STILL = .01     # m/s: below this the machine's base counts as standing still
 
@@ -20,7 +23,8 @@ class Disturbance:
     newton-seconds, horizontal, spread over `seconds`, toward `toward` degrees from the
     machine's heading (anticlockwise: 90 pushes it to its left). A move shifts a loose
     field part, such as the Fetch cube, by `offset` metres in plan and turns it `turn`
-    degrees about the vertical."""
+    degrees about the vertical. `camera` fails the field's camera at the same moment -
+    'freeze' or 'dark' (ADR 0038) - and a 'camera' disturbance does only that."""
     label: str
     kind: str
     after: str = ''                # the goal whose being met starts the clock; '' the run's start
@@ -32,6 +36,7 @@ class Disturbance:
     part: str = ''
     offset: tuple = (0., 0.)
     turn: float = 0.
+    camera: str = ''                 # '', or one of FAULTS: the field's camera fails as it happens
 
     def __post_init__(self):
         object.__setattr__(self, 'offset', tuple(float(v) for v in self.offset))
@@ -43,6 +48,10 @@ class Disturbance:
             raise ValueError('a push needs an impulse')
         if self.kind == 'move' and not (self.part and (any(self.offset) or self.turn)):
             raise ValueError('a move needs a part and an offset or a turn')
+        if self.camera and self.camera not in FAULTS:
+            raise ValueError(f'a camera fails in one of {FAULTS}, not {self.camera!r}')
+        if self.kind == 'camera' and not self.camera:
+            raise ValueError('a camera disturbance needs a fault')
 
     def describe(self):
         when = [f'after "{self.after}"' if self.after else 'from the start']
@@ -50,11 +59,15 @@ class Disturbance:
             when.append(f'once still for {self.still:g} s')
         if self.delay:
             when.append(f'{self.delay:g} s later')
+        fault = {'freeze': 'the camera frozen on its last picture', 'dark': 'the camera dark'}.get(self.camera, '')
         if self.kind == 'push':
             return (f'{self.impulse:g} N s over {self.seconds:g} s, {self.toward:g} deg left of its heading, '
-                    + ', '.join(when))
+                    + ', '.join(when) + (f'; {fault}' if fault else ''))
+        if self.kind == 'camera':
+            return fault + ', ' + ', '.join(when)
         return (f'{self.part.split("/")[-1]} moved {100 * self.offset[0]:+.1f} cm, {100 * self.offset[1]:+.1f} cm'
-                + (f', turned {self.turn:+g} deg' if self.turn else '') + ', ' + ', '.join(when))
+                + (f', turned {self.turn:+g} deg' if self.turn else '') + ', ' + ', '.join(when)
+                + (f'; {fault} just before' if fault else ''))
 
 
 def _yaw(quaternion):
@@ -67,9 +80,10 @@ class Disturbing:
     the goals' clock started and the goals met so far (`GoalTracker.met`). `note` says what
     happened, and for a push how far it moved the machine's base."""
 
-    def __init__(self, disturbance, root):
+    def __init__(self, disturbance, root, camera=None):
         self.disturbance = disturbance
         self.root = root            # the machine's base body, e.g. 'machine/root'
+        self.camera = camera        # the field's camera, something with `fail(fault)`, for a camera fault
         self.began = None           # time on the goals' clock when it happened
         self.ended = None
         self.start = None           # where the base was when the push began (x, y)
@@ -101,6 +115,14 @@ class Disturbing:
             if elapsed < self.ready + d.delay:
                 return
             self.began = elapsed
+            if d.camera:
+                # The camera fails first: its last picture is of the world before anything else
+                # happens now (ADR 0038). No camera to fail: nothing happens to one.
+                if self.camera is not None:
+                    self.camera.fail(d.camera)
+                if d.kind == 'camera':
+                    self.done = True
+                    return
             if d.kind == 'move':
                 backend.shift(d.part, d.offset, d.turn)
                 self.done = True
@@ -128,6 +150,8 @@ class Disturbing:
         if self.began is None:
             return f'{d.label}: never happened' + (f' ({d.after} not met)' if d.after else '')
         text = f'{d.label} at {self.began:.1f} s'
+        if d.camera and self.camera is None:
+            text += ', with no camera to fail'
         if self.moved is not None:
             text += f', the base went {100 * self.moved:.1f} cm the way it was pushed'
         return text
@@ -140,8 +164,8 @@ def _push(label, after, impulse, **more):
 # What each field can have done to it, measured in ADR 0030. Fetch: once the cart has stopped
 # at the table (stood still 0.2 s) a shove to its left, or the cube moved sideways (+Y, the
 # cart's left as it faces the table) - then, or 2 s later, when a cart that looks has looked
-# and is bringing its jaws over the cube (ADR 0032). Sprint: a shove to its left a second
-# past the start line.
+# and is bringing its jaws over the cube (ADR 0032); or, then, the table's camera frozen as the
+# cube is moved, or dark (ADR 0038). Sprint: a shove to its left a second past the start line.
 DEFAULTS = {
     'fetch': (_push('shoved 4 N s at the table', 'reached', 4., still=.2, delay=.1),
               _push('shoved 6 N s at the table', 'reached', 6., still=.2, delay=.1),
@@ -150,7 +174,10 @@ DEFAULTS = {
               Disturbance('cube moved 5 cm sideways', 'move', after='reached', still=.2, delay=.1,
                           part='objects/fetch_cube', offset=(0., .05)),
               Disturbance('cube moved 5 cm sideways, 2 s later', 'move', after='reached', still=.2, delay=2.1,
-                          part='objects/fetch_cube', offset=(0., .05))),
+                          part='objects/fetch_cube', offset=(0., .05)),
+              Disturbance('camera frozen as the cube is moved 5 cm', 'move', after='reached', still=.2, delay=.1,
+                          part='objects/fetch_cube', offset=(0., .05), camera='freeze'),
+              Disturbance('camera dark at the table', 'camera', after='reached', still=.2, delay=.1, camera='dark')),
     'sprint': (_push('shoved 4 N s after the start', 'start', 4., delay=1.),
                _push('shoved 8 N s after the start', 'start', 8., delay=1.)),
 }

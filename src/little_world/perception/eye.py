@@ -16,13 +16,21 @@ from .boxes import REACH, SEARCH, find_box, place
 @dataclass
 class Picture:
     """One depth picture: rows and columns of the sensor it covers, depth in metres (NaN:
-    no depth), and the camera's pose when it was taken."""
+    no depth), and the camera's pose when it was taken. Like a RealSense frame it carries a
+    frame number and the time it was taken (ADR 0038)."""
     rows: tuple
     columns: tuple
     depth: np.ndarray
     position: np.ndarray
     rotation: np.ndarray
     box: np.ndarray = None      # the pixels that were the part, when it was found
+    frame: int = 0              # counts the camera's frames: a new picture has a new number
+    stamp: float = 0.           # simulated seconds when it was taken
+
+    @property
+    def valid(self):
+        """The share of its pixels that have a depth."""
+        return float(np.isfinite(self.depth).mean()) if self.depth.size else 0.
 
     def colours(self):
         """The picture as RGB bytes (rows x columns x 3) to show: near warm, far cool, no
@@ -44,15 +52,36 @@ class Picture:
 class Eye:
     """Looks for known boxes with one depth camera. `sizes` maps a part's name to its size
     (m, its own x, y, z), as a lab knows the parts it picks. Calling it with a part and where
-    the part was planned to be takes a picture and returns a `Sighting`, or None."""
+    the part was planned to be takes a picture and returns a `Sighting`, or None.
+
+    The camera can fail as a disturbance makes it (`fail`, ADR 0038): frozen, it sends the last
+    picture it took - of the region it was last asked about - again and again, frame number
+    and all; dark, its pictures are new and have no depth. The Eye does not hide either: each
+    picture carries its frame number and how much of it has depth, for the program to judge."""
+
+    FAULTS = ('freeze', 'dark')
 
     def __init__(self, backend, camera, sensor, sizes, seed=0, ideal=False):
         self.backend, self.camera, self.sensor = backend, camera, sensor
         self.sizes = {k: tuple(float(v) for v in s) for k, s in dict(sizes).items()}
         self.rng = np.random.default_rng(seed)
         self.ideal = ideal
-        self.pictures = 0
+        self.pictures = 0           # pictures cast (each draws its own noise)
+        self.frames = 0             # frames the camera has made: what a picture's number counts
         self.last = None
+        self.fault = None           # None, or one of FAULTS
+        self.frozen = None          # the picture a frozen camera keeps sending
+        self.asked = None           # the region of the last picture asked for: (planned, search)
+
+    def fail(self, fault):
+        """The camera fails now - 'freeze' or 'dark' - or, with None, works again. Frozen, its
+        last picture is taken now, of the region it was last asked about: the world as it is
+        at this moment, sent from then on."""
+        if fault is not None and fault not in self.FAULTS:
+            raise ValueError(f'a camera fails in one of {self.FAULTS}, not {fault!r}')
+        self.fault, self.frozen = fault, None
+        if fault == 'freeze' and self.asked is not None:
+            self.frozen = self._take(*self.asked)
 
     def window(self, position, rotation, planned, search=SEARCH):
         """The rows and columns whose pixels can see the search round `planned`."""
@@ -67,12 +96,27 @@ class Eye:
         return (top, bottom), (left, right)
 
     def picture(self, planned, search=SEARCH):
-        """A depth picture of the region round `planned`, with the sensor's noise."""
+        """A depth picture of the region round `planned`, with the sensor's noise - or, from a
+        camera that has failed, its last picture again (frozen) or a picture without depth
+        (dark)."""
+        self.asked = (tuple(planned), search)
+        if self.fault == 'freeze':
+            if self.frozen is None:         # frozen before it was asked for anything
+                self.frozen = self._take(planned, search)
+            return self.frozen
+        return self._take(planned, search, dark=self.fault == 'dark')
+
+    def _take(self, planned, search=SEARCH, dark=False):
+        """A new frame of the region round `planned`: cast, with noise - or, dark, without depth."""
         position, rotation = self.backend.camera_pose(self.camera)
         (top, bottom), (left, right) = self.window(position, rotation, planned, search)
         rows, cols = np.arange(top, bottom), np.arange(left, right)
-        if not len(rows) or not len(cols):
-            return Picture((top, bottom), (left, right), np.zeros((0, 0)), position, rotation)
+        self.frames += 1
+        stamp = float(getattr(getattr(self.backend, 'data', None), 'time', 0.))
+        if not len(rows) or not len(cols) or dark:
+            return Picture((top, bottom), (left, right), np.full((len(rows), len(cols)), np.nan), position, rotation,
+                           frame=self.frames, stamp=stamp)
+        self.pictures += 1
         s = self.sensor
         x = (cols + .5 - s.width / 2) / s.fx
         y = -(rows + .5 - s.height / 2) / s.fy
@@ -82,8 +126,8 @@ class Eye:
             noise = self.rng.standard_normal(depth.shape)
             depth = depth + noise * np.where(np.isfinite(depth), s.sigma(np.nan_to_num(depth)), 0.)
         depth = np.where((depth >= s.min_depth) & (depth <= s.max_depth), depth, np.nan)
-        self.pictures += 1
-        return Picture((top, bottom), (left, right), depth.reshape(len(rows), len(cols)), position, rotation)
+        return Picture((top, bottom), (left, right), depth.reshape(len(rows), len(cols)), position, rotation,
+                       frame=self.frames, stamp=stamp)
 
     def points(self, picture):
         """The picture's pixels with depth as points in the field (n x 3), and their flat

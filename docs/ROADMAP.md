@@ -106,7 +106,9 @@ sweep pairs each set-up with itself undisturbed - the same run until the event, 
 step - and says how many successes the event broke and how sure that is (ADR 0036); the
 first such sweep found two faults in looking again, both mended: a reach stopped on the cube
 rises off it before going back, and a cube the jaws hide is not taken for gone (ADR 0037).
-Next: what the owner picks from the frontier proposals - among them a camera that can fail, how gently a part is handled, the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
+The table camera can fail - frozen or dark - and the program stops and names it instead of
+grasping where a stale picture shows the cube (ADR 0038).
+Next: what the owner picks from the frontier proposals - among them how gently a part is handled, the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its
 own camera.
