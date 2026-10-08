@@ -1217,3 +1217,30 @@ Suites on MuJoCo 3.10.0: **960 passed** with a display, 913 headless.
 Not claimed: pairs are exact on one machine and MuJoCo build; the test is about outcomes, not
 times; the as-designed set-up is chosen and stays out of the count.
 
+
+## Rise first, read the place — 2026-10-08
+
+ADR 0037 (OPEN LW-022 and LW-023, the owner's pick). A reach for the cube that is stopped, and a
+grasp that holds nothing, first rise back to the pose the arm reached down from, then go back
+to look again; a picture before the jaws go down that finds nothing asks what the picture shows
+where the cube was seen - its surface, something nearer over it, or the table beyond it - and
+only an empty place looks again. On ADR 0036's paired sweep again (59 drawn set-ups and the
+design as designed, the cube moved 5 cm sideways 2 s after the look): broken 0 of 59, at most 5
+% (1 of 59 before); every goal met in 60 of 60 (59); the cube in the bin 3.1 s later than
+undisturbed, median, as before. Set-up by set-up against the previous version: eleven moved
+set-ups had their reach stopped on the cube, which moved just after the picture before the
+jaws went down - repeat 9 is now fetched instead of dragged over the table's edge, the other
+ten finish 0.35 to 0.6 s sooner in nine and 0.3 s later in one; the other 49 met their last goal
+at the same time. Undisturbed, none looked again for nothing (2 before; repeats 35 and 43 now
+4.1 s sooner) and the other 58 met their last goal at the same time. In repeat 35's picture, 148
+of the 170 rays that would meet the cube ended on its surface and 22 on the jaws in front of it;
+with the cube moved 5 cm, 159 passed where it had been. Every disturbance on the nine set-ups
+of ADR 0030: 9 of 9 each, the median changes as ADR 0035's. The cube set down before the run:
+17 of 19 fetched looking and 6 blind, as before, within 0.1 s. Checked in
+`tests/test_rise_and_place.py` (10). Suites on MuJoCo 3.10.0: **970 passed** with a display,
+923 headless.
+
+Not claimed: the place is read for a part standing as its size says, square to the field; hidden
+is taken for there, so a part moved under the jaws' cover is found by the grasp, not before;
+rising retraces the reach in the joints, not in space; a reach pushed off its stop still goes
+straight back to it.

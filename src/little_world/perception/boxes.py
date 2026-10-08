@@ -18,6 +18,9 @@ FITS = .008       # m: a top face or height this far off the part's own is not t
 LINK = .01        # m: points closer than this in plan belong to the same cluster
 TRIES = 200       # RANSAC samples for the support plane
 TRIM = 3          # per cent of a face's points left out at each edge when measuring it
+SHRINK = .8       # of a part's size: a ray that meets this much of it meets the part wherever it stands
+                  # within a sighting's error
+COVERED = .5      # share of those rays that something nearer must cover for the place to be hidden
 
 
 @dataclass(frozen=True)
@@ -243,3 +246,39 @@ def find_box(points, planned, size, tolerance, rng, camera=None, search=SEARCH):
     period = 90. if abs(rest[0] - rest[1]) <= FITS else 180.
     yaw = (np.degrees(angle) + period / 2) % period - period / 2
     return Sighting(tuple(float(v) for v in middle), float(yaw), up, count, top), index[members]
+
+
+def _enter(origin, rays, centre, half):
+    """How far along each ray (origin + s ray) it enters a box square to the field's axes,
+    centred at `centre` with half-sides `half`: s, or inf where it misses the box."""
+    with np.errstate(divide='ignore', invalid='ignore'):
+        a = (centre - half - origin) / rays
+        b = (centre + half - origin) / rays
+    low = np.nanmax(np.minimum(a, b), axis=1)
+    high = np.nanmin(np.maximum(a, b), axis=1)
+    return np.where((high >= low) & (high > 0), low, np.inf)
+
+
+def place(points, camera, centre, size, tolerance):
+    """What a depth picture shows where a box of `size` (m, its own x, y, z, standing as sized,
+    square to the field) was seen centred at `centre`: 'there', 'empty' or 'hidden'. `points`
+    (n x 3) are the picture's points in the field, `camera` where it was taken. Each point's ray
+    that would meet the box - SHRINK of it, so that a sighting's error does not matter - is
+    followed to where it would meet the box's surface: a point within `tolerance` of that is the
+    surface, a nearer one covers it, a further one lies beyond it. Hidden when something nearer
+    covers more than COVERED of those rays; otherwise there when more of the rest end on its
+    surface than beyond it, and empty when not. The finder needs a part's top face; this needs
+    only some of its surface where it was seen (OPEN LW-022). numpy, no simulator."""
+    points = np.asarray(points, dtype=float).reshape(-1, 3)
+    camera, centre = np.asarray(camera, dtype=float), np.asarray(centre, dtype=float)
+    half = np.asarray(size, dtype=float) / 2
+    rays = points - camera
+    meets = np.isfinite(_enter(camera, rays, centre, SHRINK * half))
+    if not meets.any():
+        return 'hidden'
+    rays = rays[meets]
+    off = (1. - _enter(camera, rays, centre, half)) * np.linalg.norm(rays, axis=1)   # beyond the surface, m
+    nearer, beyond = int(np.sum(off < -tolerance)), int(np.sum(off > tolerance))
+    if nearer > COVERED * len(off):
+        return 'hidden'
+    return 'there' if len(off) - nearer - beyond >= beyond else 'empty'

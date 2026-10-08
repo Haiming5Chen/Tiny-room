@@ -78,7 +78,8 @@ def test_a_missed_grasp_opens_the_jaws_looks_again_and_reaches_where_the_cube_no
 
 def test_moved_after_the_look_it_is_seen_before_the_jaws_reach_down():
     """One more picture as the jaws are about to go down: the cube is no longer where the look
-    saw it (a finger over it hides it), so the jaws go back and look again before touching it."""
+    saw it, so the jaws go back and look again before touching it. (Found nowhere, what the
+    picture shows where it was decides: tests/test_rise_and_place.py, ADR 0037.)"""
     def cube(t):
         return (1.84, 0., .14) if t < 1.5 else (1.84, .05, .14)    # moved once the jaws set off
     runner, aimed, actions, log = run(FETCH, cube, lambda aimed: (1.84, .05, .14) in aimed)

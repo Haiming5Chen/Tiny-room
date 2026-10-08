@@ -194,9 +194,12 @@ support plane, clusters standing on it, top face laid back along its rays and fi
 never reads the simulator's pose of the part. A `look` block (program version 3) hands the
 runner a `see` callback's sightings; once three in a row agree, the poses at that stop aimed
 near the part aim where it was seen (`Runner.aimed`). Before a pose reaching for the part, the
-runner takes one more picture; a part moved or hidden, a reach that cannot settle or a grasp
-that holds nothing sends it back to the stop's approach to look again, once (`Runner.regrasp`,
-ADR 0033). `sweep.run` records each look with where the part really was, for the reports; the
+runner takes one more picture; a part moved, a reach that cannot settle or a grasp that holds
+nothing sends it back to the stop's approach to look again, once (`Runner.regrasp`, ADR 0033) -
+from a reach that went down, first back up to the pose it reached from (`Runner.above`). A
+picture that finds nothing asks the camera what it shows where the part was seen
+(`Eye.place`, `boxes.place`: the depth the part's shape would give against the depth
+measured - there, empty or hidden), and only empty looks again (ADR 0037). `sweep.run` records each look with where the part really was, for the reports; the
 program workspace draws the last picture through the canvas (`Canvas.pixels`). A `goto` may
 name the object it drives to (program version 4): once a look has seen the object, the stop
 moves as it did, along the stop's heading at most `secondary` metres (`Runner.follow`), and

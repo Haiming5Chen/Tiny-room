@@ -11,6 +11,31 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-08 · Claude (Cowork) · LW-022 and LW-023: looking again without dragging or doubting
+Did: the owner picked LW-022 and LW-023, the two faults ADR 0036's paired runs showed. ADR
+0037: a reach for the cube that is stopped, and a grasp that holds nothing, first rise back to
+the pose the arm reached down from, the way they came, then go back to look again (the runner
+keeps that pose when a reach for the object begins). A picture before the jaws go down that
+finds nothing no longer means the cube has gone: the camera says what it shows where the cube
+was seen (`Eye.place`, `boxes.place`) - each ray that would meet the cube followed to its
+surface: there, empty or hidden - and only empty looks again.
+Measured: ADR 0036's paired sweep again (59 drawn set-ups, the cube moved 5 cm 2 s after the
+look): broken 0 of 59, at most 5 % (1 of 59); every goal met 60 of 60 (59 of 60); undisturbed,
+none looked again for nothing (2 of 60); the median change from undisturbed +3.1 s, as before.
+Set-up by set-up against the previous version, only the set-ups the faults touched ran
+differently: the eleven whose reach was stopped on the moved cube (repeat 9 now fetched; the
+other ten 0.35 to 0.6 s sooner in nine, 0.3 s later in one) and the two that had looked again
+for nothing (4.1 s sooner). Every disturbance on the nine set-ups: 9 of 9, the same median
+changes; the cube set down elsewhere: 17 of 19 looking, 6 blind, as before. Traced, repeat
+35's picture: 148 of the 170 rays that would meet the cube ended on its surface; the finder
+had needed the top face, which the palm hid.
+Unfinished: hidden is taken for there, so a cube moved under the jaws' cover is found by the
+grasp, not before; a reach pushed off its stop still goes straight back to it (ADR 0031). The
+container restarted once during the measurements (the first paired sweep was lost at 94 of
+120 runs and run again from the start).
+For the owner: FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-018 to FR-021 wait for
+you.
+
 ## 2026-10-07 · Claude (Cowork) · FR-017: paired runs
 Did: the owner picked FR-017. ADR 0036: every drawn set-up of a disturbance sweep is a pair,
 its undisturbed run and its disturbed run, one run until the event - `sweep.run` can record a

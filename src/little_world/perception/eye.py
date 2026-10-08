@@ -10,7 +10,7 @@ not computed. The part's pose is never read from the simulator.
 from dataclasses import dataclass
 import numpy as np
 
-from .boxes import REACH, SEARCH, find_box
+from .boxes import REACH, SEARCH, find_box, place
 
 
 @dataclass
@@ -116,6 +116,18 @@ class Eye:
         sighting, members = found
         picture.box = valid[members]
         return sighting
+
+    def place(self, target, centre):
+        """What the last picture shows where `target` was seen centred at `centre`: 'there',
+        'empty' or 'hidden' (`boxes.place`) - for when the last call found nothing there. The
+        open jaws above a part can hide its top face, which the finder needs, while the rest of
+        it is plainly in the picture (OPEN LW-022)."""
+        if target not in self.sizes:
+            raise ValueError(f'the camera does not know the size of {target}')
+        picture = self.last if self.last is not None else self.picture(centre)
+        points, _ = self.points(picture)
+        tolerance = max(.005, 3 * self.sensor.sigma(float(np.linalg.norm(np.asarray(centre) - picture.position))))
+        return place(points, picture.position, centre, self.sizes[target], tolerance)
 
 
 def sizes_in(scene, entity='objects'):
