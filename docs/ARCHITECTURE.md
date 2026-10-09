@@ -206,7 +206,9 @@ three in a row that are not new or are dark, naming the camera (`Runner.trouble`
 `MujocoBackend.move_camera` sets a camera off the pose it was built at; an `Eye` given a
 `believed` pose casts from the camera as it stands and reads the picture as if it stood
 there, and `perception/calibration.py` says in closed form where a point is then seen
-(`sweep --camera-error`, ADR 0039). `sweep.run` records each look with where the part really was, for the reports; the
+(`sweep --camera-error`, ADR 0039). `MujocoBackend.contact_forces` gives the forces on a body
+by what touches it; `inventory/handling.py` follows the parts a field's goals carry through
+each run - pushes by partner, lean, fall - into `Run.handled` and the reports (ADR 0040). `sweep.run` records each look with where the part really was, for the reports; the
 program workspace draws the last picture through the canvas (`Canvas.pixels`). A `goto` may
 name the object it drives to (program version 4): once a look has seen the object, the stop
 moves as it did, along the stop's heading at most `secondary` metres (`Runner.follow`), and

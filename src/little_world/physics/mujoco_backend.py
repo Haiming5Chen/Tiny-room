@@ -482,6 +482,28 @@ class MujocoBackend:
                         float(c.friction[0]), pair))
         return out
 
+    def contact_forces(self, body):
+        """The forces on a body from everything touching it now: one (other body's name, force)
+        per contact, the force (x, y, z) newtons in the world, as the solver found it this step
+        (ADR 0040). MuJoCo gives a contact's force on its second geom, along the frame whose
+        first axis points from the first geom to the second; on the first it is the opposite."""
+        self._ready()
+        if body not in self._body_ids:
+            raise ValueError(f'no body called {body!r}')
+        m, d = self.model, self.data
+        idx = self._body_ids[body]
+        if not d.ncon:
+            return ()
+        owners = m.geom_bodyid[d.contact.geom[:d.ncon]]
+        out, force = [], np.zeros(6)
+        for i in np.nonzero((owners == idx).any(axis=1))[0]:
+            mj.mj_contactForce(m, d, int(i), force)
+            on_second = d.contact.frame[i].reshape(3, 3).T @ force[:3]
+            first, second = owners[i]
+            other, sign = (first, 1.) if second == idx else (second, -1.)
+            out.append((m.body(int(other)).name, tuple(float(v) for v in sign * on_second)))
+        return tuple(out)
+
     def step(self, commands):
         self._ready()
         unknown = commands.keys() - self._motor_ids.keys()

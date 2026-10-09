@@ -151,6 +151,13 @@ change the design, try again.** A desktop robotics sandbox on
   more the other ways. Over 59 drawn set-ups each, panned 1.5 degrees, tilted up 0.5 or
   raised 10 mm, every one was fetched (at least 95 %); 10 mm towards the cart, 58 of 59; tilted
   up a degree, 8 of 59 ([ADR 0039](docs/adr/0039-how-well-the-camera-must-be-mounted.md)).
+- **How gently, beside whether.** Every run now follows the part it carries: the hardest push
+  on it from the machine, the table and the bin (in a step and over 50 ms), how far it leaned
+  and how far it fell when let go. The arm on a cart squeezes the cube at about 4.8 N - thirty
+  times its weight - and lets it fall about 6 cm into the bin; in 4 of 59 drawn set-ups that met
+  every goal, it first pressed the cube into the table. With the cube moved and the program
+  blind, a jaw comes down on the cube and presses it into the table at 5 N
+  ([ADR 0040](docs/adr/0040-how-gently-a-part-is-handled.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
@@ -165,7 +172,7 @@ change the design, try again.** A desktop robotics sandbox on
   repository - 81 papers, releases and engine changes so far, each with its verdict and why -
   and can be searched: `python -m little_world.radar search camera calibration`
   ([ADR 0034](docs/adr/0034-the-radar-keeps-what-it-read.md)).
-- **985 automated tests**, including OpenGL window tests that drive the interface
+- **990 automated tests**, including OpenGL window tests that drive the interface
   through its real input callbacks. Every physical claim states its limits
   ([validation](docs/VALIDATION.md)).
 

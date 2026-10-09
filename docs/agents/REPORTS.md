@@ -11,6 +11,26 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-09 · Claude (Cowork) · FR-020: how gently a part is handled
+Did: the owner picked FR-020. ADR 0040: `MujocoBackend.contact_forces(body)` gives the forces on
+a body by what touches it, as the solver applied them; `inventory/handling.py` follows the parts
+a field's goals carry through every run (`Run.handled`): for the machine, the table and the bin,
+the hardest push on the part from any one of their bodies - so two jaws squeezing count as the
+squeeze and do not cancel - in a step and averaged over 50 ms; its largest lean; how far it fell
+when let go. The varied report adds a table, the disturbance report a row per disturbance;
+`sweep.run(timestep=)` for the instrument check.
+Measured: the resting cube's support equals its weight to 0.01 %. Halving the step moved forces
+in a step by up to 12 %, over 50 ms by up to 4 %. Over 59 drawn Fetch set-ups, all goals met:
+squeeze 4.8 N over 50 ms (3.7 to 6.7), let go 5.8 cm above the bin floor, landing at 1.9 N;
+in 4 of 59 the cube was first pressed into the table (0.6 to 2.0 N), in 2 it leaned past 20
+degrees, and carrying 0.5 kg it tipped onto its side. Cube moved 5 cm, blind: pressed into the
+table at 5.1 N; looking: the table only carried it.
+Unfinished: LW-024 (the cube is dropped into the bin, not set down) and LW-025 (some successes
+press the cube into the table first), both found, not fixed. No gentleness verdict: no sourced
+fragility or gripper rating.
+For the owner: LW-024 and LW-025; FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-019
+wait for you.
+
 ## 2026-10-08 · Claude (Cowork) · FR-021: how well the camera must be mounted
 Did: the owner picked FR-021. ADR 0039: the adapter can set a camera off the pose it was built
 at (`MujocoBackend.move_camera`), and an `Eye` given a believed pose reads its pictures as if

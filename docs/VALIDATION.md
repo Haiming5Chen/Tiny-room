@@ -1287,3 +1287,22 @@ display, 938 headless.
 
 Not claimed: one camera, one field and one gripper; errors certified one at a time; the program
 does not notice its own calibration error.
+
+## How gently — 2026-10-09
+
+ADR 0040 (FR-020, accepted by the owner). Each run now follows the parts the field's goals
+carry: for the machine, the table and the bin, the hardest push on the part from any one of
+their bodies (so a squeeze counts), in a step and over 50 ms; its largest lean; how far it fell
+when let go (`MujocoBackend.contact_forces`, `inventory/handling.py`, `Run.handled`). The
+instrument: the resting cube's support adds up to its weight to 0.01 %. Halving the step moved
+forces in a step by up to 12 % and over 50 ms by up to 4 %; the lean and the fall moved more.
+Over 59 drawn Fetch set-ups, every goal met: squeezed at 4.8 N over 50 ms (3.7 to 6.7), let go
+5.8 cm above the bin's floor (3.1 to 7.0), landing at 1.9 N in a step and leaning 9 degrees
+(medians); in 4 of the 59 the cube was pressed into the table (0.6 to 2.0 N over 50 ms) and in 2
+it leaned past 20 degrees (OPEN LW-024, LW-025). The cube moved 5 cm at the table: blind, pressed
+into the table at 5.1 N (32 times its weight); looking, the table only ever carried it.
+Checked in `tests/test_handling.py` (5). Suites on MuJoCo 3.10.0: **990 passed** with a display,
+943 headless.
+
+Not claimed: what the part can bear (no fragility sourced; the kit gripper's rating is not
+published); forces are MuJoCo's soft contacts.

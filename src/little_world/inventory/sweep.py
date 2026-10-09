@@ -45,6 +45,7 @@ class Run:
     regrasped: int = 0              # times the program looked again after a missed grasp (ADR 0033)
     message: str = ''               # the program's last word: why it stopped, when it failed
     event: float | None = None      # when the disturbance began, simulated seconds; None if it never did
+    handled: tuple = ()             # how each handled part was treated (ADR 0040): handling.Handled, one a part
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -147,7 +148,7 @@ def ranges_for(field_id):
 
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
-        retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None):
+        retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -156,7 +157,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     A program that looks does so with the field's camera, its sensor's noise drawn for this
     set-up, or without noise if `ideal` (ADR 0032); `checks` False takes every picture as new
     and lit (ADR 0038; None: the runner's own). `camera_error` sets the field's camera off the
-    pose the program believes it at (ADR 0039). `trace`, a list, gets each step's time and
+    pose the program believes it at (ADR 0039); `timestep`, seconds a step (None: the world's
+    own, 2 ms). The parts the field's goals carry are watched for how they are handled (ADR
+    0040). `trace`, a list, gets each step's time and
     a digest of every body's position and speed: what makes a set-up's undisturbed and
     disturbed runs one run until the event (ADR 0036)."""
     from little_world import Entity, World
@@ -184,7 +187,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             predicted = railed(tip, stance.height) if field.fitted else tip
     backend = MujocoBackend()
     scene = field.scene(Entity('machine', bp))
-    with World(backend, scene) as world:
+    from little_world.inventory.handling import Watching
+    with World(backend, scene, **({'timestep': timestep} if timestep else {})) as world:
         state = world.start()
         table = friction(variation)
         if table:
@@ -193,9 +197,12 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
         steps = round(duration / world.timestep)
         runner = None
         kick = Disturbing(disturbance, _root(bp)) if disturbance is not None else None
+        watching = tuple(Watching(part) for part in handled_parts(field))
 
         def watch(state):
             tracker.update(state)
+            for w in watching:
+                w.update(backend, state, world.timestep)
             if kick is not None:
                 kick.tick(backend, state, state.time - tracker.start, tracker.met)
             if trace is not None:
@@ -205,7 +212,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             from little_world.programming.observations import Observations
             from little_world.programming.program import Runner
             from little_world.control.tool_motion import ToolMotion
-            for _ in range(SETTLE):
+            for _ in range(round(SETTLE * .002 / world.timestep)):
                 state = _hold(world, drive, control, field, state)
             tracker = GoalTracker(field.goals, _root(bp))
             obs = Observations(backend.model, backend.data)
@@ -270,7 +277,13 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    runner.retries if runner else 0,
                    tuple((*look, at) for look, at in zip(runner.seen, actual)) if runner else (),
                    runner.regrasps if runner else 0, runner.message if runner else '',
-                   kick.began + tracker.start if kick is not None and kick.began is not None else None)
+                   kick.began + tracker.start if kick is not None and kick.began is not None else None,
+                   tuple(w.result() for w in watching))
+
+
+def handled_parts(field):
+    """The parts a field's goals carry somewhere - the Fetch cube - whose handling is watched."""
+    return tuple(sorted({g.target for g in field.goals if getattr(g, 'target', '')}))
 
 
 def _digest(backend):
@@ -481,6 +494,45 @@ def summaries(result):
     return out
 
 
+def _handled_by_disturbance(result):
+    """The disturbance report's lines on how the handled part was treated under each (ADR 0040)."""
+    from little_world.inventory.handling import WINDOW
+    parts = sorted({h.part for _, _, runs in result.groups for r in runs for h in r.handled})
+    if not parts:
+        return []
+    part = parts[0]
+    lines = ['', f'How {part.split("/")[-1]} was handled (ADR 0040), the median over the set-ups and, in brackets, '
+             f'the most: the force on it from the machine and from anything else, averaged over {1000 * WINDOW:.0f} ms; '
+             'how far it leaned; how far it fell when the machine let go.', '',
+             '| Disturbance | From the machine | From anything else | Leaned | Fell when let go |',
+             '| --- | --- | --- | --- | --- |']
+    for label, _, runs in result.groups:
+        hs = [h for r in runs for h in r.handled if h.part == part]
+        if not hs:
+            continue
+        machine = [h.of('steady', 'machine') for h in hs]
+        other = [max((v for k, v in h.steady if k != 'machine'), default=0.) for h in hs]
+        tilt = [h.tilt for h in hs]
+        fell = [h.dropped for h in hs if h.dropped is not None]
+        lines.append(f'| {label} | {median(machine):.2f} N ({max(machine):.2f}) | {median(other):.2f} N ({max(other):.2f}) | '
+                     f'{median(tilt):.0f} deg ({max(tilt):.0f}) | ' + (f'{100 * median(fell):.1f} cm |' if fell else '- |'))
+    return lines
+
+
+def _handling(runs):
+    """A report's lines on how each handled part was treated over these runs (ADR 0040)."""
+    from little_world.inventory.handling import WINDOW, summary, table
+    parts = sorted({h.part for r in runs for h in r.handled})
+    lines = []
+    for part in parts:
+        rows = summary([next((h for h in r.handled if h.part == part), None) for r in runs])
+        if rows:
+            lines += ['', f'How {part.split("/")[-1]} was handled, over {len(runs)} runs (ADR 0040): the force on it '
+                      f'from each thing that touched it, largest in any one step and averaged over {1000 * WINDOW:.0f} '
+                      'ms; how far it leaned; how far it fell when the machine let go.', '', *table(rows)]
+    return lines
+
+
 def _p(p):
     """An exact p as a report prints it: four places, or below the smallest of them."""
     return '< 0.0001' if p < 1e-4 else f'= {p:.4f}'
@@ -556,6 +608,7 @@ def disturbed_markdown(result):
         seen = ('' if not looked else f' {g.again or "-"} |' + (' - |' if not g.seen else
                 f' {100 * median(g.seen):.1f} cm ({100 * g.seen[0]:.1f} to {100 * g.seen[-1]:.1f}) |'))
         lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {broken} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
+    lines += _handled_by_disturbance(result)
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
@@ -589,7 +642,14 @@ def _run(r):
                tuple(Result(**x) for x in r['results']), r['tipped'], r['predicted'], r['program'], r['error'],
                r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0),
                tuple((look[0], *(tuple(v) for v in look[1:])) for look in r.get('seen', ())),
-               r.get('regrasped', 0), r.get('message', ''), r.get('event'))
+               r.get('regrasped', 0), r.get('message', ''), r.get('event'),
+               tuple(_handled(h) for h in r.get('handled', ())))
+
+
+def _handled(h):
+    from little_world.inventory.handling import Handled
+    return Handled(h['part'], tuple(tuple(x) for x in h['peak']), tuple(tuple(x) for x in h['steady']), h['tilt'],
+                   h['dropped'])
 
 
 def from_json(text):
@@ -713,6 +773,7 @@ def markdown(sweep):
                   f'saw it {1000 * median(looks):.1f} mm from where it was planned (median; {1000 * looks[0]:.1f} to '
                   f'{1000 * looks[-1]:.1f} mm), each time within {1000 * worst:.1f} mm of where it really was.']
     lines += ['', _how_sure(sweep)]
+    lines += _handling(ran)
     nominal = next((r for r in ran if r.variation.nominal), None)
     lines += ['', '## Each run', '', '| Variation | ' + ('Tipped at | Predicted | ' if tipped else '') + 'Goals | Changed from as designed |',
               '| --- | ' + ('--- | --- | ' if tipped else '') + '--- | --- |']
