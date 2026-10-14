@@ -192,8 +192,10 @@ def test_the_report_says_why_the_set_ups_missed_and_when_the_pictures_were_not_c
 
 def test_a_frozen_camera_is_named_before_any_grasp_and_on_trust_misses_twice():
     """FR-018's check on the design as designed: frozen as the cube is moved 5 cm at the table.
-    On trust the program grasps where the frozen picture shows the cube, twice (ADR 0033's
-    second try included), and misses; checked, it stops at the look, nothing grasped."""
+    On trust the program reaches down where the frozen picture shows the cube, twice (ADR
+    0033's second try included), and the second reach is stopped on the moved cube, a jaw
+    pressing it into the table - on the rocking cart before ADR 0041 both reaches went down
+    beside it and closed on nothing; checked, it stops at the look, nothing grasped."""
     pytest.importorskip('mujoco')
     from little_world.inventory.sweep import design, run as field_run
     frozen = next(d for d in DEFAULTS['fetch'] if d.label == 'camera frozen as the cube is moved 5 cm')
@@ -202,7 +204,8 @@ def test_a_frozen_camera_is_named_before_any_grasp_and_on_trust_misses_twice():
     assert checked.message == "Looked for fetch_cube: the camera's picture is not new" and checked.regrasped == 0
     assert checked.result('reached').status == 'met' and checked.result('lifted').status == 'missed'
     trusting = field_run('fetch', bp, disturbance=frozen, checks=False)
-    assert trusting.message == 'Nothing held: the grasp missed' and trusting.regrasped == 1
+    assert trusting.message == 'Timed out: pose did not settle' and trusting.regrasped == 1
+    assert trusting.result('lifted').status == 'missed'
 
 
 def test_a_dark_camera_is_named_at_the_look():

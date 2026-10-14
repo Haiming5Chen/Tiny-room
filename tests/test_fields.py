@@ -175,15 +175,17 @@ def test_the_sprint_is_timed_by_the_drive_assist_speed():
     assert abs(split - 5 / .425) / (5 / .425) < .06, split
 
 
-def climbed(heights, before=()):
+def climbed(heights, before=(), gap=None):
     """Which of these curb heights, in mm, the mobile platform clears at its drive speed,
-    each as the only curb or after the curbs in `before` (ADR 0022)."""
+    each as the only curb or after the curbs in `before` (ADR 0022); with `gap`, its casters
+    that far above the floor its drive wheels stand on (ADR 0041)."""
     from little_world.fields import curb_run
     from little_world.robots.mobile_platform import mobile_platform_blueprint
     out = []
     for h in heights:
         field = curb_run(tuple(b / 1000 for b in (*before, h)))
-        results = run('curbs', mobile_platform_blueprint(), 7. + 4. * len(before), field=field)
+        bp = mobile_platform_blueprint() if gap is None else mobile_platform_blueprint(gap)
+        results = run('curbs', bp, 7. + 4. * len(before), field=field)
         out.append(results[f'curb_{h}'].status == 'met')
     return out
 
@@ -193,8 +195,26 @@ def test_a_pushed_caster_climbs_a_curb_below_its_radius_and_not_one_well_above()
     climbs a step lower than its radius - the edge's reaction points above the axle - and
     not one taller. How close to the radius it gets depends on the engine's contacts: driven
     at 0.4 m/s it stops at 20 mm on MuJoCo 3.3.7 and climbs 22 on 3.14 (ADR 0023), so the
-    check is 18 mm against 24, clear of the limit on both sides."""
-    assert climbed((18, 24)) == [True, False]
+    check is 18 mm against 24, clear of the limit on both sides. It needs the cart free to
+    pitch: with its casters 6.5 mm up, as it was built before ADR 0041."""
+    from little_world.robots.mobile_platform import ROCKING_GAP
+    assert climbed((18, 24), gap=ROCKING_GAP) == [True, False]
+
+
+def test_on_all_four_wheels_the_cart_stalls_at_a_curb_and_gets_over_only_slewed_onto_a_drive_wheel():
+    """With both casters on the floor (ADR 0041) the front caster can rise onto a curb only
+    by tipping the whole cart back about the rear caster, which lifts the drive wheels that
+    push it: driven straight at an 18 mm curb it stalls, its motors at their limit, until it
+    has slewed round far enough for a drive wheel - 100 mm across - to meet the curb and
+    climb it. Over at 11.6 s, where with its casters 6.5 mm up, free to pitch onto either,
+    it went over at 4.1 s; in the 7 s the climbing checks give it, not at all."""
+    from little_world.fields import curb_run
+    from little_world.robots.mobile_platform import ROCKING_GAP, mobile_platform_blueprint
+    assert climbed((18,)) == [False]
+    four = run('curbs', mobile_platform_blueprint(), 25., field=curb_run((.018,)))['curb_18']
+    rocking = run('curbs', mobile_platform_blueprint(ROCKING_GAP), 25., field=curb_run((.018,)))['curb_18']
+    assert four.status == rocking.status == 'met'
+    assert four.time == pytest.approx(11.6, abs=.3) and rocking.time == pytest.approx(4.1, abs=.3)
 
 
 def test_whether_a_curb_is_climbed_does_not_depend_on_the_curb_before_it():
@@ -203,9 +223,10 @@ def test_whether_a_curb_is_climbed_does_not_depend_on_the_curb_before_it():
     4.3 cm in the air, a 10 mm curb first turned 18 and 20 mm into stops and 22 and 24 mm
     into climbs on MuJoCo 3.3.7 (ADR 0022): landing with its wheels driven left a caster
     swivelled, 37 degrees by the second curb. Started on its wheels, every release answers
-    the same both ways (ADR 0023)."""
+    the same both ways (ADR 0023). Asked of the cart that climbs: its casters 6.5 mm up."""
+    from little_world.robots.mobile_platform import ROCKING_GAP
     heights = (18, 22, 24)
-    alone, after = climbed(heights), climbed(heights, before=(10,))
+    alone, after = climbed(heights, gap=ROCKING_GAP), climbed(heights, before=(10,), gap=ROCKING_GAP)
     assert alone == after, (alone, after)
     assert alone == sorted(alone, reverse=True), alone
 

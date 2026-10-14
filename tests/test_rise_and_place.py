@@ -155,14 +155,15 @@ def test_found_nowhere_before_the_reach_the_place_decides(shows, again):
 
 def test_the_cube_hidden_under_the_jaws_is_fetched_without_looking_again():
     """LW-022: a drawn set-up (repeat 35 of ADR 0035's sweep) whose picture before the jaws
-    went down found nothing - the palm hid the cube's top face - and looked again, 4 s lost."""
+    went down found nothing - the palm hid the cube's top face - and looked again, 4 s lost.
+    In the bin by 37.4 s on the cart on all four wheels (ADR 0041), before 37 s before it."""
     pytest.importorskip('mujoco')
     from little_world.inventory.sweep import design, ranges_for, run as field_run, setups
     bp = design('mobile_manipulator')
     drawn = next(v for v in setups(ranges_for('fetch'), 59, 1) if v.label == 'repeat 35')
     result = field_run('fetch', bp, drawn)
     assert result.regrasped == 0 and all(r.status in ('met', 'kept') for r in result.results), result.message
-    assert result.result('delivered').time < 37.
+    assert result.result('delivered').time < 38.
 
 
 def test_a_reach_stopped_on_the_moved_cube_no_longer_drags_it_off_the_table():

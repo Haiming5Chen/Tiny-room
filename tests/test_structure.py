@@ -147,7 +147,8 @@ def test_a_rocker_settles_onto_the_side_its_centre_of_mass_is_on():
 
 def test_the_rigid_stance_matches_where_the_simulator_settles():
     """Asked of the design before it runs, and answered by the physics after it has
-    settled: the mobile manipulator rests on both wheels and its front caster."""
+    settled: the mobile manipulator rests on both wheels and both casters, level (ADR 0041;
+    with its casters 6.5 mm up it rested on its front caster, 2.8 degrees nose down)."""
     from little_world.construction.structure import module_roots
     from little_world.control.drive_telemetry import DriveTelemetry
     from little_world.control.mujoco_drive import MujocoDrive
@@ -155,7 +156,9 @@ def test_the_rigid_stance_matches_where_the_simulator_settles():
     bp = mobile_manipulator_blueprint()
     predicted = standing(bp)
     owner = module_roots(bp)
-    assert sorted({owner[b] for b in predicted.touching}) == ['swivel_caster_2_root', 'tread_wheel_1_root', 'tread_wheel_2_root']
+    assert sorted({owner[b] for b in predicted.touching}) == ['swivel_caster_1_root', 'swivel_caster_2_root',
+                                                             'tread_wheel_1_root', 'tread_wheel_2_root']
+    assert predicted.tilt == 0.
     backend = MujocoBackend()
     with World(backend, field_scene('sprint', Entity('machine', bp))) as world:
         world.start()
@@ -170,12 +173,17 @@ def test_the_rigid_stance_matches_where_the_simulator_settles():
         assert settled.margin == pytest.approx(predicted.margin, abs=.003)
 
 
-def test_a_platform_balanced_over_its_axle_is_a_rocker():
-    """The bare cart's centre of mass is 0.7 mm ahead of its axle: rigid, it balances on
-    its two tread patches with 3 mm to spare, and the drop onto the floor at the start
-    of a run is enough to rock it onto a caster."""
-    stance = standing(mobile_platform_blueprint())
-    assert stance.margin < .005 and stance.tilt == 0.
+def test_the_bare_cart_stands_on_all_four_and_with_its_casters_up_was_a_rocker():
+    """The bare cart's centre of mass is 0.7 mm ahead of its axle. With its casters on the
+    floor it stands level on all four, 9.4 cm inside their outline (ADR 0041). With them
+    6.5 mm up, as it was built before, it balanced on its two tread patches with 3 mm to
+    spare, and the drop onto the floor at the start of a run was enough to rock it onto a
+    caster."""
+    from little_world.robots.mobile_platform import ROCKING_GAP
+    four = standing(mobile_platform_blueprint())
+    assert four.tilt == 0. and four.margin == pytest.approx(.094, abs=.001)
+    rocker = standing(mobile_platform_blueprint(ROCKING_GAP))
+    assert rocker.margin < .005 and rocker.tilt == 0.
 
 
 # -- the window: the Assembly tab reads as modules ---------------------------------------
@@ -207,7 +215,7 @@ def test_the_assembly_tab_lists_modules_and_selects_them(monkeypatch, tmp_path):
             assert labels.count('100 mm tread wheel') == 2
             found, stance, mass = app.machine_modules()
             assert app.structure_line().startswith('base + 2 drives + arm + tool + 2 supports')
-            assert app.stance_words(found, stance).startswith('rests on 2 wheels and 1 support, tilted 2.8 deg')
+            assert app.stance_words(found, stance).startswith('rests on 2 wheels and 2 supports; centre of mass 9.0 cm inside')
             click('Compact arm / 240 mm')
         elif tick == 3:
             assert app.editor.selection == 'robot_arm_compact_1_root'

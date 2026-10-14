@@ -1306,3 +1306,31 @@ Checked in `tests/test_handling.py` (5). Suites on MuJoCo 3.10.0: **990 passed**
 
 Not claimed: what the part can bear (no fragility sourced; the kit gripper's rating is not
 published); forces are MuJoCo's soft contacts.
+
+## The cart on all four — 2026-10-14
+
+ADR 0041 (LW-025; the owner's decision of 13 October). The kit cart's swivel casters are set
+from the parts' geometry to reach the floor its drive wheels stand on, 6.5 mm lower than before:
+it stands on all four instead of teetering on its drive wheels between them. Predicted and
+settled: the mobile manipulator rests on all four, level, its centre of mass 9.0 cm inside
+(was the front caster, 2.84 degrees, 3.37 cm); the bare cart 9.4 cm (was 0.33 cm, "rocks
+easily"). Through a Fetch run it pitches within 0.2 degrees (was -4.0 to +3.0); the drive wheels
+carry 15 % less. The five set-ups that pressed the cube into the table, the program unchanged:
+the table carries only the cube's weight, the cube leans at most 6 degrees (was up to 101).
+Over 59 drawn Fetch set-ups and the twelve chosen, every goal met in all 71 and none pressed the cube
+into the table (0 of 59, at most 6 %; 4 of 59 before), the table pushing back at 0.18 N over 50 ms
+(0.17 to 0.23), the cube leaning 3.1 degrees (1.2 to 8.8); let go 6.8 cm over the bin's floor
+(5.8 before). Every cart field as designed: sprint 11.9 s (11.8); the curbs it clears are the
+same, but it stalls at one until it has slewed onto a drive wheel - an 18 mm curb at 11.6 s
+(4.1); doorway 14.4 s (14.2); the tilt table tips it at 54.6 degrees (54.0); Fetch in the bin
+at 36.2 s, as before. Shoved 6 N s at the table, the shove now comes as the jaws reach down:
+blind, a jaw knocks the cube over; looking, the program goes back and fetches it upright.
+The tilt table, varied: 53.3 to 59.4 degrees (54.0 to 58.5), within -2.3 to +1.0 of each
+prediction. Shoved in the sprint lane: 4 N s 9 of 9, 8 N s 3 of 9 (2), pushed further (89 cm
+against 79). Fetch under every disturbance: the same set-ups fetched, the cube leaning at most 9
+degrees (17). Checked in `tests/test_structure.py`, `tests/test_fields.py` (a new test: on all
+four, 18 mm in 11.6 s against 4.1 rocking), `tests/test_disturbance.py`, `tests/test_camera_faults.py`
+and `tests/test_rise_and_place.py`. Suites on MuJoCo 3.10.0: 991 passed with a display, 944 headless.
+
+Not claimed: uneven floors (four rigid points on one leave a wheel or a caster in the air), a
+sprung caster or a rocker; the cube is still let go over the bin (OPEN LW-024).

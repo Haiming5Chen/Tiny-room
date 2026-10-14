@@ -158,6 +158,13 @@ change the design, try again.** A desktop robotics sandbox on
   every goal, it first pressed the cube into the table. With the cube moved and the program
   blind, a jaw comes down on the cube and presses it into the table at 5 N
   ([ADR 0040](docs/adr/0040-how-gently-a-part-is-handled.md)).
+- **A cart that stands on all four.** Those presses came from the cart: its casters stood
+  6.5 mm off the floor, so it teetered on its drive wheels, and loaded behind its axle it tipped
+  forward as the arm reached over the cube, the jaws coming down on it. Its casters now reach the
+  floor its drive wheels stand on: it pitches under 0.2 degrees, and the table only ever carries
+  the cube. The price is curbs - unable to pitch, it stalls at one until it has slewed onto a drive
+  wheel, over an 18 mm curb at 11.6 s instead of 4.1
+  ([ADR 0041](docs/adr/0041-the-cart-stands-on-all-four.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

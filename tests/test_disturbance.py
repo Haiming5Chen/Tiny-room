@@ -150,22 +150,25 @@ def test_the_report_compares_each_set_up_with_itself_undisturbed():
     assert '- **shoved 6 N s at the table**: a push.' in page
 
 
-def test_aimed_poses_recover_a_cart_shoved_8_cm_at_the_table_and_poses_as_taught_miss():
+def test_a_cart_shoved_as_its_jaws_reach_down_knocks_the_cube_over_blind_and_looking_goes_back():
     """FR-006's check, measured: shoved 6 N s to its left once stopped at the table, the
-    cart slides about 8 cm. With ADR 0025's corrections the arm finds the cube where the
-    cart now stands and the run meets every goal, later; run as taught it misses the cube.
-    Both without going back to the stop, which ADR 0031 added after, and with the program as
-    it was before it looked (ADR 0032)."""
+    cart slides about 7 cm - as the open jaws reach down, now that it stands still sooner
+    on all four wheels (ADR 0041) - and a jaw comes down on the cube and knocks it over.
+    Blind, with ADR 0025's corrections and without going back to the stop, that is the end
+    of it: nothing is lifted. (On the rocking cart the shove came a little later and the
+    jaws caught the knocked-over cube on its side and delivered it so, 96 degrees - which
+    the goals could not see; ADR 0040 can.) The program as it is, looking, goes back to the
+    stop (ADR 0031) and fetches it upright."""
     pytest.importorskip('mujoco')
     from little_world.inventory.sweep import design, run, solve
     shove = DEFAULTS['fetch'][1]
     bp = design('mobile_manipulator')
-    blind = solve('fetch', bp, look=False)
-    corrected = run('fetch', bp, program=blind, disturbance=shove, retries=0)
-    assert all(x.status in ('met', 'kept') for x in corrected.results), corrected.results
-    assert .05 < corrected.pushed < .12 and corrected.went_back == 0
-    taught = run('fetch', bp, program=blind, disturbance=shove, corrections=0, retries=0)
-    assert {x.id: x.status for x in taught.results}['lifted'] == 'missed'
+    blind = run('fetch', bp, program=solve('fetch', bp, look=False), disturbance=shove, retries=0)
+    assert .05 < blind.pushed < .12 and blind.went_back == 0
+    assert blind.handled[0].tilt > 60. and blind.result('lifted').status == 'missed'
+    looking = run('fetch', bp, disturbance=shove)
+    assert all(x.status in ('met', 'kept') for x in looking.results), looking.message
+    assert looking.went_back == 1 and looking.handled[0].tilt < 10.
 
 
 def test_a_disturbance_sweep_reads_back_as_it_was_written():

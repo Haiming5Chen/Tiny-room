@@ -11,6 +11,29 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-14 · Claude (Cowork) · LW-025: the cart stands on all four
+Did: traced LW-025 and LW-024 (10 Oct), asked the owner (13 Oct), and on the owner's decision
+set the kit cart's swivel casters to reach the floor its drive wheels stand on (ADR 0041,
+`robots/mobile_platform.py`: from the parts' geometry; `mobile_platform_blueprint(caster_gap)`,
+`ROCKING_GAP` for the cart as it was). The cloud workspace was lost between 10 and 13 Oct and
+rebuilt from the public repository and the last bundle, with the owner's approval.
+Measured: the five set-ups that pressed the cube all carried 0.44 to 0.5 kg behind the axle; the
+cart teetered between its casters, tipping onto the front one as the arm reached over the cube,
+and the open jaws' palm stop came down on it. On all four: pitch within 0.2 degrees (up to 4
+before); over 59 drawn Fetch set-ups none pressed the cube (4 before), the table carrying 0.18 N,
+the cube leaning 3.1 degrees (median; 8.8 at most, 101 before), every goal met in all 71; under
+every disturbance the same set-ups fetched as before. The cost: the drive wheels carry 15 % less;
+at a curb the cart stalls, motors at their limit, until it has slewed onto a drive wheel - it
+clears 10 to 18 mm at 10.4 to 11.6 s instead of 3.8 to 4.1, and nothing in the curb checks' 7 s.
+Tilt table 54.6 degrees (54.0), sprint 11.9 s (11.8), a shove carries it further (8 N s: 89 cm,
+79 before).
+Unfinished: LW-024 (the cube is let go 6.8 cm over the bin's floor; the owner chose to tilt the
+jaws over the bin, next); LW-026 (new: stalling at curbs; a sprung caster or rocker not modelled).
+The weekly brain run of 12 Oct failed (usage limit); the next is 19 Oct.
+For the owner: a correction - on 13 Oct I said the cart on all four "climbs no curb, not even
+10 mm": that came from the curb checks' 7 s window; given longer it clears the same curbs, slowly.
+FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014 and FR-019 wait for you.
+
 ## 2026-10-09 · Claude (Cowork) · FR-020: how gently a part is handled
 Did: the owner picked FR-020. ADR 0040: `MujocoBackend.contact_forces(body)` gives the forces on
 a body by what touches it, as the solver applied them; `inventory/handling.py` follows the parts

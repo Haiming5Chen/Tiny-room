@@ -111,7 +111,9 @@ grasping where a stale picture shows the cube (ADR 0038). How far that camera ma
 where the program believes it is measured against a closed form: 1.5 degrees of pan, half a
 degree of upward tilt, 10 mm (ADR 0039). Beside whether a part arrived, each run says how it
 was handled - the pushes on it, its lean, its fall - and finds the Fetch program drops its cube
-into the bin and sometimes presses it into the table first (ADR 0040).
+into the bin and sometimes presses it into the table first (ADR 0040). The presses came from the
+cart teetering between its casters; it now stands on all four, steady under its arm and slow over
+a curb (ADR 0041).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its
