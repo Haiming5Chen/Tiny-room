@@ -53,6 +53,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - How we would know: done. The tilt table spread 51.4 to 58.4 deg over 20 runs, and the
   sweeps found two problems no single run showed (LW-016, fixed by ADR 0025; LW-017).
 - Cost and needs: spent: two decision records.
+- Note (weekly run, 2026-10-19): random draws certify a rate; FR-025 adds a search for where the failures are, FR-024 a check that each drawn outcome is not a knife edge.
 
 ### FR-002 · MuJoCo 3.10.0 on every machine
 - Status: done (ADR 0027, 2026-10-02; accepted by the owner the same day: one version everywhere, 3.10.0)
@@ -114,6 +115,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   with its source, or a measurement); `dcmotor` was reworked in 3.12, so the mapping is
   redone when the pin passes 3.11. One decision record.
 - Note (weekly run, 2026-10-05): MuJoCo 3.12.0 redesigned the dcmotor's on-board controller ("input attribute selects subset of [pos, vel, ff, voltage]") with a breaking change to its input modes and gain semantics, and 3.14.0 changed `mj_readCtrl` for multi-input actuators (pid, dcmotor). A dcmotor mapping written on the pinned 3.10.0 will not carry over unchanged: keep it inside the MuJoCo adapter and test it against the ADR 0011 datasheet curve (no-load speed, stall torque, coast-down), so an upgrade fails a test instead of shifting results silently. The [actuator digital-twin paper](https://www.mdpi.com/2076-0825/15/8/451) found simplified models degrade outside the regime they were tuned in, while a model with the device's limits and controller holds — model current limits, not only the torque–speed line.
+- Note (weekly run, 2026-10-19): MuJoCo 3.16.0 changed how shortcut actuators inherit parameters - only from a default of the same shortcut or `general`; motors in position-default classes are no longer position servos (issue #3561) - and fixed or affine actuators may now declare their input as pos, vel or pressure (no effect on simulation). When the pin lifts, a test that the compiled gains of every kit actuator equal its profile (Pololu 37D, XH430) should run before anything else, together with the dcmotor input change of 3.12 noted on 5 October.
 
 ### FR-005 · Tip-over margin while moving: the force-angle measure
 - Status: proposed
@@ -136,6 +138,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   `mj_rnePostConstraint`; a field, a telemetry line and one decision record. In a real lab
   it is a live warning for a mobile arm.
 - Note (weekly run, 2026-10-05): the [MNGR criterion](https://www.mdpi.com/2076-3417/16/16/8136) uses the normal ground reactions at the wheels with an inverse centre-of-mass-height factor (cheap, sensitive to top-heaviness). MuJoCo already gives the wheel normal forces, so a "lightest-loaded wheel" margin can be logged beside the force-angle measure at almost no cost; the tilt table (ADR 0020) is the ground truth for both — each must reach zero at the measured tip angle (53.99°).
+- Note (weekly run, 2026-10-19): [emergency maneuvers of differential-drive robots, arXiv 2610.05607](https://arxiv.org/abs/2610.05607) (`arxiv:2610.05607`) is a template for the hard-stop field: block-randomised trials at three speeds (45, 55 and 65 cm/s), an independent pose truth beside the encoders, and the result stated as the reaction distance for 90 % success with its uncertainty rather than one stopping distance. In Little World the truth is the simulator's pose; logging the encoders' heading beside it shows the odometry error the paper measured (4.7-5.1 degrees for reverse spins). FR-025's lightest-loaded-wheel margin is the same quantity as the 5 October MNGR note.
 
 ### FR-006 · Disturbances during a run, and recovery
 - Status: done (ADR 0030, 2026-10-03; accepted by the owner the same day)
@@ -176,6 +179,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   every time; the factory run's frame time with the conveyor full is measured and stated.
 - Cost and needs: contacts between every roller and every part cost frame time; no new
   dependency. When the pin passes 3.11 a belt becomes a second module, not a replacement.
+- Note (weekly run, 2026-10-19): nothing new - no conveyor paper in what was read; `geom/surfacevel` still needs 3.11.
 
 ### FR-008 · Agents write block programs, graded by the fields
 - Status: proposed
@@ -198,6 +202,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: the check command and a decision record; no dependency. The app calls no
   model: the agent is whoever the owner asks.
 - Note (weekly run, 2026-10-05): [LLMs for Model-Based Robot Design](https://arxiv.org/abs/2609.33423) — 0 of 30 direct LLM designs could be verified feasible; feasibility came from making the LLM write an explicit model (relations, compatibility constraints, objectives) and optimising that, and changing modelling assumptions substantially changed the feasible set. If agents are later allowed to choose kit parts, not only write block programs, make them state that model first and let the fields grade the result. This week also had six code-as-policy papers (in `docs/radar/collection.jsonl`) — FR-008's shape (programs graded by fields) is where the field is.
+- Note (weekly run, 2026-10-19): four papers this fortnight agree on what makes agent-written programs work - structured failure feedback and validation in stages. [AeroEval](https://arxiv.org/abs/2610.09764) (`arxiv:2610.09764`): static checks, then execution checks, 55 % to 95 %, each stage alone 44 % and 56 %; [BT-Agent](https://arxiv.org/abs/2610.13862) (`arxiv:2610.13862`): predefined skills returning structured failures, a text-only tier at 10.9 times the throughput; [Fly-by-Code](https://arxiv.org/abs/2610.12549) (`arxiv:2610.12549`): diagnostic programs in simulation, false "done" claims 25 to 5, success 31.7 % to 75 %; [BiGym 2.0](https://arxiv.org/abs/2610.07594) (`arxiv:2610.07594`): coding agents beat demonstration-driven RL. Little World has the pieces: blocks are the skills, the run report's named failures are the structured feedback, and the `look` block is the view probe. A cheap static tier - does the program validate, are its poses reachable - before any MuJoCo run would match AeroEval's first stage.
 
 ### FR-009 · Variation ranges from sources, the owner's lab first
 - Status: proposed
@@ -216,6 +221,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   paper for its ranges, not only the blog.
 - Note (the owner, 2026-10-03, relayed by Claude): not now - no lab work for the moment.
 - Note (weekly run, 2026-10-05; the owner: not now - evidence only): [real-to-sim reconstruction effects](https://arxiv.org/abs/2610.00731) — authored metric geometry and physics parameters vs engine defaults: r = 0.90 vs 0.51 with real success, mean error 6.97 vs 17.54 points (10 task-policy pairs × 20 runs). Cite it in the ADR that takes FR-009: sourced numbers are what make a simulated rate predict the lab.
+- Note (weekly run, 2026-10-19; the owner: not now - evidence only): [Same Action, Different Outcome](https://arxiv.org/abs/2610.10801) (`arxiv:2610.10801`) found real repeat-variability one to three orders of magnitude above the robot's repeatability, which calibrated simulators did not reproduce. When ranges are taken from the owner's lab, repeating one fixed set-up ten times on the real machine measures that spread directly - the one number a simulation cannot supply.
 
 ### FR-010 · A real servo on a pendulum bench, fitted
 - Status: proposed
@@ -242,6 +248,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   first lesson in it.
 - Note (the owner, 2026-10-03, relayed by Claude): not now - no hardware for the moment.
 - Note (weekly run, 2026-10-05; the owner: not now - evidence only): TeAR's inputs are joint temperature, motor current and supply voltage. The XH430 reports all three (X-series control table), so the pendulum bench should log them with position; the fit can then say how friction and torque change as the servo warms, and gives FR-019 servo numbers. The [actuator digital-twin paper](https://www.mdpi.com/2076-0825/15/8/451) used the same bench shape (1-DoF pendulum, MuJoCo).
+- Note (weekly run, 2026-10-19; the owner: not now - evidence only): BAM ([identified actuators](https://bam.readthedocs.io/en/latest/usage/actuators.html), the code of arXiv 2410.08650) has bench recording, fitting and MuJoCo-on-CPU guides and published parameters for Dynamixel MX-64, MX-106, XL-320 and XL-330 (not the XH430); its README reports that friction models M2-M6 cut simulation error by more than half against Coulomb-viscous on 2R arms. [IDTD](https://arxiv.org/abs/2610.10905) (`arxiv:2610.10905`) designs the bench trajectory so each segment exposes different parameters (39.6 % lower identification error). Menagerie lists a "Dynamixel 2R" model (README only, not opened). A hardware-free first step, if ever wanted: record the simulated XH430 on a simulated pendulum, fit it back with the same tool, and see which parameters a bench can separate.
 
 ### FR-011 · Grasping from the cell's camera, classical first
 - Status: done (ADR 0032, 2026-10-04, for the Fetch table; accepted by the owner 2026-10-03.
@@ -288,6 +295,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: an optional dependency (pyarrow and a video encoder), never in the core.
   LeRobot itself needs PyTorch, whose Intel-Mac wheels stopped after 2.2, so the loader
   check may run on Linux. Training a policy is a separate decision.
+- Note (weekly run, 2026-10-19): [Traceable World State](https://arxiv.org/abs/2610.12033) (`arxiv:2610.12033`): ordered, hash-chained records gave exact terminal-state replay in 103 of 103 episodes and caught 412 of 412 injected corruptions for 1.72 % more storage than plain JSONL. Exported runs could carry the commit, the MuJoCo version, a hash of the compiled model and the draw seed, with a hash chain over the run, so any number in an ADR can be re-derived and checked (stdlib `hashlib`). LeRobot is unchanged since v0.6.1 (3 August).
 
 ### FR-013 · A second engine's opinion on the static tests
 - Status: proposed
@@ -304,6 +312,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
   modelling choice and written down; either is a result.
 - Cost and needs: pydrake (whether it installs on an Intel Mac is to be checked; Linux runs
   it) and scenes trimmed to what Drake parses; nothing in the app changes.
+- Note (weekly run, 2026-10-19): Drake's [v1.27.0 notes](https://drake.mit.edu/release_notes/v1.27.0.html) say support for x86_64 ended in v1.22.0; v1.40.0 lists only a mac-arm64 tarball, and the v1.57.0 wheel list shows macOS arm64 (truncated). Drake will probably not install on the owner's Intel Mac: a second engine fits a check that runs on Linux (the cloud session) rather than in the app.
 
 ### FR-014 · Past the 3.10 pin: the engine's PID servo and moving surfaces
 - Status: proposed (blocked: no MuJoCo wheels newer than 3.10.0 for Intel Macs)
@@ -319,6 +328,8 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: a newer Mac, a Linux machine, or a source build (CMake, the C library,
   then the Python bindings): the owner's call.
 - Note (weekly run, 2026-10-05): no MuJoCo release since 3.14.0 (22 Sep 2026), so nothing changes for the 3.10.0 pin (decided on 2 Oct, after 3.14.0). For the day it lifts: 3.13.0 added "single-shot multicontact for collisions with cylinder geoms" — every wheel is a cylinder and ADR 0027 turned multiccd off because extra wheel contacts added a rolling loss, so re-run the coast-down first; the unreleased version adds the same for capsules and changes how `dampratio` is computed — check whether any Little World actuator uses `dampratio` (ADR 0014).
+- Note (weekly run, 2026-10-19): two releases since the last reading, 3.15.0 (5 October) and 3.16.0 (14 October); macOS x86_64 wheels could not be checked (the PyPI file list was unreadable), so the 3.10.0 pin stands. For the day it lifts: 3.15.0 made `dampratio` breaking (operational-space inertia at `qpos0`; check whether any kit actuator uses it, ADR 0014); 3.16.0's contact sensor reports relative contact velocity, a direct slip measurement for wheels and jaws; upcoming, multicontact also for geoms with a positive margin. One item for now: 3.16.0 says that changing a geom's size, pose, margin or gap on a compiled model could miss contacts before (stale bounding volumes).
+- Note (Claude, 2026-10-20): checked on 3.10.0 - nothing changes a geom's size, pose, margin or gap on a compiled model. Variations add the payload to the Blueprint and compile it anew, friction is written per contact (ADR 0010), a moved cube moves through its free joint, the camera's pose is not a geom's, and the Build tab's drag preview moves a whole body (`body_pos`), whose bounding volumes are in its own frame.
 
 ### FR-015 · Looking again when a grasp misses
 - Status: done (ADR 0033, 2026-10-04; accepted by the owner the same day)
@@ -368,6 +379,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - How we would know: (1) a test that twin trajectories are bitwise equal (qpos) up to the step before the event, on Fetch and Sprint; (2) a 0/9-vs-9/9 result like "cube moved 5 cm, 2 s later" before ADR 0033 becomes 9 discordant pairs, exact McNemar p = 0.0039 — a defensible claim from nine runs (re-run that case paired to see what ADR 0033 changed); (3) on the 59-draw Fetch sweep with the default disturbance, "k of 59 successes broken by the event" with its interval, consistent with today's unpaired rate.
 - Cost and needs: about a day; stdlib only; twice the disturbed runs (twins cacheable); no MuJoCo change.
 - Note (Claude, 2026-10-07): done, with three differences from the proposal. No `--paired` flag and no cache: a disturbance sweep already runs every set-up undisturbed beside its disturbed runs, so every report pairs them. Nine pairs before ADR 0033 became eight, and p = 0.0039 became 0.0078: the as-designed set-up is chosen, not drawn, and stays out of the count (ADR 0028). The step check uses a digest of every joint's position and speed, not positions alone. Measured with looking again, on the 59-draw Fetch sweep with the cube moved 5 cm 2 s after the look: 1 of 59 successes broken (0 to 9 %), p = 1, consistent with the rates alone (59 of 59 against 58 of 59); the one broken pair showed a new failure, the arm dragging a cube it had come down on off the table (OPEN LW-023).
+- Note (weekly run, 2026-10-19): [arXiv 2610.06921](https://arxiv.org/abs/2610.06921) (`arxiv:2610.06921`) uses the same paired design - with and without correction, same seed - at 3,888 episodes; FR-023 extends ADR 0036 to compare recoveries with each other.
 
 ### FR-018 · A camera that can fail: frozen picture and blackout
 - Status: done (ADR 0038, 2026-10-08; accepted by the owner the same day)
@@ -378,6 +390,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: 1–2 days; stdlib + the existing numpy perception; no new dependency.
 - Note (Claude, 2026-10-05): with ADR 0033 the picture before the jaws go down comes from the same frozen camera and agrees, and the look after a missed grasp sees the old place again, so the expectation above holds: one wasted grasp, then a second at the stale place.
 - Note (Claude, 2026-10-08): done, with the timing of "cube moved 5 cm sideways" (as the cart stops, during the look). On trust, as the 5 October note expected: the jaws went down twice at the stale place in all 9 set-ups, ending "Timed out: pose did not settle" (5) or "Nothing held" (4). Checked: all 9 named at the look, "the camera's picture is not new", nothing grasped; dark: all 9 "has no depth"; the 59-draw undisturbed runs as before to the millisecond. Two differences from the proposal: the kinds are a `camera` field ('freeze', 'dark') on any disturbance, so a fault can come with a move; and the frame number alone decides staleness (the picture's time is kept, not checked), so a frame frozen less than one picture interval before its first use is used once.
+- Note (weekly run, 2026-10-19): [PIER](https://arxiv.org/abs/2610.12123) (`arxiv:2610.12123`) measured both error kinds of a gate with one re-observation: re-looking cut wrong refusals from 57 to 18 of 120 but raised wrong proceeds from 5 to 7 of 120, and stale or falsely reassuring inputs beat thresholds. The `look` (ADR 0033, 0037, 0038) could report both kinds - wrongly refusing and wrongly proceeding - under added depth noise, not only successes.
 
 ### FR-019 · A weakened motor among the disturbances
 - Status: proposed
@@ -386,6 +399,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - In Little World: `fields/disturbance.py` kind `motor_weak` (motor, torque factor, speed factor, time); `MujocoBackend.weaken(...)` scales that actuator's gain and force range between steps; the Pololu 37D profile (ADR 0007/0011) supplies the factors with their sources; the run report names the motor and the factor. Extends ADR 0030.
 - How we would know: Sprint with one motor at 84 % torque from the start — lateral drift at the finish vs the closed-form curvature from the two wheel speeds, agreement stated in %; Fetch with one base motor weak — added time and stop error, paired with FR-017; a test that factor 1.0 changes nothing bit-for-bit.
 - Cost and needs: about a day; stdlib; independent of FR-004 (dcmotor would later let resistance itself be the parameter).
+- Note (weekly run, 2026-10-19): nothing usable - the one actuator-degradation paper this fortnight ([arXiv 2610.10934](https://arxiv.org/abs/2610.10934), `arxiv:2610.10934`) gives no degradation model in its abstract.
 
 ### FR-020 · How gently: peak force and tilt of the handled part, beside success
 - Status: done (ADR 0040, 2026-10-09; accepted by the owner the same day)
@@ -405,6 +419,46 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: about a day of work plus CPU time (8 offsets × 59 draws ≈ 470 Fetch runs — time it first); stdlib; no hardware.
 - Note (Claude, 2026-10-05): the camera's range to the cube is about 0.87-0.90 m (`fields.CAMERA_AT` (2.30, 0, 0.90) aims at (1.85, 0, 0.12)), so a degree of yaw moves the seen cube about 15 mm there, not 10.5.
 - Note (Claude, 2026-10-08): done. Pan 15.3 mm a degree (as the 5 October note said), tilt 13.1 mm along and 7.8 mm down, a shift minus itself; the jaws' margins came from shifting the camera (10.5 mm too far, 25 mm sideways, 10.3 mm too low; more the other ways), and with them the closed form put the onsets where they were measured: pan between 1.75 and 2 degrees, tilt up between 0.75 and 1. On 59 drawn set-ups: pan 1.5, tilt up 0.5 and 10 mm up held at least 95 %; 10 mm towards the cart, 58 of 59 (the edge); tilt up 1, 8 of 59. Not a variation drawn per set-up as proposed but a condition of the sweep (`--camera-error`), one error per sweep; about 370 Fetch runs.
+
+### FR-022 · How late is too late: branch each failing run from its checkpoints
+- Status: proposed
+- From: the weekly reading of 2026-10-19 (FR-W01): [RESCUE: Is This Alarm Worth Acting On?, arXiv 2610.13516](https://arxiv.org/abs/2610.13516) (`arxiv:2610.13516`: simulator and policy state restored at checkpoints and branched with alternative actions, 128,340 branches; whether a failure is recoverable depends on state and intervention together; an idealised detector tolerated only a 2.0–3.3 % false-alarm rate).
+- Idea: A detector is useful only if it fires while recovery is still possible. MuJoCo is deterministic and ADR 0036 relies on a run being identical up to an event, so save the full state (MjData and the program runner's own state) every 0.5 s of a disturbed run that fails, start the program's recovery from each checkpoint (look again, go back, rise and read the place) and find the latest checkpoint that still ends in success - the recovery deadline - against the moment the existing checks fire (ADR 0031, 0033, 0038). The other half: on undisturbed draws, trigger a recovery at a random time and measure what a false alarm costs.
+- In Little World: a new `inventory/branch.py` (`checkpoints(run, every_s=0.5)`, `branch(run, at, recovery)`) on the paired-run machinery of `inventory/sweep.py` (ADR 0036); the runner needs a snapshot of its own state (assumed not yet available; the main work). Per disturbance kind: alarm time, deadline, slack, the share of failures recoverable at the alarm. A new ADR citing 0030, 0033, 0036, 0038.
+- How we would know: (1) a branch with no recovery reproduces its parent run bit for bit (final qpos equal); (2) a table of deadline and slack for the disturbed set-ups that fail in the current sweeps; (3) a prediction to check: for a frozen camera the deadline is the start of the last descent onto the cube, within one checkpoint; (4) the false-alarm cost in seconds with its spread over 59 draws and the successes a false alarm breaks (target 0, with its Clopper-Pearson bound).
+- Cost and needs: 2 days; stdlib; branches run from the checkpoint to the end only, scanned from late to early (assumes recoverability roughly monotone near the end - check by a full scan on two set-ups first). Time one branch first.
+
+### FR-023 · A plain retreat as the baseline for every recovery
+- Status: proposed
+- From: the weekly reading of 2026-10-19 (FR-W02): [Does a Learned Corrector Beat a Simple Retreat?, arXiv 2610.06921](https://arxiv.org/abs/2610.06921) (`arxiv:2610.06921`: 3,888 paired episodes; a scripted return to an earlier joint configuration matched the learned pipeline; 43.2 % of failed episodes succeeded on a plain re-run).
+- Idea: Little World's recoveries (ADR 0031 going back, ADR 0033 looking again, ADR 0037 rising first and reading the place) were measured against no recovery. A recovery earns its complexity only if it beats the simplest thing that also moves the robot back. Add two baselines on the same draws: retreat - rise to the last "above" pose and repeat the last blocks blind; timed - the same retreat at a fixed time, without any detector. In MuJoCo a same-seed re-run is identical, so the paper's placebo is exactly zero and all spread comes from the drawn set-ups - worth stating.
+- In Little World: a `recovery=` switch on the Fetch template (`look` | `retreat` | `timed` | `none`); `sweep --disturb --recovery retreat`; ADR 0036's exact McNemar test between `look` and `retreat` on the discordant pairs; a report line "rescued by looking beyond a retreat: k of n".
+- How we would know: 9 set-ups × each disturbance kind (cube moved 5 cm, moved 2 s later, 6 N s shove, camera frozen) × the four arms. Predicted: for a moved cube retreat fails and looking wins on most pairs; for a shove that leaves the cube where it was, retreat may tie looking - a tie is a finding. Rates with Clopper-Pearson bounds, discordant pairs with exact p.
+- Cost and needs: about a day; stdlib; about 4 × 36 disturbed runs.
+
+### FR-024 · The knife-edge check: does a result survive a micrometre?
+- Status: proposed
+- From: the weekly reading of 2026-10-19 (FR-W03): [Same Action, Different Outcome: Variability in Dynamic Cloth Manipulation, arXiv 2610.10801](https://arxiv.org/abs/2610.10801) (`arxiv:2610.10801`: real repeats vary one to three orders of magnitude above the robot's repeatability; four calibrated simulators reproduced neither the size nor the ordering).
+- Idea: In MuJoCo one drawn set-up has exactly one outcome, so a sweep cannot tell a robust success from a lucky one: some outcomes sit on a knife edge, a contact that does or does not open. Re-run each drawn set-up K = 5 times with perturbations far below anything a lab controls (start pose ±1 µm and ±1e-5 rad, cube placement ±1 µm) and count outcome flips and the spread of the continuous measures (time, fall, squeeze, table press, tip angle). A result that flips under a micrometre is chance, not a property of the design, and is reported so.
+- In Little World: `inventory/sweep.py --jitter K` with the sizes as named constants and their rationale (far below the sourced ranges of ADR 0024); a column "flips under jitter" and, per measure, the ratio of jitter spread to draw spread.
+- How we would know: (1) `--jitter 0` reproduces the plain sweep bit for bit; (2) on the 59-draw Fetch: flipping set-ups, k of 59 with an interval (target 0), each one listed and examined; (3) per measure, jitter spread over draw spread below 0.1 counts as robust - the small forces (the table's 0.17–0.23 N after ADR 0041, the bin's landing in ADR 0042) are the likely ones to fail and would be reported as chaos-limited; (4) the tilt table's 54.61 degrees under jitter - a spread above 0.05 degrees (assumed threshold) is worth an entry in ADR 0029.
+- Cost and needs: about a day; stdlib; 5 × 59 = 295 Fetch runs plus the tilt table (time it first).
+
+### FR-025 · Search for the failure, not only sample: a falsifier over the sourced ranges
+- Status: proposed
+- From: the weekly reading of 2026-10-19 (FR-W04): [Generalizable Robustness Testing of DNN-Based Robotic Navigation Systems via XAI-Guided Search, arXiv 2610.06862](https://arxiv.org/abs/2610.06862) (`arxiv:2610.06862`: guided search median success 70.0 % vs 53.85 % unguided; simulated failures transferred to the real robot with precision 0.95 and recall 0.67).
+- Idea: 59 random draws certify a rate (ADR 0028, 0039) but do not say where the failures live. Add a deterministic search over the same variation box (start x, y, yaw; payload and its place; friction; cube position) that drives a continuous margin towards zero: for Fetch the jaws' capture margin, for the tilt table the tip angle minus the required one, for the cart the lightest-loaded wheel's normal force (FR-005). A stdlib optimiser (coordinate search or Nelder-Mead with restarts) started from the worst of the 59 draws; output the worst set-up found inside the sourced box with its margin, or "no failure found in N runs".
+- In Little World: a new `inventory/falsify.py`; `sweep --search N`; margin functions per field beside their goals (`fields/`); every failure found frozen as a regression test.
+- How we would know: (1) on a known failure region - the rocking cart before ADR 0041, 4 of 59 table presses, all with 0.44–0.50 kg on the deck - runs to the first failure for search against random sampling (random expects about 15); search must do better to be kept; (2) on today's design, the best margin found and its set-up; (3) the worst case found re-run under FR-024's jitter, to tell a real corner from a knife edge.
+- Cost and needs: 1–2 days; stdlib; 100–200 runs per field.
+
+### FR-026 · A grasp the program can feel: the servo's present current and position
+- Status: proposed
+- From: the weekly reading of 2026-10-19 (FR-W05): [MIM-VLA: Learning Physical Interaction Representations from Gripper Motor Feedback, arXiv 2610.08425](https://arxiv.org/abs/2610.08425) (`arxiv:2610.08425`: gripper motor current, position and velocity alone; 75.0 % vs 48.8 %; no tactile or force sensor); [How Firm Should a Grasp Be?, arXiv 2610.11221](https://arxiv.org/abs/2610.11221) (`arxiv:2610.11221`: the least force that holds without damage).
+- Idea: Whether the cube is held is judged today from the simulator's contacts, which a real robot does not have. A Dynamixel X-series servo such as the XH430 reports present position and present current. Give the program a `feel` reading, and a block, computed only from what the gripper's servo would report: the jaw stopped short of its empty-close angle and current above the no-load band means holding. The program's own decisions (a missed grasp, ADR 0033; letting go over the bin) use `feel`; the simulator's contacts stay the judge. Later, X-series current-based position mode could set the squeeze (ADR 0040, 0042) as a current limit.
+- In Little World: `MujocoBackend` exposes the gripper actuator's force; the servo profile converts torque to current with the datasheet's torque-current relation and the register's resolution (to be sourced from the ROBOTIS e-Manual, ADR 0007 style - not read yet); a `feel()` in `control/` and a `feel` block; the run report shows "felt held" beside "held (truth)".
+- How we would know: a confusion matrix of felt against truth at each decision point over the 59 drawn Fetch runs and the disturbed 9-set-up sweeps - target no "felt held" with empty jaws, every disagreement listed; the gap between the current band closing on air and squeezing; the Fetch results with `feel` driving the decisions equal to today's (paired, ADR 0036).
+- Cost and needs: about a day; stdlib; one datasheet to source; no hardware.
 
 ## Radar brief
 
