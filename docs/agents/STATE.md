@@ -7,10 +7,10 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0041. The newest: 0041 the cart stands on all four (LW-025, the
-  owner's decision); 0040 how gently a part is handled (FR-020).
-- **Tests**: on MuJoCo 3.10.0, 991 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 944 headless.
+- **Decision records** 0001 to 0042. The newest: 0042 set down, not dropped (LW-024, the owner's
+  choice); 0041 the cart stands on all four (LW-025, the owner's decision).
+- **Tests**: on MuJoCo 3.10.0, 998 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 951 headless.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006, FR-011, FR-015 to

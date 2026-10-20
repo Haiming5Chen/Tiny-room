@@ -59,6 +59,48 @@ def test_the_largest_force_in_a_step_and_over_fifty_milliseconds_the_lean_and_th
     assert untouched.result().dropped is None and untouched.result().peak == ()
 
 
+def test_a_part_that_slips_out_and_is_then_pressed_by_the_jaws_has_still_fallen():
+    """Held at 6 cm, it slips out of the jaws and lands on the bin's floor; the jaws, still
+    coming down, then press it there and let go. The machine touched it last at the floor, and
+    it fell 4 cm all the same (ADR 0042)."""
+    backend, watch, dt = Backend(), Watching('objects/cube'), .002
+    held = (('machine/pad_left', (.4, 0., 0.)), ('machine/pad_right', (-.4, 0., 0.)))
+    for z, forces in ((.06, held), (.05, ()), (.02, (('field/bin_base', (0., 0., 1.)),)),
+                      (.02, (('machine/pad_left', (0., 0., -1.5)), ('field/bin_base', (0., 0., 1.66)))),
+                      (.02, (('field/bin_base', (0., 0., .16)),))):
+        backend.forces = forces
+        watch.update(backend, state(z=z), dt)
+    assert watch.result().dropped == pytest.approx(.04)
+
+
+def test_how_far_a_part_leaned_before_it_was_held_and_how_it_came_to_rest():
+    """ADR 0042 sets the cube down with the jaws tilted, so the most it leaned over a run is
+    the jaws' doing. What was done to it before the jaws held it - pressed by one pad, say - is
+    the lean until two of the machine's bodies first squeezed it from either side; and how it
+    came to rest is its lean when the run ends."""
+    from math import cos, radians, sin
+    turned = lambda deg: state(quaternion=(cos(radians(deg / 2)), sin(radians(deg / 2)), 0., 0.))
+    backend, watch, dt = Backend(), Watching('objects/cube'), .002
+    backend.forces = (('field/table', (0., 0., .16)),)
+    watch.update(backend, state(), dt)
+    backend.forces = (('machine/palm', (0., 0., -.4)), ('field/table', (0., 0., .56)))
+    watch.update(backend, turned(12.), dt)
+    backend.forces = (('machine/pad_left', (.4, 0., 0.)), ('machine/pad_right', (-.01, 0., 0.)))
+    watch.update(backend, turned(14.), dt)          # the other pad barely touches: not held yet
+    backend.forces = (('machine/pad_left', (.4, 0., 0.)), ('machine/pad_right', (-.4, 0., 0.)))
+    watch.update(backend, turned(30.), dt)          # held, and tilted by the jaws
+    backend.forces = ()
+    watch.update(backend, turned(40.), dt)
+    backend.forces = (('field/bin_base', (0., 0., .16)),)
+    watch.update(backend, turned(3.), dt)
+    h = watch.result()
+    assert h.tilt == pytest.approx(40.) and h.before == pytest.approx(14.) and h.rest == pytest.approx(3.)
+    never = Watching('objects/cube')              # knocked over and never held
+    never.update(Backend(), state(), dt)
+    never.update(Backend(), turned(90.), dt)
+    assert never.result().before == never.result().rest == pytest.approx(90.)
+
+
 def test_runs_are_summed_up_as_a_report_shows_them():
     gentle = Handled('objects/cube', (('machine', .35), ('bin', 1.9)), (('machine', .18), ('bin', .56)), 13., .06)
     rough = Handled('objects/cube', (('machine', 4.7), ('table', 4.8)), (('machine', 4.6), ('table', 4.8)), 12.6, None)
@@ -69,6 +111,8 @@ def test_runs_are_summed_up_as_a_report_shows_them():
     lines = table(summary([gentle]))
     assert '| force from the machine, in a step | 0.35 N | 0.35 N | 0.35 N |' in lines
     assert '| leaned from how it stood | 13.0 deg | 13.0 deg | 13.0 deg |' in lines and '| fell when let go | 6.0 cm |' in lines[-1]
+    assert '| leaned before it was held | 0.0 deg | 0.0 deg | 0.0 deg |' in lines
+    assert '| leaning when it came to rest | 0.0 deg | 0.0 deg | 0.0 deg |' in lines
 
 
 def test_a_cube_resting_on_the_table_weighs_what_it_weighs():
@@ -98,9 +142,10 @@ def test_a_cube_resting_on_the_table_weighs_what_it_weighs():
 def test_jaws_brought_down_on_the_moved_cube_press_it_into_the_table():
     """ADR 0032's rough case: the cube moved 5 cm as the cart stopped, the program blind - a
     jaw comes down where the cube had been, on its edge, and presses it into the table at
-    thirty times its weight; looking, the same move is fetched and the table only ever carries
-    the cube. From the machine's side the two look alike - a jaw pressing, a jaw squeezing, some
-    4 N each - so it is the table that tells them apart."""
+    twenty times its weight (thirty before the jaws went for its upper half, ADR 0042);
+    looking, the same move is fetched and the table only ever carries the cube. From the
+    machine's side the two look alike - a jaw pressing, a jaw squeezing, some 3 to 4 N each -
+    so it is the table that tells them apart."""
     pytest.importorskip('mujoco')
     from little_world.fields.disturbance import DEFAULTS
     from little_world.inventory.sweep import design, run, solve
@@ -108,6 +153,6 @@ def test_jaws_brought_down_on_the_moved_cube_press_it_into_the_table():
     bp = design('mobile_manipulator')
     blind = run('fetch', bp, program=solve('fetch', bp, look=False), disturbance=moved).handled[0]
     looking = run('fetch', bp, program=solve('fetch', bp), disturbance=moved).handled[0]
-    assert blind.of('steady', 'table') > 25 * .159 and looking.of('steady', 'table') < .5
+    assert blind.of('steady', 'table') > 15 * .159 and looking.of('steady', 'table') < .5
     assert blind.of('steady', 'machine') > 2. and looking.of('steady', 'machine') > 2.
     assert looking.of('peak', 'bin') > 0. and blind.of('peak', 'bin') == 0.

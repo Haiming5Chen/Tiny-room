@@ -165,6 +165,13 @@ change the design, try again.** A desktop robotics sandbox on
   the cube. The price is curbs - unable to pitch, it stalls at one until it has slewed onto a drive
   wheel, over an 18 mm curb at 11.6 s instead of 4.1
   ([ADR 0041](docs/adr/0041-the-cart-stands-on-all-four.md)).
+- **Set down, not dropped.** The Fetch program let the cube fall 6.8 cm into the bin: the kit
+  arm cannot bring level jaws any lower there without hitting its own cart. Now the jaws close on
+  the cube's upper half, squeeze a little harder once they feel it, and over the bin tilt down
+  as far as lowers it most - 25 degrees for the kit cart. In all 71 set-ups of a sweep the cube
+  falls 3 mm (median; 1.1 cm at most), lands at a quarter of the push it did, and comes to rest
+  upright. Each run now also says how far a part leaned before it was held and at rest
+  ([ADR 0042](docs/adr/0042-set-down-not-dropped.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

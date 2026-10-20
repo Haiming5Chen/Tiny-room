@@ -1334,3 +1334,26 @@ and `tests/test_rise_and_place.py`. Suites on MuJoCo 3.10.0: 991 passed with a d
 
 Not claimed: uneven floors (four rigid points on one leave a wheel or a caster in the air), a
 sprung caster or a rocker; the cube is still let go over the bin (OPEN LW-024).
+
+## Set down, not dropped — 2026-10-20
+
+ADR 0042 (LW-024; the owner's choice of 13 October). The Fetch program's jaws close on the
+cube's upper half (18.3 mm higher, their lower edge at its middle), squeeze 0.6 degrees more
+once it is felt held, and over the bin tilt down by whatever angle lowers it most - 25 degrees
+for the kit cart, its lowest corner planned 2.5 mm over the floor, the jaws 10.8 mm. Over 59
+drawn set-ups and the twelve chosen, every goal met in all 71: the cube fell 0.3 cm when let go
+(0.1 to 1.1; 6.8 cm before), the bin pushed back at 0.52 N in a step (2.14) and 0.26 N over 50
+ms (0.57), the squeeze 3.9 N over 50 ms (5.0), the table 0.18 N as before; it leaned 0.0 degrees
+before it was held and at rest; in the bin at 37.3 s (36.8). Without the squeeze, 3 of 71 were
+not set down so: one crept out of the jaws and fell 3.9 cm, two were pressed onto the floor
+while held. A fall is now the most a part fell after the machine let go, before it touched it
+again (ADR 0040's measure missed a fall the jaws then pressed). Under every disturbance the same
+set-ups fetched as on the cart's sweep, each cube set down; with the cube moved 5 cm 2 s after
+the look, a jaw now comes down on it and presses it into the table at 3.3 N over 50 ms for about
+2 s before the reach is stopped (OPEN LW-029). Checked in `tests/test_set_down.py` (5),
+`tests/test_handling.py` (7) and `tests/test_disturbance.py`. Suites on MuJoCo 3.10.0: 998
+passed with a display, 951 headless.
+
+Not claimed: touch - the height comes from the plan, so a floor not where the field says is met
+harder or missed; the cube is let go 3 to 6 mm higher than planned (OPEN LW-028); what is set
+down must bear a 25 degree tilt; the squeeze is sized on the kit cube.

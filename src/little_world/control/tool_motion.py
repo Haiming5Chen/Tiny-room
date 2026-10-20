@@ -387,6 +387,13 @@ KEEP_CLEAR = .01        # m a stop that follows its object keeps from what is fi
 SEARCH_WIDE = .25       # m round the plan a look searches when the stop will follow what it sees:
                         # the Fetch table's half-width (the camera's own default is 12 cm)
 SKIM = .005             # m: parts overlapping less than this in height only touch, as wheels the floor
+SET_GAP = .002          # m over the surface an object's lowest corner is let go (ADR 0042)
+JAWS_CLEAR = .005       # m the jaws keep over that surface as they set the object down
+TILT_STEP = 5.          # degrees: jaw tilts tried over the place, from how they point
+TILT_MOST = 60.         # degrees down: the steepest tilt tried
+SQUEEZE = .02           # s the jaws keep closing once the object is felt held, before it is carried:
+                        # their 1 s ramp ends just past the kit cube, holding it at about 0.5 N a pad,
+                        # and tilted it then crept out (ADR 0042); 0.6 degrees more holds at about 1 N
 
 
 def at_base(base_now, base_plan, point):
@@ -446,17 +453,44 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
             raise ValueError(f'The arm would hit its own machine reaching the {label} point')
         raise ValueError(f'The arm cannot reach the {label} point from where the base stops: {100 * short:.1f} cm short')
     up = np.array((0., 0., 1.))
+    # The jaws close on the object's upper half - their lower edge level with its middle - so
+    # its lower half hangs below them and reaches the place before they do (ADR 0042).
     reach('above', pick, [held + clearance * up])
     reach('at', pick, [held])
-    reach('lift', pick, [held + clearance * up])
-    # A short arm reaching down past its own chassis may be stopped by it: let go higher.
-    lowest = [goal + rise * up for rise in (0., .02, .04, .06, .08)]
-    reach('over', drop, [point + clearance * up for point in lowest])
-    reach('down', drop, lowest)
-    reach('retract', drop, [goal + clearance * up])
+    jaws_low = _jaws_low(motion, seed)
+    grasp = held + ((motion.tool(angles=seed)[0][2] - jaws_low) if np.isfinite(jaws_low) else 0.) * up
+    reach('above', pick, [grasp + clearance * up])
+    reach('at', pick, [grasp])
+    reach('lift', pick, [grasp + clearance * up])
+    # Set down, not dropped (ADR 0042): the jaws carry the object level and, over the place,
+    # tilt down by whatever angle - as they point, or in TILT_STEP steps to TILT_MOST - lets the
+    # arm lower it furthest: until its lowest corner is SET_GAP over the place or the jaws are
+    # JAWS_CLEAR over it. Kept level, the kit arm stops with the cube's lowest corner 4.9 cm over
+    # the bin's floor: any lower and it hits its own cart.
+    corners = _held_corners(motion, now, pick, body, motion.angles(poses['at']))
+    best, tilt_now = None, float(np.degrees(np.arcsin(np.clip(-hold, -1., 1.))))
+    for tilt in [tilt_now] + [t for t in np.arange(TILT_STEP, TILT_MOST + 1e-9, TILT_STEP) if t > tilt_now + 1e-6]:
+        angle = hold if tilt == tilt_now else -float(np.sin(np.radians(tilt)))
+        low = _lowest(motion, now, drop, goal[:2], float(place[2]), corners, angle, seed)
+        if low is not None and (best is None or low[0] < best[0] - .001):
+            best = (*low, angle)
+    if best is None:
+        # Nothing reaches down over the place from where the base stops: let go as low as the
+        # arm reaches. A short arm reaching down past its own chassis may be stopped by it.
+        lowest = [goal + rise * up for rise in (0., .02, .04, .06, .08)]
+        reach('over', drop, [point + clearance * up for point in lowest])
+        reach('down', drop, lowest)
+        reach('retract', drop, [goal + clearance * up])
+    else:
+        _, down, angle = best
+        for label, where in (('over', down + clearance * up), ('down', down), ('retract', down + clearance * up)):
+            q, short = motion.solve(at_base(now, drop, where), seed, angle)
+            if short > REACHED or motion.self_collision(q):
+                raise ValueError(f'The arm cannot reach the {label} point from where the base stops')
+            poses[label], points[label], seed = motion.pose(q), tuple(float(v) for v in where), q
     if look:
-        # Looking, the open jaws come in short of the object at the height they will stand
-        # over it, so that a camera beyond it sees all of its top past them (ADR 0032).
+        # Looking, the open jaws come in short of the object, a clearance over its middle, so
+        # that a camera beyond it sees all of its top past them (ADR 0032).
         seed = motion.angles(poses['above'])
         short = (_jaws_reach(motion) + _plan_radius(backend, body) + .01) * np.array((*ahead, 0.))
         reach('ready', pick, [held + clearance * up - short, held + 2 * clearance * up - short])
@@ -488,7 +522,7 @@ def fetch(motion, base, jaws, target, place, clearance=.06, speed=40., reach_in=
     return Program((
         Block('action', jaws, -1, .6), *first, pose('ready' if look else 'above', speed, aimed=False),
         goto(pick, at_object), *seen, pose('at', speed / 2),
-        Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5),
+        Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5), Block('action', jaws, 1, SQUEEZE),
         pose('lift', speed / 2),
         goto(retreat, at_object), goto(drop),
         pose('over', speed / 2), pose('down', speed / 2),
@@ -531,6 +565,51 @@ def _corners(m, d, g):
     half = m.geom_size[g] if m.geom_type[g] == mj.mjtGeom.mjGEOM_BOX else np.full(3, m.geom_rbound[g])
     corners = np.array([(sx, sy, sz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]) * half
     return d.geom_xpos[g] + corners @ d.geom_xmat[g].reshape(3, 3).T
+
+
+def _held_corners(motion, now, stand, body, angles):
+    """The corners of `body` - an object the jaws close on with the arm at `angles`, the
+    machine standing at `stand` - in the frame of the tool's body, where they stay while it is
+    held (m)."""
+    m, d = motion.model, motion.data
+    world = np.array([at_base(now, stand, c) for g in range(m.ngeom) if m.geom_bodyid[g] == body
+                      for c in _corners(m, d, g)])
+    tool = motion._pose(angles)
+    return (world - tool.xpos[motion.body]) @ tool.xmat[motion.body].reshape(3, 3)
+
+
+def _lowest(motion, now, stand, xy, floor, corners, angle, seed, step=.0025):
+    """How low the arm, the machine standing at `stand` and the jaws pointing `angle` (the
+    vertical part of where they point), sets an object it holds - its corners `corners` in the
+    tool's frame - over the point `xy` on a surface at height `floor`: the tool is stepped down
+    from 12 cm over the surface until the next step would bring the object's lowest corner
+    within SET_GAP of the surface, the jaws within JAWS_CLEAR of it, or the arm out of reach or
+    into its own machine. Returns (that corner's height over the surface, the tool point there),
+    or None if the arm cannot bring that corner as low as 8 cm over it."""
+    def held_low(q):
+        tool = motion._pose(q)
+        return float(np.min((corners @ tool.xmat[motion.body].reshape(3, 3).T + tool.xpos[motion.body])[:, 2]))
+    best, chain = None, seed
+    for z in np.arange(floor + .12, floor - .05, -step):
+        q, short = motion.solve(at_base(now, stand, np.array((*xy, z))), chain, angle)
+        if short > REACHED or motion.self_collision(q):
+            break
+        low = held_low(q) - floor
+        if low < SET_GAP or _jaws_low(motion, q) < floor + JAWS_CLEAR:
+            break
+        chain = q
+        if low <= .08:
+            best = (low, np.array((*xy, z)))
+    return best
+
+
+def _jaws_low(motion, angles):
+    """The lowest point of the tool's visible parts with the arm at `angles` (m), as the
+    machine stands now."""
+    m = motion.model
+    d = motion._pose(angles)
+    return min((float(np.min(_corners(m, d, g)[:, 2])) for g in range(m.ngeom)
+                if _below(m, int(m.geom_bodyid[g]), motion.body) and m.geom_rgba[g][3] > 0), default=np.inf)
 
 
 def _jaws_reach(motion):

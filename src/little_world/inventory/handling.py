@@ -4,7 +4,8 @@ A Fetch that meets its goals after knocking the cube over, or dropping it into t
 height, is not the success a lab wants: in a lab the cube is a vial. The goals say where a part
 ended; this says how it got there - for each thing that touched it (the machine, the table,
 the bin), the hardest push on it from any one of its bodies, so that two jaws squeezing from
-either side count as the squeeze and do not cancel; how far it leaned from upright; and how far
+either side count as the squeeze and do not cancel; how far it leaned from upright - the most
+over the run, the most before the machine first held it, and at the end (ADR 0042); and how far
 it fell when the machine let it go. Read from the forces the contact solver applied each step
 (`MujocoBackend.contact_forces`) and the part's pose.
 
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 from math import acos, degrees, sqrt
 
 WINDOW = .05    # s: forces are also averaged over this long
+HELD = .05      # N: two of the machine's bodies pushing a part this hard from opposite sides hold it
 
 
 def partner(name, machine='machine/'):
@@ -43,7 +45,10 @@ class Handled:
     peak: tuple = ()        # ((partner, newtons), ...): the hardest push on it from one of each partner's bodies, in any one step
     steady: tuple = ()      # ((partner, newtons), ...): the largest force on it from each, averaged over WINDOW
     tilt: float = 0.        # degrees: the most it leaned from how it stood at the start
-    dropped: float | None = None   # m it fell after the machine last touched it; None if never touched
+    dropped: float | None = None   # m: the most it fell after the machine let go of it, before the
+                                   # machine touched it again; None if never touched (ADR 0042)
+    before: float = 0.      # degrees: the most it leaned before the machine first held it (ADR 0042)
+    rest: float = 0.        # degrees: how far it leaned when the run ended - how it came to rest
 
     def of(self, what, partner_name):
         """`what`, 'peak' or 'steady', from `partner_name` - 0 if it never touched the part."""
@@ -60,8 +65,13 @@ class Watching:
         self.sums = {}
         self.start = None           # the part's up axis at the start
         self.tilt = 0.
+        self.before = 0.            # the most it leaned until the machine first held it
+        self.gripped = False
+        self.lean = 0.              # how far it leans now
         self.released = None        # its height when the machine last touched it
         self.height = None          # its height now
+        self.lowest = None          # its lowest since the machine let go of it, while it is let go
+        self.fell = 0.              # the most it fell after the machine let go, before it touched it again
 
     def update(self, backend, state, dt):
         body = state.bodies.get(self.part) if state is not None else None
@@ -71,7 +81,8 @@ class Watching:
         if self.start is None:
             self.start = up
         cos = max(-1., min(1., sum(a * b for a, b in zip(up, self.start))))
-        self.tilt = max(self.tilt, degrees(acos(cos)))
+        lean = degrees(acos(cos))
+        self.tilt = max(self.tilt, lean)
         self.height = body.pose.position[2]
         # Each body's push on the part, then the hardest of each partner's bodies: two jaws
         # squeezing from either side cancel in a sum, and each still presses.
@@ -79,6 +90,11 @@ class Watching:
         for name, force in backend.contact_forces(self.part):
             f = pushes.get(name, (0., 0., 0.))
             pushes[name] = tuple(a + b for a, b in zip(f, force))
+        self.lean = lean
+        if not self.gripped:
+            self.gripped = _held(f for name, f in pushes.items() if name.startswith(self.machine))
+            if not self.gripped:
+                self.before = max(self.before, lean)
         totals = {}
         for name, f in pushes.items():
             who = partner(name, self.machine)
@@ -97,22 +113,35 @@ class Watching:
                 self.sums[who] -= t * f
             if span >= WINDOW - 1e-12:
                 self.steady[who] = max(self.steady.get(who, 0.), self.sums[who] / span)
+        # A fall is from where the machine let go to the lowest it then came to before the
+        # machine touched it again: a part that slips out of the jaws and is then pressed by
+        # them has fallen as far, though they touched it last (ADR 0042).
         if 'machine' in totals:
-            self.released = self.height
+            self.released, self.lowest = self.height, None
+        elif self.released is not None:
+            self.lowest = self.height if self.lowest is None else min(self.lowest, self.height)
+            self.fell = max(self.fell, self.released - self.lowest)
 
     def result(self):
         """What was watched; a partner that touched the part without pushing it is left out."""
         order = sorted((k for k, v in self.peak.items() if v > 1e-9), key=lambda k: (k != 'machine', k))
         return Handled(self.part, tuple((k, self.peak[k]) for k in order),
                        tuple((k, self.steady.get(k, 0.)) for k in order), self.tilt,
-                       None if self.released is None or self.height is None else self.released - self.height)
+                       None if self.released is None else self.fell, self.before, self.lean)
+
+
+def _held(forces):
+    """Whether two of these pushes, each at least HELD, come from opposite sides: a part
+    squeezed between them is held."""
+    strong = [f for f in forces if sqrt(sum(v * v for v in f)) >= HELD]
+    return any(sum(a * b for a, b in zip(f, g)) < 0 for i, f in enumerate(strong) for g in strong[i + 1:])
 
 
 def summary(handled):
     """Over runs (one Handled each, of the same part): for each partner, the medians and
-    largest of its peak and steady forces; the median and largest lean; the median and range of
-    the fall when let go. Rows of (label, median, low, high), forces in newtons, the lean in
-    degrees, the fall in metres - for a report."""
+    largest of its peak and steady forces; the median and range of its lean - over the run,
+    before it was held and at rest - and of the fall when let go. Rows of (label, median, low,
+    high), forces in newtons, the lean in degrees, the fall in metres - for a report."""
     from statistics import median
     handled = [h for h in handled if h is not None]
     if not handled:
@@ -127,6 +156,10 @@ def summary(handled):
             rows.append((f'force from the {who}, {said}', median(values), min(values), max(values)))
     tilts = [h.tilt for h in handled]
     rows.append(('leaned from how it stood', median(tilts), min(tilts), max(tilts)))
+    before = [h.before for h in handled]
+    rows.append(('leaned before it was held', median(before), min(before), max(before)))
+    rest = [h.rest for h in handled]
+    rows.append(('leaning when it came to rest', median(rest), min(rest), max(rest)))
     falls = [h.dropped for h in handled if h.dropped is not None]
     if falls:
         rows.append(('fell when let go', median(falls), min(falls), max(falls)))
@@ -138,7 +171,7 @@ def table(rows):
     def unit(label, v):
         if label.startswith('force'):
             return f'{v:.2f} N'
-        if label.startswith('leaned'):
+        if label.startswith('lean'):
             return f'{v:.1f} deg'
         return f'{100 * v:.1f} cm'
     lines = ['| | Median | Least | Most |', '| --- | --- | --- | --- |']

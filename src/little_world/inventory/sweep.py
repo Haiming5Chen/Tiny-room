@@ -503,9 +503,9 @@ def _handled_by_disturbance(result):
     part = parts[0]
     lines = ['', f'How {part.split("/")[-1]} was handled (ADR 0040), the median over the set-ups and, in brackets, '
              f'the most: the force on it from the machine and from anything else, averaged over {1000 * WINDOW:.0f} ms; '
-             'how far it leaned; how far it fell when the machine let go.', '',
-             '| Disturbance | From the machine | From anything else | Leaned | Fell when let go |',
-             '| --- | --- | --- | --- | --- |']
+             'how far it leaned, before it was held and as it came to rest; how far it fell when the machine let go.', '',
+             '| Disturbance | From the machine | From anything else | Leaned | Before it was held | At rest | Fell when let go |',
+             '| --- | --- | --- | --- | --- | --- | --- |']
     for label, _, runs in result.groups:
         hs = [h for r in runs for h in r.handled if h.part == part]
         if not hs:
@@ -513,9 +513,12 @@ def _handled_by_disturbance(result):
         machine = [h.of('steady', 'machine') for h in hs]
         other = [max((v for k, v in h.steady if k != 'machine'), default=0.) for h in hs]
         tilt = [h.tilt for h in hs]
+        before = [h.before for h in hs]
+        rest = [h.rest for h in hs]
         fell = [h.dropped for h in hs if h.dropped is not None]
         lines.append(f'| {label} | {median(machine):.2f} N ({max(machine):.2f}) | {median(other):.2f} N ({max(other):.2f}) | '
-                     f'{median(tilt):.0f} deg ({max(tilt):.0f}) | ' + (f'{100 * median(fell):.1f} cm |' if fell else '- |'))
+                     f'{median(tilt):.0f} deg ({max(tilt):.0f}) | {median(before):.0f} deg ({max(before):.0f}) | '
+                     f'{median(rest):.0f} deg ({max(rest):.0f}) | ' + (f'{100 * median(fell):.1f} cm |' if fell else '- |'))
     return lines
 
 
@@ -529,7 +532,8 @@ def _handling(runs):
         if rows:
             lines += ['', f'How {part.split("/")[-1]} was handled, over {len(runs)} runs (ADR 0040): the force on it '
                       f'from each thing that touched it, largest in any one step and averaged over {1000 * WINDOW:.0f} '
-                      'ms; how far it leaned; how far it fell when the machine let go.', '', *table(rows)]
+                      'ms; how far it leaned, before it was held and as it came to rest; how far it fell when the '
+                      'machine let go.', '', *table(rows)]
     return lines
 
 
@@ -649,7 +653,7 @@ def _run(r):
 def _handled(h):
     from little_world.inventory.handling import Handled
     return Handled(h['part'], tuple(tuple(x) for x in h['peak']), tuple(tuple(x) for x in h['steady']), h['tilt'],
-                   h['dropped'])
+                   h['dropped'], h.get('before', 0.), h.get('rest', 0.))
 
 
 def from_json(text):

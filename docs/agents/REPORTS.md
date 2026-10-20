@@ -11,6 +11,32 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-20 · Claude (Cowork) · LW-024: set down, not dropped; the weekly reading merged
+Did: shipped ADR 0041 (a03c950, tiny-31). Merged the weekly reading of 19 Oct (358a5e9):
+FR-022 to FR-026 proposed, its notes under 13 proposals, 53 items in the collection. On the
+owner's choice of 13 Oct, ADR 0042 (`control/tool_motion.py`): the Fetch program's jaws close on
+the cube's upper half, squeeze 0.6 degrees more once it is felt held (`SQUEEZE`), and over the
+bin tilt as far as lowers it most - 25 degrees; `inventory/handling.py` reports how far a part
+leaned before it was held and at rest, and measures a fall from each release.
+Measured: over 71 Fetch set-ups every goal met; the cube fell 0.3 cm (0.1 to 1.1; 6.8 cm
+before), the bin pushed back at 0.52 N in a step (2.14) and 0.26 N over 50 ms (0.57), squeeze
+3.9 N (5.0), in the bin at 37.3 s (36.8). Without the squeeze, 3 of 71 were not set down: the
+jaws' 1 s closing ramp ends just past the cube and held it at about 0.5 N a pad, and in one
+set-up (low pad friction) it crept 10 mm down the pads as the cart drove and slipped out 3.9 cm
+up - the jaws then pressed it at 1.65 N, and ADR 0040's fall measure had said it fell nothing;
+two were pressed onto the floor while held (0.6 N). Shoved 6 N s at the table, the blind program
+now fetches the cube upright (knocked over before). Under every disturbance the same set-ups
+fetched as before, each set down; with the cube moved 5 cm 2 s after the look, the move now
+lands after the last picture before the jaws go down, and a jaw presses the cube into the table
+at 3.3 N for about 2 s until the reach times out (OPEN LW-029, new).
+Unfinished: LW-028 (new: the rotary jaws pull the cube 11 mm towards the palm, so it is let go
+3 to 6 mm up where 2.5 was planned); LW-029 (new, above); LW-027 (new: after the merge the collection's word search
+puts a known answer in the top three for 16 of 20 questions, MRR 0.70 from 0.79); LW-026.
+For the owner: as you said on 20 Oct, I go by the weekly reading: next FR-024, the knife-edge
+check (it named this set-down's small forces as the likely ones to fail it), then FR-026,
+feeling the grasp from the servo - ADR 0042 found the hold set by when the jaws' ramp ends.
+FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014, FR-019, FR-022, FR-023 and FR-025 wait.
+
 ## 2026-10-14 · Claude (Cowork) · LW-025: the cart stands on all four
 Did: traced LW-025 and LW-024 (10 Oct), asked the owner (13 Oct), and on the owner's decision
 set the kit cart's swivel casters to reach the floor its drive wheels stand on (ADR 0041,
