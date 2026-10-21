@@ -172,6 +172,14 @@ change the design, try again.** A desktop robotics sandbox on
   falls 3 mm (median; 1.1 cm at most), lands at a quarter of the push it did, and comes to rest
   upright. Each run now also says how far a part leaned before it was held and at rest
   ([ADR 0042](docs/adr/0042-set-down-not-dropped.md)).
+- **Does a result survive a micrometre?** A sweep runs each drawn set-up once, so it cannot
+  tell a result the design earns from one it happened on. `sweep --jitter 5` runs each again
+  five times with the machine set down a micrometre off - the same set-up to any lab - and sets
+  each measure's spread under that against its spread across set-ups. The tilt table tips within
+  0.05 degrees of itself; Fetch's outcome never changed in 59 set-ups, its times, squeeze and
+  lean are the design's, and the set-down is partly chance: the cube's fall into the bin spreads
+  0.29 cm under a micrometre against 1.0 cm across set-ups
+  ([ADR 0043](docs/adr/0043-the-knife-edge-check.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

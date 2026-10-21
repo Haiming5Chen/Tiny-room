@@ -11,6 +11,21 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-21 · Claude (Cowork) · FR-024: the knife-edge check
+Did: ADR 0043 (`inventory/jitter.py`, `sweep --jitter K`): each drawn set-up of a sweep runs K
+more times with the machine set down a micrometre off under its own label, and the report sets
+each measure's spread under that against its spread across set-ups, naming the set-ups where a
+micrometre moves a measure past a tenth of that (knife edges) and those whose outcome changed.
+Measured: the tilt table (8 set-ups) and Fetch (ADR 0042's 59, 354 runs): no outcome changed.
+Fetch's time (0.10 s against 1.2 across set-ups), squeeze (0.06 N against 1.6) and lean (0.12
+degrees against 1.4) are the design's; its set-down is partly chance - the cube's fall into the
+bin spreads 0.29 cm under a micrometre against 1.0 across set-ups, the bin's push 0.07 N against
+0.35, the table's 0.013 N against 0.064. So ADR 0042's fall of 0.1 to 1.1 cm is a range the
+design gives; which value a set-up gets is chance.
+Unfinished: nothing of FR-024. LW-026 to LW-029 as before.
+For the owner: next, as you asked on 21 Oct, a robot library - robots that do not exist yet,
+imported from their own URDF or MJCF files - after merging the two readings of 21 Oct.
+
 ## 2026-10-20 · Claude (Cowork) · LW-024: set down, not dropped; the weekly reading merged
 Did: shipped ADR 0041 (a03c950, tiny-31). Merged the weekly reading of 19 Oct (358a5e9):
 FR-022 to FR-026 proposed, its notes under 13 proposals, 53 items in the collection. On the

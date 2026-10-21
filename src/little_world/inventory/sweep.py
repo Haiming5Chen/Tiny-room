@@ -61,6 +61,7 @@ class Sweep:
     ranges: Ranges
     runs: tuple
     camera: CameraError | None = None   # the field's camera off where it is believed to be (ADR 0039)
+    jitter: tuple = ()                  # the drawn set-ups run again a micrometre off (ADR 0043)
 
 
 def design(name):
@@ -311,11 +312,14 @@ def _one(args):
 
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
-          ranges=Ranges(), corrections=None, retries=None, blind=False, regrasps=None, camera_error=None):
+          ranges=Ranges(), corrections=None, retries=None, blind=False, regrasps=None, camera_error=None,
+          jitter=0):
     """Every variation's run of a field (by default the plan for `ranges`);
     `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections;
     `blind` runs the program without its looks (ADR 0032); `camera_error` sets the field's
-    camera off where the program believes it, in every run (ADR 0039)."""
+    camera off where the program believes it, in every run (ADR 0039); `jitter` runs each
+    set-up drawn at random that many times more, a micrometre off (ADR 0043)."""
+    from little_world.inventory.jitter import jittered
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
@@ -327,8 +331,9 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
             site = None     # each loaded run then reports why it could not be loaded
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
+    again = [jittered(v, k) for v in variations if v.label.startswith('repeat') for k in range(1, jitter + 1)]
     work = [(field_id, blueprint, v, program, site, None, corrections, retries, False, regrasps, None, None, camera_error)
-            for v in variations]
+            for v in (*variations, *again)]
     runs = []
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -342,8 +347,9 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
             runs.append(_one(w))
             if progress:
                 progress(len(runs), len(work), runs[-1])
-    return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs),
-                 camera_error if camera_error is not None and not camera_error.nominal else None)
+    return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs[:len(variations)]),
+                 camera_error if camera_error is not None and not camera_error.nominal else None,
+                 tuple(runs[len(variations):]))
 
 
 @dataclass(frozen=True)
@@ -663,7 +669,7 @@ def from_json(text):
     site = tuple(d['site']) if d['site'] is not None else None
     camera = d.get('camera')
     return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs,
-                 CameraError(**camera) if camera else None)
+                 CameraError(**camera) if camera else None, tuple(_run(r) for r in d.get('jitter', ())))
 
 
 # -- reading a sweep ---------------------------------------------------------------------------
@@ -778,6 +784,8 @@ def markdown(sweep):
                   f'{1000 * looks[-1]:.1f} mm), each time within {1000 * worst:.1f} mm of where it really was.']
     lines += ['', _how_sure(sweep)]
     lines += _handling(ran)
+    from little_world.inventory.jitter import lines as knife_edge
+    lines += knife_edge(drawn(sweep), sweep.jitter)
     nominal = next((r for r in ran if r.variation.nominal), None)
     lines += ['', '## Each run', '', '| Variation | ' + ('Tipped at | Predicted | ' if tipped else '') + 'Goals | Changed from as designed |',
               '| --- | ' + ('--- | --- | ' if tipped else '') + '--- | --- |']
@@ -949,7 +957,13 @@ def main(argv=None):
                         help='cap how often a program that looked looks again after a missed grasp (0: never; default: the runner\'s own)')
     parser.add_argument('--blind', action='store_true',
                         help="run the field's program without looking with the field's camera (ADR 0032)")
+    parser.add_argument('--jitter', type=int, default=0, metavar='K',
+                        help='run each set-up drawn at random K times more, set down a micrometre off (ADR 0043)')
     args = parser.parse_args(argv)
+    if args.jitter < 0:
+        parser.error('--jitter counts repeats from zero')
+    if args.jitter and args.disturb:
+        parser.error('--jitter is for a varied sweep, not --disturb')
     if args.unchecked_camera and not args.disturb:
         parser.error('--unchecked-camera is for --disturb: only a disturbance makes the camera fail')
     camera_error = None
@@ -985,7 +999,7 @@ def main(argv=None):
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
                        ranges=ranges, corrections=args.corrections, retries=args.retries, blind=args.blind,
-                       regrasps=args.regrasps, camera_error=camera_error)
+                       regrasps=args.regrasps, camera_error=camera_error, jitter=args.jitter)
         text = markdown(result)
     print(text)
     from pathlib import Path

@@ -437,7 +437,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: about a day; stdlib; about 4 × 36 disturbed runs.
 
 ### FR-024 · The knife-edge check: does a result survive a micrometre?
-- Status: proposed
+- Status: done (ADR 0043, 2026-10-21: Fetch's outcome survives a micrometre in all 59 set-ups, its set-down forces and fall only partly - as the reading of 19 Oct expected; the owner, 20 Oct: "use the weekly brain we have on decisions")
 - From: the weekly reading of 2026-10-19 (FR-W03): [Same Action, Different Outcome: Variability in Dynamic Cloth Manipulation, arXiv 2610.10801](https://arxiv.org/abs/2610.10801) (`arxiv:2610.10801`: real repeats vary one to three orders of magnitude above the robot's repeatability; four calibrated simulators reproduced neither the size nor the ordering).
 - Idea: In MuJoCo one drawn set-up has exactly one outcome, so a sweep cannot tell a robust success from a lucky one: some outcomes sit on a knife edge, a contact that does or does not open. Re-run each drawn set-up K = 5 times with perturbations far below anything a lab controls (start pose ±1 µm and ±1e-5 rad, cube placement ±1 µm) and count outcome flips and the spread of the continuous measures (time, fall, squeeze, table press, tip angle). A result that flips under a micrometre is chance, not a property of the design, and is reported so.
 - In Little World: `inventory/sweep.py --jitter K` with the sizes as named constants and their rationale (far below the sourced ranges of ADR 0024); a column "flips under jitter" and, per measure, the ratio of jitter spread to draw spread.

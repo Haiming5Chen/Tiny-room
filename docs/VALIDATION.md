@@ -1357,3 +1357,21 @@ passed with a display, 951 headless.
 Not claimed: touch - the height comes from the plan, so a floor not where the field says is met
 harder or missed; the cube is let go 3 to 6 mm higher than planned (OPEN LW-028); what is set
 down must bear a 25 degree tilt; the squeeze is sized on the kit cube.
+
+## Under a micrometre — 2026-10-21
+
+ADR 0043 (FR-024, the weekly reading of 19 October; the owner's rule of 20 October). Each drawn
+set-up of a sweep is run five times more with the machine set down within 1 micrometre of its
+place and turned within 1e-5 rad, under its own label (the same camera noise). The tilt table, 8
+set-ups: no outcome changed; it tipped within 0.05 degrees of itself against 3.7 degrees across
+set-ups. Fetch, ADR 0042's 59 set-ups (354 runs): no outcome changed; the last goal's time (0.10
+s against 1.2), the squeeze (0.06 N against 1.6) and the lean (0.12 degrees against 1.4) spread
+under a tenth of their spread across set-ups - the design's; the fall into the bin (0.29 cm
+against 1.0), the bin's push (0.07 N in a step against 0.35, 0.02 over 50 ms against 0.06) and
+the table's (0.013 N against 0.064) spread a fifth to a third of it, in 46 to 58 of the 59 - partly
+chance. Moved by nothing, a repeat is its set-up step for step. Checked in `tests/test_jitter.py`
+(4). Suites on MuJoCo 3.10.0: 1002 passed with a display, 955 headless.
+
+Not claimed: only the machine's placement is jittered (the cube's own place, the payload and
+friction are not); a micrometre is not a real repeat's variability (FR-009 would measure that);
+five repeats find a knife edge often crossed, not a rare one.
