@@ -9,6 +9,7 @@ class MujocoKeyboardControl(KeyboardPositionControl):
         self.prefix=entity_id+'/'
         self.channels={}
         self.servos={}
+        self.units={}   # a robot servo's: 'deg', 'mm' or '%' (a gripper, by its closure)
         model=backend.model
         for spec in self.specs:
             for name in spec.actuators:
@@ -17,6 +18,7 @@ class MujocoKeyboardControl(KeyboardPositionControl):
                     joint_name=backend.servo_joint_names[self.prefix+name]
                     joint=model.joint(joint_name).id
                     self.servos[name]=(actuator,channel)
+                    self.units[name]=getattr(backend,'servo_units',{}).get(self.prefix+name,'%' if channel==7 else 'deg')
                     self.channels[name]=(int(model.jnt_qposadr[joint]),int(model.jnt_dofadr[joint]),0,0,0)
                     continue
                 actuator=model.actuator(self.prefix+name).id
@@ -40,35 +42,47 @@ class MujocoKeyboardControl(KeyboardPositionControl):
             for name in spec.actuators:
                 if name not in self.servos:continue
                 idx,channel=self.servos[name]
-                rate=radians(spec.speed) if channel<7 else -255*spec.speed/100
+                unit=self.units[name]
+                rate=-255*spec.speed/100 if unit=='%' else spec.speed/1000 if unit=='mm' else radians(spec.speed)
                 target=self.targets.get(name,float(data.ctrl[idx]))+direction*rate*dt
                 lo,hi=self.backend.model.actuator_ctrlrange[idx] if self.backend.model.actuator_ctrllimited[idx] else (-6.283185307,6.283185307)
                 self.targets[name]=result[name]=max(float(lo),min(float(hi),target))
         return {self.prefix+name:value for name,value in result.items()}
 
+    def gripper(self,name):
+        """Whether this action's actuator is a model's gripper servo, driven by its closure."""
+        return self.units.get(name)=='%'
+
+    def unit(self,name):
+        return self.units.get(name,'deg')
+
     def display_position(self,name):
         from math import degrees
         q=self.channels[name][0]
-        if name in self.servos and self.servos[name][1]==7:
+        if self.gripper(name):
             return max(0.,min(100.,100*(1-float(self.backend.data.qpos[q])/.04))), '% closed'
+        if self.unit(name)=='mm':
+            return 1000*float(self.backend.data.qpos[q]), 'mm'
         return degrees(float(self.backend.data.qpos[q])), 'deg'
 
     def set_position_target(self,name,value):
         from math import radians
-        if name in self.servos and self.servos[name][1]==7:self.targets[name]=255*(1-value/100)
+        if self.gripper(name):self.targets[name]=255*(1-value/100)
+        elif self.unit(name)=='mm':self.targets[name]=value/1000
         else:self.targets[name]=radians(value)
 
     def nudge(self,name,amount):
-        """Increment a held target in displayed degrees or percentage closure."""
+        """Increment a held target in displayed degrees, millimetres or percentage closure."""
         from math import radians
         if name in self.servos:
             idx,channel=self.servos[name]
             current=self.targets.get(name,float(self.backend.data.ctrl[idx]))
-            if channel==7:
+            if self.gripper(name):
                 self.targets[name]=max(0.,min(255.,current-amount*255/100))
             else:
                 lo,hi=self.backend.model.actuator_ctrlrange[idx] if self.backend.model.actuator_ctrllimited[idx] else (-6.283185307,6.283185307)
-                self.targets[name]=max(float(lo),min(float(hi),current+radians(amount)))
+                step=amount/1000 if self.unit(name)=='mm' else radians(amount)
+                self.targets[name]=max(float(lo),min(float(hi),current+step))
         else:
             q,_,lo,hi,_=self.channels[name]
             current=self.targets.get(name,float(self.backend.data.qpos[q]))

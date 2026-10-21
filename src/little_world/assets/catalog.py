@@ -85,7 +85,48 @@ CATALOG=CATALOG+tuple(CatalogPart(id,title,'Real robots',
     for id,title,axes in (('franka_fr3','Franka Research 3 arm',7),('kinova_gen3','Kinova Gen3 arm',7),('ur5e','UR5e industrial arm',6)))
 from .lab_equipment import entries as lab_entries
 CATALOG=CATALOG+lab_entries(CatalogPart)
-BY_ID={item.id:item for item in CATALOG}
+
+
+def library_parts():
+    """The robots in the user's robot library, as parts (ADR 0044). Read each time: the
+    library changes while the app runs."""
+    from .robot_library import entries, metadata
+    parts=[]
+    for asset in entries():
+        try:meta=metadata(asset)
+        except (OSError,ValueError):continue
+        joints=len(meta['actuators'])
+        parts.append(CatalogPart(asset,meta['title'],'Real robots',
+            f"Imported from its {meta.get('format','description')} file; servos where it had none. "
+            f"Your robot library: {asset[5:]}.",f'{joints} driven joint'+('s' if joints!=1 else '')+' / imported',
+            tuple(meta['size']),'real_robot','Floor'))
+    return tuple(parts)
+
+
+def items():
+    """Every part: the catalog's, then the robot library's."""
+    return CATALOG+library_parts()
+
+
+class _ById(dict):
+    """The catalog's parts by id; a library robot's (`user:` name) found when asked for."""
+    def __missing__(self,key):
+        if isinstance(key,str) and key.startswith('user:'):
+            found=next((p for p in library_parts() if p.id==key),None)
+            if found is not None:return found
+        raise KeyError(key)
+
+    def get(self,key,default=None):
+        try:return self[key]
+        except KeyError:return default
+
+    def __contains__(self,key):
+        try:self[key]
+        except KeyError:return False
+        return True
+
+
+BY_ID=_ById({item.id:item for item in CATALOG})
 
 
 def make_part(item):

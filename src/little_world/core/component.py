@@ -1,7 +1,10 @@
 """Declarative physical parts; SI units, scalar-first quaternions."""
 from dataclasses import dataclass
 from math import isfinite, sqrt
+import re
 from .motor_profile import MotorProfile
+
+USER_ROBOT = re.compile(r'^user:[a-z0-9][a-z0-9_-]{0,39}$')   # as assets/robot_library.py names them
 
 
 def vector(value, length, name):
@@ -67,7 +70,10 @@ class Body(Component):
     robot_asset: str | None = None  # registered immutable robot assembly
 
     def __post_init__(self):
-        if self.robot_asset is not None and self.robot_asset not in ('franka_panda','franka_fr3','kinova_gen3','ur5e'):
+        # A Menagerie arm shipped with the app, or a robot from the user's library by name
+        # (`user:` and a lower-case name; ADR 0044) - never a path.
+        if self.robot_asset is not None and self.robot_asset not in ('franka_panda','franka_fr3','kinova_gen3','ur5e') \
+                and not (isinstance(self.robot_asset,str) and USER_ROBOT.match(self.robot_asset)):
             raise ValueError('Unknown registered robot asset')
         if self.catalog_part is not None and (not isinstance(self.catalog_part,str) or not self.catalog_part.strip()):
             raise ValueError("catalog_part must be a nonempty string")

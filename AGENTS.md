@@ -123,6 +123,7 @@ seven minutes on two cores.
 | `src/little_world/core/` | Blueprint, components, commands, state: standard library only |
 | `src/little_world/construction/` | assembly, docking, structure and stance (standard library) |
 | `src/little_world/physics/mujoco_backend.py` | the only MuJoCo adapter: compiles Blueprints, steps, applies commands |
+| `src/little_world/physics/importer.py` | robots from their own URDF or MJCF files into the robot library (ADR 0044) |
 | `src/little_world/control/` | drive and arm controllers, navigation, tool motion, telemetry |
 | `src/little_world/fields/` | test fields and their goals (goals read the core `State` only) |
 | `src/little_world/perception/` | depth cameras and finding known parts in their pictures (ADR 0032) |

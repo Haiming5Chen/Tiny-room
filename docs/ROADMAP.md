@@ -115,7 +115,8 @@ into the bin and sometimes presses it into the table first (ADR 0040). The press
 cart teetering between its casters; it now stands on all four, steady under its arm and slow over
 a curb (ADR 0041), and the cube is set down in the bin, not dropped (ADR 0042). A sweep can ask
 whether each result survives a micrometre: Fetch's outcome does, its set-down forces only partly
-(ADR 0043).
+(ADR 0043). A robot that does not exist yet can be brought in from its own URDF or MJCF file,
+driven and programmed like the Menagerie arms (ADR 0044).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its

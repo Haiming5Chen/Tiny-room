@@ -11,6 +11,30 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-21 · Claude (Cowork) · FR-031: robots from their own files; the readings of 21 Oct merged
+Did: merged the weekly reading and the focused reading of 21 Oct (67725f5): FR-027 to FR-035,
+notes under 10 proposals, 43 collection items. On the owner's request of 21 Oct, ADR 0044:
+`physics/importer.py` reads a URDF or MJCF file, adds a position servo to every joint the file
+leaves without a motor (stiff enough to hold the robot within 0.5 degree against its own weight,
+critically damped at the joint's inertia, limited by the file's effort), turns `<mimic>` into a
+joint equality, keeps one body per link, resolves `package://` meshes and copies them, keeps
+links overlapping at home from colliding, and reports in plain words what it found, added and
+what to check; `assets/robot_library.py` keeps the robots outside the repository, named
+`user:<name>` in designs. A file dropped on the window, or the Joint lab's "Import a robot from
+its file...", brings one in; `python -m little_world.physics.importer` from the command line.
+Servo units ('deg', 'mm', the Panda gripper's '%') now travel with each servo instead of the
+channel-7 convention.
+Measured: the test arm (4.3 kg, no motors) holds 60 and -40 degrees within 0.4 degree, within 1
+degree after 0.18 s; with a 3 N m shoulder it is reported too weak and falls to its limit; a
+mimic finger follows to 30 mm within 0.5 mm; the UR5e imported from its own file adds nothing
+and follows the shipped arm within 0.5 degree, FR3 and Gen3 import the same way, the Panda's
+file is refused by name (a tendon gripper); six broken files are refused with their reasons.
+Unfinished: LW-030 (an imported gripper is driven joint by joint, not by the grasp blocks),
+LW-031 (a tool jog ends where sent but bows 10 mm off the line). LW-026 to LW-029 as before.
+For the owner: FR-034 (the robot_descriptions catalogue: network at import time and an optional
+dependency) and FR-035 (the MCP server, which you said to delay) wait for you. Next by the
+ranking: FR-032, moving the tool rather than the joints (it would close LW-031), then FR-026.
+
 ## 2026-10-21 · Claude (Cowork) · FR-024: the knife-edge check
 Did: ADR 0043 (`inventory/jitter.py`, `sweep --jitter K`): each drawn set-up of a sweep runs K
 more times with the machine set down a micrometre off under its own label, and the report sets

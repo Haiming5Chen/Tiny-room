@@ -18,3 +18,13 @@ def hidden_native_windows(monkeypatch):
     monkeypatch.setattr(glfw,'get_cursor_pos',lambda window:cursor[0])
     swap_interval=glfw.swap_interval
     monkeypatch.setattr(glfw,'swap_interval',lambda interval:swap_interval(0))
+
+
+@pytest.fixture(autouse=True)
+def own_robot_library(tmp_path_factory, monkeypatch):
+    """No test reads or writes the user's robot library (ADR 0044): each gets an empty one."""
+    monkeypatch.setenv('LITTLE_WORLD_ROBOTS', str(tmp_path_factory.mktemp('robots')))
+    from little_world.assets import robot_library
+    robot_library.forget()
+    yield
+    robot_library.forget()

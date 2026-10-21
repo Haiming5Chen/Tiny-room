@@ -17,13 +17,13 @@ class TestWorkspace:
                 if name in self.joint_control.servos:
                     idx,channel=self.joint_control.servos[name]
                     force=float(self.data.actuator_force[idx]);available=self.joint_control.force_limit(name)
-                    if not self.model.actuator_forcelimited[idx] and channel<7:
+                    if not self.model.actuator_forcelimited[idx] and not self.joint_control.gripper(name):
                         joint=self.model.joint(self.backend.servo_joint_names['machine/'+name]).id
                         force=float(self.data.qfrc_actuator[self.model.jnt_dofadr[joint]])
                     target=self.joint_control.targets.get(name,float(self.data.ctrl[idx]))
-                    if channel==7:
+                    if self.joint_control.gripper(name) or self.joint_control.unit(name)=='mm':
                         value,unit=self.joint_control.display_position(name)
-                        target=100*(1-target/255)
+                        target=100*(1-target/255) if self.joint_control.gripper(name) else 1000*target
                         joints.append(dict(motor=name,label=spec.label,position=value,target=target,error=target-value,
                             unit=unit,force_N=force,available_N=available,limited=abs(force)>=available*.95,model='Menagerie position servo'))
                     else:
@@ -41,7 +41,7 @@ class TestWorkspace:
         tilt=degrees(acos(max(-1,min(1,float(self.data.xmat[self.root_id,8]))))) if self.root_id>=0 else 0.
         grasp=sorted(self.observations.grasped())
         jaw_targets=[target for name,target in self.joint_control.targets.items() if '_finger_' in name]
-        jaw_targets += [1-target/255 for name,target in self.joint_control.targets.items() if name in self.joint_control.servos and self.joint_control.servos[name][1]==7]
+        jaw_targets += [1-target/255 for name,target in self.joint_control.targets.items() if self.joint_control.gripper(name)]
         closure=sum(jaw_targets)/len(jaw_targets) if jaw_targets else 0.
         if float(self.data.time)==0:self.grip_history.clear();self.possible_slips.clear()
         for obj in grasp:self.grip_history[obj]=closure

@@ -180,6 +180,14 @@ change the design, try again.** A desktop robotics sandbox on
   lean are the design's, and the set-down is partly chance: the cube's fall into the bin spreads
   0.29 cm under a micrometre against 1.0 cm across set-ups
   ([ADR 0043](docs/adr/0043-the-knife-edge-check.md)).
+- **Bring your own robot.** A robot that does not exist yet can be tried: drop its URDF or
+  MuJoCo file on the window, or choose *Robot: ... → Import a robot from its file* in the Joint
+  lab. Little World copies it into your robot library, adds a position servo to every joint the
+  file leaves without a motor - stiff enough to hold the robot within half a degree against its
+  own weight, no stronger than the file's effort limit - and says in plain words what it found,
+  what it added and what to check (a misspelt attribute, a joint too weak to hold the arm up, a
+  mesh MuJoCo cannot read). The robot is then driven from the keyboard, programmed with blocks
+  and placed like the Menagerie arms ([ADR 0044](docs/adr/0044-robots-from-their-own-files.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

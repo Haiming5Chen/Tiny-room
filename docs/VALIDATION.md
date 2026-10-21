@@ -1375,3 +1375,24 @@ chance. Moved by nothing, a repeat is its set-up step for step. Checked in `test
 Not claimed: only the machine's placement is jittered (the cube's own place, the payload and
 friction are not); a micrometre is not a real repeat's variability (FR-009 would measure that);
 five repeats find a knife edge often crossed, not a rare one.
+
+## Robots from their own files — 2026-10-21
+
+ADR 0044 (FR-031; the owner, 21 October). A URDF or MJCF file is imported into a robot library
+outside the repository and driven like a Menagerie arm. Checked with robots made in the tests:
+the two-link arm (4.3 kg, no motors, its forearm a mesh in a ROS package) gets a servo on each
+joint - 631 and 112 N m/rad, set by holding its weight within 0.5 degree - and holds 60 and -40
+degrees held out sideways within 0.4 degree, within 1 degree after 0.18 s; with a 3 N m shoulder
+it is reported too weak, pushes no more than 3 N m and falls to its limit; a parallel gripper's
+mimic finger follows its leader to 30 mm within 0.5 mm, driven in millimetres; links overlapping
+at home are kept from colliding (without that the arm is pushed 4 degrees off); a two-pose block
+program completes; the tool goes where a jog sends it within 2 mm. The UR5e imported from its own
+file adds nothing and follows the shipped arm within 0.5 degree. Six broken files are refused by
+name and leave nothing behind; a misspelt `efort`, a link without mass and a COLLADA mesh are
+reported. The Joint lab imports from its file or from a file dropped on the window. Checked in
+`tests/test_robot_library.py` (18, one a window test). Suites on MuJoCo 3.10.0: 1020 passed with a display, 972 headless.
+
+Not claimed: robots that float or walk, ball and planar joints; more than 8 driven joints;
+speed limits, current, gearing or heat in the servos added; grippers from files driven by the
+grasp blocks (OPEN LW-030); a straight-line tool path (the tool bows some 10 mm on a 3.6 cm
+jog, OPEN LW-031); that a file's masses and limits are right.

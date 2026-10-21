@@ -80,7 +80,7 @@ class KeyBindings:
         self.runner.stop();self.program_keys.clear();self.clear_keys();self.paused=False
         spec=next(s for s in self.joint_control.specs if s.id==spec_id)
         for name in spec.actuators:
-            gripper=name in self.joint_control.servos and self.joint_control.servos[name][1]==7
+            gripper=self.joint_control.gripper(name)
             self.joint_control.nudge(name,direction*(10 if gripper else self.jog_step))
         self.control_selection=spec.id
         self.status=(spec.label or spec.id)+' target adjusted. Pause freezes the scene; Stop restores the design.'
@@ -104,7 +104,11 @@ class KeyBindings:
             self.edit(lambda:self.editor.bind_keys(values[0],values[1],values[2],speed,kp,kd,controller.id if controller else None))
         servos={c.id:c for c in self.editor.blueprint.components if isinstance(c,RobotServo)}
         native=controller is not None and any(a in servos for a in controller.actuators)
-        gripper=native and any(servos[a].channel==7 for a in controller.actuators)
+        bodies={c.id:c for c in self.editor.blueprint.components}
+        def closes(a):
+            from little_world.assets.robot_models import units
+            return units(bodies[servos[a].body].robot_asset)[servos[a].channel]=='%'
+        gripper=native and any(closes(a) for a in controller.actuators if a in servos)
         fields=[
             ('Action name',controller.label if controller else 'New action'),
             ('Increase / close key',controller.positive_key if controller else 'R'),
@@ -138,7 +142,7 @@ class KeyBindings:
             self.draw_program(ui,button,text,ww,wh);return
         button('Joints',x+16,145,145,lambda:setattr(self,'control_mode','Joints'),active=self.control_mode=='Joints',h=26)
         button('Tool',x+165,145,145,lambda:setattr(self,'control_mode','Tool'),active=self.control_mode=='Tool',h=26)
-        grippers=[s for s in self.joint_control.specs if any(a in self.joint_control.servos and self.joint_control.servos[a][1]==7 for a in s.actuators)]
+        grippers=[s for s in self.joint_control.specs if any(self.joint_control.gripper(a) for a in s.actuators)]
         specs=tuple(s for s in self.joint_control.specs if s not in grippers)
         rows=max(1,int((wh-488)/57))
         if self.control_mode=='Tool':
@@ -210,7 +214,7 @@ class KeyBindings:
             label=f'{spec.positive_key} / {spec.negative_key}   '+(spec.label or spec.id)
             def select(spec=spec):
                 self.control_selection=spec.id
-            gripper=any(a in self.joint_control.servos and self.joint_control.servos[a][1]==7 for a in spec.actuators)
+            gripper=any(self.joint_control.gripper(a) for a in spec.actuators)
             button(label,x+16,y,174,select,active=self.control_selection==spec.id,h=30)
             button('Open' if gripper else '-',x+196,y,54,lambda sid=spec.id:self.jog_action(sid,-1),h=30)
             button('Close' if gripper else '+',x+256,y,54,lambda sid=spec.id:self.jog_action(sid,1),h=30)

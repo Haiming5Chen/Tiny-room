@@ -421,6 +421,21 @@ Resource-bearing models require model-specific render contexts. Rebuild the main
 context after mesh model changes, and give mesh previews their own context. Never
 reuse primitive preview mesh indices against another model's GPU resources.
 
+## Robots from their own files
+
+`physics/importer.py` (MuJoCo-bound, ADR 0044) turns a URDF or MJCF file into a registered
+robot. MuJoCo's own readers parse it and `MjSpec` edits, compiles and writes it; the importer
+adds only what driving needs - position servos sized from the robot's weight and inertia, mimic
+joints as equalities, one body per link, visual shapes kept and collision shapes hidden behind
+them, links overlapping at the home pose excluded from colliding - and reports it in plain
+words. `assets/robot_library.py` (standard library) keeps the results outside the repository,
+one folder per robot that is never rewritten (`$LITTLE_WORLD_ROBOTS`, else the platform's
+application-data folder), and names them `user:<name>`. Designs carry the name, never a path:
+the core accepts the pattern, `robot_models` resolves it, and the backend attaches a library
+model exactly as it attaches a Menagerie arm. A servo's unit - 'deg', 'mm', or the Panda
+gripper's '%' - goes from `robot_models.units` through the backend (`servo_units`) to the
+keyboard control and the block programs. Tests each run with an empty library.
+
 ## Spatial drag preview and library styles
 
 Real robots and Anime / kit are catalog views over one shared Blueprint format;

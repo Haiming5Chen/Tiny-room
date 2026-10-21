@@ -7,16 +7,16 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0043. The newest: 0043 the knife-edge check (FR-024, by the
-  weekly reading, as the owner asked on 20 Oct); 0042 set down, not dropped (LW-024, the owner's
-  choice).
-- **Tests**: on MuJoCo 3.10.0, 1002 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 955 headless.
+- **Decision records** 0001 to 0044. The newest: 0044 robots from their own files (FR-031, the
+  owner's request of 21 Oct); 0043 the knife-edge check (FR-024, by the weekly reading, as the
+  owner asked on 20 Oct).
+- **Tests**: on MuJoCo 3.10.0, 1020 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 972 headless; each test runs with an empty robot library of its own.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006, FR-011, FR-015 to
-  FR-018, FR-020, FR-021 and FR-024 done; FR-031 (a robot library from URDF and MJCF files)
-  accepted by the owner on 21 October; FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014, FR-019,
+  FR-018, FR-020, FR-021, FR-024 and FR-031 (a robot library from URDF and MJCF files, the
+  owner's request of 21 October) done; FR-004, FR-005, FR-007, FR-008, FR-012 to FR-014, FR-019,
   FR-022, FR-023, FR-025 to FR-030, FR-032 and FR-033 wait for the owner (FR-019 from the
   weekly reading of 5 October, FR-022 to FR-026 from that of 19 October, FR-027 to FR-030 from
   that of 21 October, FR-031 to FR-035 from the focused reading of 21 October); FR-034 (network

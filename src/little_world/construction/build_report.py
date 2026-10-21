@@ -15,6 +15,15 @@ def build_report(blueprint):
                 p.voltage if p else '',c.max_torque,p.stall_torque if p else '',p.no_load_rpm if p else '',
                 p.source if p else '',p.checked_on if p else '',c.joint,'','','',
                 'Candidate only: mounting and mass not modeled; operating cap is an assumption; continuous capability unknown; no current/thermal/firmware model'))
+        elif isinstance(c,Body) and c.robot_asset and c.robot_asset.startswith('user:'):
+            from little_world.assets.robot_models import asset_root,title
+            import json
+            source=json.loads((asset_root(c.robot_asset)/'SOURCE.json').read_text())
+            writer.writerow((c.id,'imported robot',title(c.robot_asset),1,
+                'Imported from its own '+source['format']+' file; servos added by the importer where it had none (ADR 0044); not physical validation',
+                '','','','',source['file'],source['imported'],
+                c.parent or '','mesh assembly','fixed','file materials',
+                'Geometry, inertias and limits as its file gives them; not a purchase specification or calibrated digital twin'))
         elif isinstance(c,Body) and c.robot_asset:
             from little_world.assets.robot_models import asset_root,MODELS
             import json

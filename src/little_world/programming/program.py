@@ -126,9 +126,11 @@ class Program:
         def limits(name):
             if isinstance(parts[name],RobotServo):
                 from math import degrees
-                from little_world.assets.robot_models import metadata
-                channel=parts[name].channel
-                return (0,100) if channel==7 else tuple(degrees(x) for x in metadata(parts[parts[name].body].robot_asset)['limits'][channel])
+                from little_world.assets.robot_models import metadata, units
+                asset,channel=parts[parts[name].body].robot_asset,parts[name].channel
+                unit=units(asset)[channel]
+                if unit=='%':return (0,100)
+                return tuple(1000*x if unit=='mm' else degrees(x) for x in metadata(asset)['limits'][channel])
             return parts[parts[name].joint].limits
         for b in self.blocks:
             if b.kind in ('action','move'):

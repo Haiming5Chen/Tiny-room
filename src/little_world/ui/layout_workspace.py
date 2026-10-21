@@ -12,7 +12,7 @@ from little_world.core.scene import Scene
 from little_world.materials import METAL
 from little_world.factory.document import FactoryDocument,MachineAsset,Station,ProcessLink
 from little_world.factory.document_editor import FactoryEditor
-from little_world.assets.catalog import BY_ID,CATALOG
+from little_world.assets.catalog import BY_ID,CATALOG,items as catalog_items
 from little_world.construction.connections import euler_quaternion,rotate,module_bounds
 from .workshop import Workshop
 from .inspector import numbers,rotation_degrees
@@ -89,7 +89,7 @@ class LayoutWorkshop(Workshop):
         self.status='Machine added. Drag it into place; clearance and reach are not checked.'
 
     def add_catalog(self):
-        choices={p.title+' ['+p.id+']':p for p in CATALOG if p.variant.startswith('lab_') or p.variant=='real_robot'}
+        choices={p.title+' ['+p.id+']':p for p in catalog_items() if p.variant.startswith('lab_') or p.variant=='real_robot'}
         self.choose('Add a station / search equipment',tuple(choices),lambda name:self.add_machine(choices[name].blueprint(),choices[name].title))
 
     def builder(self):return getattr(self.workspace_host,'_workspaces',{}).get('Anime')

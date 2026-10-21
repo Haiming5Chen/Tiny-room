@@ -251,6 +251,7 @@ class MujocoBackend:
         profiles={}
         robots=[]
         servo_names={}
+        servo_units={}
         for entity in scene.entities:
             bp = entity.blueprint
             bp.validate()
@@ -313,6 +314,9 @@ class MujocoBackend:
                     frame.attach_body(child.body(meta.get('root','link0')),prefix=native_prefix)
                     for a,c in adjacent:
                         spec.add_exclude(bodyname1=native_prefix+a,bodyname2=native_prefix+c)
+                    # An imported robot's links that already touch at its home pose (ADR 0044).
+                    for a,c in meta.get('exclude',()):
+                        spec.add_exclude(bodyname1=native_prefix+a,bodyname2=native_prefix+c)
                     robots.append((name,native_prefix,meta))
                     camera_names.extend(c.name for c in child.cameras)
                     return nb
@@ -345,9 +349,13 @@ class MujocoBackend:
                                               quat=c.transform.quaternion, fovy=c.fovy)
                     camera_names.append(prefix + c.id)
                 elif isinstance(c, RobotServo):
-                    from little_world.assets.robot_models import metadata
-                    native_name=prefix+c.body+'__robot_'+metadata(bodies[c.body].robot_asset)['actuators'][c.channel]
+                    from little_world.assets.robot_models import metadata, units
+                    asset=bodies[c.body].robot_asset
+                    if c.channel>=len(metadata(asset)['actuators']):
+                        raise ValueError(f"{c.id}: the robot {asset} has no servo channel {c.channel}")
+                    native_name=prefix+c.body+'__robot_'+metadata(asset)['actuators'][c.channel]
                     servo_names[prefix+c.id]=(native_name,c.channel)
+                    servo_units[prefix+c.id]=units(asset)[c.channel]
                 elif isinstance(c, Motor):
                     # A motor's affine bias is zero unless a step gives it a slope: the
                     # sourced speed-torque line where it binds (ADR 0011), or the
@@ -408,6 +416,8 @@ class MujocoBackend:
         self._camera_ids = {n: model.camera(n).id for n in camera_names}
         self.servo_info={}
         self.servo_joint_names={}
+        # What each robot servo is driven in: 'deg', 'mm' or '%' (robot_models.units).
+        self.servo_units=dict(servo_units)
         for name,(native_name,channel) in servo_names.items():
             idx=model.actuator(native_name).id
             self._motor_ids[name]=idx

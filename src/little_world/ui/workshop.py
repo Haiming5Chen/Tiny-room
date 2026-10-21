@@ -274,6 +274,20 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                                 else mj.mjtCamera.mjCAMERA_FIXED)
             self.camera.fixedcamid = 0
 
+    ROBOT_FILES=('.urdf','.xml','.mjcf')
+
+    def files_dropped(self,paths):
+        """A robot's description file dropped on the window goes into the robot library and
+        opens in the Joint lab, ready to drive and program (ADR 0044)."""
+        robots=[p for p in paths if str(p).lower().endswith(self.ROBOT_FILES)]
+        if not robots:
+            self.status="Drop a robot's .urdf or MuJoCo .xml file on the window to import it."
+            return
+        if self.app_mode!='Real':self.switch_workspace('Real')
+        real=self.active_workspace
+        try:real.import_robot_file(robots[0])
+        except (ValueError,OSError) as error:real.status=str(error)
+
     def key(self, win, key, scancode, action, mods):
         self.last_input = time.monotonic()
         if self.dialog is not None:
@@ -826,6 +840,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             glfw.set_mouse_button_callback(self.window,lambda *args:self.active_workspace.mouse(*args))
             glfw.set_cursor_pos_callback(self.window,lambda *args:self.active_workspace.mouse_move(*args))
             glfw.set_scroll_callback(self.window,lambda *args:self.active_workspace.scroll(*args))
+            glfw.set_drop_callback(self.window,lambda window,paths:self.active_workspace.files_dropped(paths))
             def focus_changed(window,focused):
                 active=self.active_workspace
                 if not focused:

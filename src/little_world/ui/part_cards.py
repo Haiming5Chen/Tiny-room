@@ -56,7 +56,7 @@ def card_data(item_id):
     if item.variant=='real_robot':
         from little_world.assets.robot_models import metadata
         m=metadata(item.id)
-        labels=(item.capability,f"{m['mass']:.2f} kg / fixed size",'Menagerie model')
+        labels=(item.capability,f"{m['mass']:.2f} kg / fixed size",'Imported robot' if item.id.startswith('user:') else 'Menagerie model')
     return polygons,lo,hi,labels
 
 
@@ -67,8 +67,10 @@ def draw_part_picture(ui,item_id,x,y,w,h):
         return
     if BY_ID[item_id].variant=='real_robot':
         from little_world.assets.robot_models import asset_root
-        ui.image(asset_root(item_id)/'thumbnail.png',x,y,w,h)
-        return
+        picture=asset_root(item_id)/'thumbnail.png'
+        if picture.is_file():   # an imported robot has none: its outline is drawn instead
+            ui.image(picture,x,y,w,h)
+            return
     polygons,lo,hi,_=card_data(item_id)
     ui.rect(x,y,w,h,(.055,.08,.105))
     scale=min((w-14)/max(.001,hi[0]-lo[0]),(h-14)/max(.001,hi[1]-lo[1]))

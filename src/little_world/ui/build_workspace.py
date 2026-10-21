@@ -2,7 +2,7 @@
 import glfw
 import mujoco as mj
 import numpy as np
-from little_world.assets.catalog import CATALOG, BY_ID
+from little_world.assets.catalog import CATALOG, BY_ID, items as catalog_items
 
 
 from .drag_docking import DragDocking
@@ -144,7 +144,7 @@ class BuildWorkspace(DragDocking):
     def parts_items(self):
         from little_world.assets.ready_assemblies import is_ready
         words=self.parts_query.lower().split()
-        items=[p for p in CATALOG if ((p.variant=='real_robot' or p.variant.startswith('lab_')) if self.bench_style=='Real robots' else p.variant!='real_robot') and (self.bench_style!='Real robots' or getattr(self,'bench_real_filter','All')=='All' or (p.variant=='real_robot')==(self.bench_real_filter=='Arms')) and (not self.bench_hardware or is_ready(p)) and
+        items=[p for p in catalog_items() if ((p.variant=='real_robot' or p.variant.startswith('lab_')) if self.bench_style=='Real robots' else p.variant!='real_robot') and (self.bench_style!='Real robots' or getattr(self,'bench_real_filter','All')=='All' or (p.variant=='real_robot')==(self.bench_real_filter=='Arms')) and (not self.bench_hardware or is_ready(p)) and
                all(w in (p.title+' '+p.id+' '+p.category+' '+p.capability).lower() for w in words)]
         if self.bench_hardware:
             order={'real_robot':-1,'ready_base':0,'ready_arm':1,'ready_fork':2,'ready_scoop':2,'ready_tray':2,'ready_camera':2}

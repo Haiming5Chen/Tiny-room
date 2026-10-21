@@ -106,7 +106,8 @@ class Blueprint:
             elif isinstance(c, RobotServo):
                 if not isinstance(parts.get(c.body),Body) or not parts[c.body].robot_asset:
                     raise ValueError('Robot servo needs a registered robot body')
-                if parts[c.body].robot_asset!='franka_panda' and c.channel >= (6 if parts[c.body].robot_asset=='ur5e' else 7):
+                # A library robot's channels are its file's; the backend checks them (ADR 0044).
+                if parts[c.body].robot_asset in ('franka_fr3','kinova_gen3','ur5e') and c.channel >= (6 if parts[c.body].robot_asset=='ur5e' else 7):
                     raise ValueError('Servo channel outside registered robot model')
                 if sum(isinstance(v,RobotServo) and v.body==c.body and v.channel==c.channel for v in self.components)>1:
                     raise ValueError('Duplicate robot servo channel')

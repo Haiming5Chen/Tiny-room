@@ -31,23 +31,27 @@ class ToolMotion:
         tool = next((x for x in found if x.role == 'tool'), None)
         robot = next((b for b in blueprint.components if isinstance(b, Body) and b.robot_asset), None)
         servos = getattr(control, 'servos', {})
+        units = getattr(control, 'units', {})
+
+        def gripper(name):
+            return units.get(name, '%' if servos[name][1] == 7 else 'deg') == '%'
         if tool is not None:
             self.tool_module = tool
             self.body = m.body(self.prefix + tool.root).id
             self.jaws = tuple(tool.actuators)
         elif robot is not None:
             # A registered robot model: its tool point is given, its jaws are its gripper servo.
-            from little_world.assets.robot_models import TOOLS, metadata
+            from little_world.assets.robot_models import metadata, tool as tool_of
             native = self.prefix + robot.id + '__robot_'
             meta = metadata(robot.robot_asset)
-            name, _ = TOOLS.get(robot.robot_asset, (None, None))
+            name, _ = tool_of(robot.robot_asset)
             if name is None:
                 last = meta.get('servo_joints', meta['joints'])[min(6, len(meta['joints']) - 1)]
                 self.body = int(m.jnt_bodyid[m.joint(native + last).id])
             else:
                 self.body = m.body(native + name).id
             self.tool_module = next(x for x in found if x.root == robot.id)
-            self.jaws = tuple(n for n, (_, channel) in servos.items() if channel == 7)
+            self.jaws = tuple(n for n in servos if gripper(n))
         else:
             raise ValueError('Tool moves need an arm with a tool module, such as a gripper')
         chain, body = set(), self.body
@@ -63,7 +67,7 @@ class ToolMotion:
                 if name not in control.channels:
                     continue
                 if name in servos:
-                    if servos[name][1] == 7:
+                    if gripper(name):
                         continue
                     joint = m.joint(backend.servo_joint_names[self.prefix + name]).id
                 else:
@@ -89,8 +93,8 @@ class ToolMotion:
             arm = next((x for x in found if x.role == 'arm' and x.root in set(blueprint_ancestors(found, tool))), None)
             base = arm.root if arm else found[0].root
         else:
-            from little_world.assets.robot_models import TOOLS
-            self.offset = np.array(TOOLS.get(robot.robot_asset, (None, (0., 0., 0.)))[1])
+            from little_world.assets.robot_models import tool as tool_of
+            self.offset = np.array(tool_of(robot.robot_asset)[1])
             base = robot.id
         length = np.linalg.norm(self.offset)
         self.pointing = self.offset / length if length > 1e-3 else np.array((0., 0., 1.))
