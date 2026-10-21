@@ -150,8 +150,8 @@ def test_the_questions_with_known_answers_are_answerable_and_words_answer_most(t
     """The measurement ADR 0034 reports, repeated: every expected entry is in the collection,
     and words alone put one in the top three for at least 15 of the 20 questions (17 when
     it was written, of 81 entries; the latent share did no better). At 134 entries, 16 of 20,
-    the mean reciprocal rank 0.70 where it was 0.79: more entries share the questions' words
-    (OPEN LW-027)."""
+    the mean reciprocal rank 0.70 where it was 0.79; at 177, 15 of 20 and 0.69: more entries
+    share the questions' words (OPEN LW-027)."""
     questions = [json.loads(row) for row in (ROOT / 'docs' / 'radar' / 'queries.jsonl').read_text().splitlines()]
     kept = collection.read(ROOT / collection.PATH)
     assert len(questions) == 20 and all(e in kept for q in questions for e in q['expect'])
