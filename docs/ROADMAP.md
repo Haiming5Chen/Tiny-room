@@ -121,7 +121,8 @@ line when stepped, or driven by held keys (ADR 0045). The Guide opens on five le
 checks itself (ADR 0046). A gripper in a robot's file is found at import, squeezes, and holds as
 the grasp blocks need (ADR 0047). A program feels its grasp from its jaw servos' registers, not the
 simulator's contacts (ADR 0048). Decisions are certified on draws they were not tuned on: the
-Fetch program on 59 fresh set-ups (ADR 0049).
+Fetch program on 59 fresh set-ups (ADR 0049). A contact census shows the multiccd setting decides
+none of the face-on-face contacts the results rest on, only the casters' (ADR 0050).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its

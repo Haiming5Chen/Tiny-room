@@ -189,7 +189,10 @@ broke and rescued, tested exactly by `confidence.mcnemar` (ADR 0036). Every swee
 seed its set-ups were drawn with; `inventory/holdout.py` (standard library, ADR 0049) keeps the
 ledger of seeds decisions were tuned or judged on (`docs/sweeps/seeds.jsonl`), lets `sweep
 --holdout` draw only with a seed the ledger has not seen for the field - entered before the run -
-and reads a held-out sweep beside its tuning sweep.
+and reads a held-out sweep beside its tuning sweep. `MujocoBackend.contact_census` counts the
+contact points between each pair of bodies at an instant, as the model is set and with multiccd
+on, both on copies of the instant; `inventory/census.py` (ADR 0050) takes it at the moments a
+Fetch run's results are decided, through a sweep run's `probe`, which is handed every step.
 
 A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
 names a Blueprint camera in the field and its sensor, whose numbers are in

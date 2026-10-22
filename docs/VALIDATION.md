@@ -1486,3 +1486,21 @@ cube's least lean 26.0 degrees (26.2). Checked in `tests/test_holdout.py` (5). S
 Not claimed: that sweeps outside the ledger used seed 1 (October's did); a failure rate below
 about 5 % (59 fresh draws without one); held-out checks of the chosen set-ups, which every sweep
 shares.
+
+## A contact census — 2026-10-22
+
+ADR 0050 (FR-030, the weekly reading of 21 October). The Fetch field run once as designed, its
+contacts counted every 20 ms, as the model is set (multiccd off) and on a copy of the instant
+with multiccd on, at the cart standing at its start and at the table, the cube held, carried and
+resting in the bin. Box on box, the same count either way: the cube on the table 4 points (1-2 as
+it is lifted), the jaw pads on it 1-4 each (the left 1-2: the rotary jaws meet it at an edge), the
+palm stop 1-2, the cube in the bin 3-4, each tread on the floor 2-6. The casters' wheels on the
+floor - a cylinder on a box - 1 point as set, 4-5 with multiccd. Beside it, the casters' loads:
+one 2.2-8.2 N through the run, the other 0.4-2.5 N standing and nothing at the bin, 0.2 mm above
+the floor. On the bench, a box resting on its face keeps its 4 points with multiccd, a lying
+cylinder goes from 1 to several. Checked in `tests/test_census.py` (3). Suites on MuJoCo 3.10.0:
+1052 passed with a display, 1000 headless.
+
+Not claimed: drawn set-ups (one run, as designed); where the points are or what each carries;
+any result with multiccd on (none was rerun: FR-030 reruns only a face on a face held by one
+point, and there is none).

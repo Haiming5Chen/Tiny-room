@@ -216,6 +216,13 @@ change the design, try again.** A desktop robotics sandbox on
   read beside its tuning sweep, every value outside the tuned range named. On 59 fresh set-ups
   the Fetch program met every goal in all 59, as on the draws it was tuned on; one knock on the
   table, stronger than any seen before, is reported as found ([ADR 0049](docs/adr/0049-tuning-draws-and-held-out-draws.md)).
+- **What one contact point carries.** A census counts, at the moments a Fetch run's results are
+  decided, the contact points between each pair of parts - and how many MuJoCo would find with
+  its multiple-contact search on, which ADR 0027 turned off. Every face on a face the results rest
+  on - the jaw pads on the cube, the cube on the table and in the bin, the treads on the floor -
+  is box on box and keeps its count either way; only the casters' wheels touch at one point
+  instead of four or five. It also found that at the bin the cart stands on three: one caster
+  lifts 0.2 mm ([ADR 0050](docs/adr/0050-a-contact-census.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

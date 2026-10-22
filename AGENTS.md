@@ -141,6 +141,9 @@ seven minutes on two cores.
 - MuJoCo's contacts are soft in proportion to the mass behind them: squeezed with 20 N, a 10 g
   part let the jaws sink 7 mm into each side, and under a light squeeze (0.1 N) a held part
   still crept. An imported gripper's jaws and mimics get the stiffest MuJoCo takes (ADR 0047).
+- With multiccd off (ADR 0027), a pair MuJoCo has no collider of its own for - a cylinder on a
+  box - touches at one point, where box on box keeps several. The Fetch field's results rest on
+  box on box; its casters' wheels touch the floor at one point (ADR 0050).
 - Servo damping is integrated by the solver through a `Torque` slope, not applied a step
   late (ADR 0014); a controller that returns a plain float loses that.
 - MuJoCo does not filter contacts between a child and a parent welded to the world: moving

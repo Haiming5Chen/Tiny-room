@@ -29,6 +29,7 @@ NOSLIP_ITERATIONS = 2
 # a rolling loss of the engine's own on top of the sourced one (5 % of it at 0.8 m/s, 6 %
 # at 1.6). Flip this only to compare.
 MULTICCD = False
+SHAPES = ('plane', 'height field', 'sphere', 'capsule', 'ellipsoid', 'cylinder', 'box', 'mesh', 'sdf')  # mjtGeom, in order
 
 
 def dry_friction_solref(timestep):
@@ -523,6 +524,45 @@ class MujocoBackend:
             other, sign = (first, 1.) if second == idx else (second, -1.)
             out.append((m.body(int(other)).name, tuple(float(v) for v in sign * on_second)))
         return tuple(out)
+
+    def contact_census(self, bodies=()):
+        """At this instant, each pair of bodies in contact - only those with a body in `bodies`,
+        when given - with the kinds of shape that touch, how many contact points MuJoCo finds
+        between them as this model is set (multiccd off, ADR 0027), and how many it finds with
+        its multiple-contact search on: {(a, b): (kinds, points, with_multiccd)}, a and b in
+        name order, kinds such as 'box-box' (FR-030). Both counts are made on copies of this
+        instant, so the run goes on untouched."""
+        self._ready()
+        m, d = self.model, self.data
+        wanted = set(bodies)
+
+        def count(multiccd):
+            copy = mj.MjData(m)
+            copy.time = d.time
+            copy.qpos[:], copy.qvel[:] = d.qpos, d.qvel
+            if m.na:
+                copy.act[:] = d.act
+            if m.nmocap:
+                copy.mocap_pos[:], copy.mocap_quat[:] = d.mocap_pos, d.mocap_quat
+            flags = m.opt.disableflags
+            off = int(mj.mjtDisableBit.mjDSBL_MULTICCD)
+            try:
+                m.opt.disableflags = (flags & ~off) if multiccd else flags
+                mj.mj_fwdPosition(m, copy)
+            finally:
+                m.opt.disableflags = flags
+            pairs = {}
+            for c in copy.contact[:copy.ncon]:
+                (a, ka), (b, kb) = sorted((m.body(int(m.geom_bodyid[g])).name, SHAPES[int(m.geom_type[g])])
+                                          for g in (c.geom1, c.geom2))
+                if wanted and a not in wanted and b not in wanted:
+                    continue
+                kinds, n = pairs.get((a, b), (frozenset(), 0))
+                pairs[(a, b)] = (kinds | {f'{ka}-{kb}'}, n + 1)
+            return pairs
+        now, multi = count(False), count(True)
+        return {pair: (tuple(sorted(kinds)), n, multi.get(pair, ((), 0))[1])
+                for pair, (kinds, n) in sorted(now.items())}
 
     def step(self, commands):
         self._ready()

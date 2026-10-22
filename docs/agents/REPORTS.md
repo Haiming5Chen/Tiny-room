@@ -11,6 +11,17 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-22 · Claude (Cowork) · FR-030: a contact census
+Did: ADR 0050 (`MujocoBackend.contact_census`, `inventory/census.py`, a sweep run's `probe`):
+the contact points of each pair of parts at the moments a Fetch run's results are decided, as
+set and with multiccd on.
+Measured: every face-on-face pair the results rest on is box on box - the same count with
+multiccd on (1-6 points); only the casters' wheels touch at one point (4-5 with multiccd). No
+sweep needed rerunning. Found beside it: at the bin one caster is 0.2 mm off the floor (OPEN
+LW-032).
+Unfinished: LW-032 (whether the cart standing on three at the bin matters).
+For the owner: nothing to decide unless LW-032 should be worked on.
+
 ## 2026-10-22 · Claude (Cowork) · FR-027: tuning draws and held-out draws
 Did: ADR 0049 (`inventory/holdout.py`, the sweep's `seed`, `--holdout` and `--ledger`,
 `docs/sweeps/seeds.jsonl`): every sweep records its seed; decisions are certified on draws a

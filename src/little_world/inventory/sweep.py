@@ -152,7 +152,7 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True):
+        feel=True, probe=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -166,7 +166,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     0040). The program feels its grasps from its jaw servos' registers (ADR 0048); `feel`
     False hands it the simulator's contacts instead, as before. `trace`, a list, gets each step's time and
     a digest of every body's position and speed: what makes a set-up's undisturbed and
-    disturbed runs one run until the event (ADR 0036)."""
+    disturbed runs one run until the event (ADR 0036). `probe(state, backend)`, if given, is called
+    after every step, for a study that reads more of the run (the contact census, FR-030)."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -212,6 +213,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 kick.tick(backend, state, state.time - tracker.start, tracker.met)
             if trace is not None:
                 trace.append((state.time, _digest(backend)))
+            if probe is not None:
+                probe(state, backend)
         if protocol == 'program':
             from little_world.programming.execution import apply, base_targets, held_now, joint_angles
             from little_world.control import feel as feeling
