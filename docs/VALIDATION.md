@@ -1469,3 +1469,20 @@ Not claimed: that the kit gripper is a ROBOTIS one (an assumption, stated); a re
 current noise and friction (the registers here are exact but for their counting); what is held,
 only that something is; the arm's own servos (a reach that meets something still waits for its
 pose, OPEN LW-029).
+
+## Tuning draws and held-out draws — 2026-10-22
+
+ADR 0049 (FR-027, the weekly reading of 21 October). Sweeps record their seed; the ledger
+`docs/sweeps/seeds.jsonl` lists seed 1 for every field as the tuning draws of ADR 0024 to ADR
+0048, and seed 20261022 as the Fetch field's held-out draws, entered before they ran. The Fetch
+program as of ADR 0048 on those 59 fresh set-ups, beside its 59 on seed 1: every goal met in 59 of
+59 (94-100 %, two-sided 95 %) both; no presses on the table (0.17-0.23 N over 50 ms, as tuned);
+the fall into the bin 0.2-0.9 cm (0.1-1.1 tuned); the squeeze 3.71 N (3.66 tuned); every grasp
+felt as the contacts showed. Outside the tuning range: the table's push in one step 0.77 N on one
+draw (0.62 N tuned; 0.18 N over 50 ms), the bin's least push in a step 0.44 N (0.45) and the
+cube's least lean 26.0 degrees (26.2). Checked in `tests/test_holdout.py` (5). Suites on MuJoCo
+3.10.0: 1049 passed with a display, 997 headless.
+
+Not claimed: that sweeps outside the ledger used seed 1 (October's did); a failure rate below
+about 5 % (59 fresh draws without one); held-out checks of the chosen set-ups, which every sweep
+shares.

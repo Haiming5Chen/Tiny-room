@@ -1,0 +1,2 @@
+{"seed": 1, "field": "*", "role": "tuning", "decisions": "ADR 0024 to ADR 0048", "date": "2026-10-22", "note": "every sweep before FR-027 drew its set-ups with seed 1 - the varied sweeps (plan(ranges, samples, 1)), the disturbed sweeps (setups(ranges, 8, 1)) and their micrometre repeats (ADR 0043) - so every decision a sweep judged since ADR 0024 was tuned and judged on those draws"}
+{"seed": 20261022, "field": "fetch", "role": "holdout", "decisions": "ADR 0049: ADR 0041, 0042 and 0048 certified on draws they were not tuned on", "date": "2026-10-22", "note": ""}

@@ -120,7 +120,8 @@ driven and programmed like the Menagerie arms (ADR 0044); any arm's tool now tra
 line when stepped, or driven by held keys (ADR 0045). The Guide opens on five lessons the app
 checks itself (ADR 0046). A gripper in a robot's file is found at import, squeezes, and holds as
 the grasp blocks need (ADR 0047). A program feels its grasp from its jaw servos' registers, not the
-simulator's contacts (ADR 0048).
+simulator's contacts (ADR 0048). Decisions are certified on draws they were not tuned on: the
+Fetch program on 59 fresh set-ups (ADR 0049).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its

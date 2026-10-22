@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-22 · Claude (Cowork) · FR-027: tuning draws and held-out draws
+Did: ADR 0049 (`inventory/holdout.py`, the sweep's `seed`, `--holdout` and `--ledger`,
+`docs/sweeps/seeds.jsonl`): every sweep records its seed; decisions are certified on draws a
+ledger shows they were not tuned on, the seed entered before the run.
+Measured: the Fetch program on 59 fresh set-ups (seed 20261022): every goal in 59 of 59, as on
+seed 1; ADR 0041's presses none, ADR 0042's fall and squeeze within their tuned ranges. Outside:
+one knock on the table of 0.77 N in a step (0.62 N the most tuned; 0.18 N over 50 ms), reported,
+nothing changed.
+Unfinished: FR-030 (the contact census) is next.
+For the owner: from now on a decision's held-out run is entered in the ledger before it runs - a
+change made after seeing it needs a new seed.
+
 ## 2026-10-22 · Claude (Cowork) · FR-026: a grasp the program feels
 Did: ADR 0048 (`control/feel.py`, `programming/execution.held_now`, the sweep's, benchmark's
 and window's program loops, `Run.felt` and its line in sweep reports): programs take a grasp

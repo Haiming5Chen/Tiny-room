@@ -63,6 +63,7 @@ class Sweep:
     runs: tuple
     camera: CameraError | None = None   # the field's camera off where it is believed to be (ADR 0039)
     jitter: tuple = ()                  # the drawn set-ups run again a micrometre off (ADR 0043)
+    seed: int | None = None             # what the set-ups were drawn with; None: not known (FR-027)
 
 
 def design(name):
@@ -326,17 +327,20 @@ def _one(args):
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
           ranges=Ranges(), corrections=None, retries=None, blind=False, regrasps=None, camera_error=None,
-          jitter=0):
-    """Every variation's run of a field (by default the plan for `ranges`);
+          jitter=0, seed=None):
+    """Every variation's run of a field (by default the plan for `ranges`, drawn with seed 1);
     `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections;
     `blind` runs the program without its looks (ADR 0032); `camera_error` sets the field's
     camera off where the program believes it, in every run (ADR 0039); `jitter` runs each
-    set-up drawn at random that many times more, a micrometre off (ADR 0043)."""
+    set-up drawn at random that many times more, a micrometre off (ADR 0043); `seed`, what
+    given `variations` were drawn with, is recorded with the sweep (FR-027)."""
     from little_world.inventory.jitter import jittered
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
-    variations = tuple(variations if variations is not None else plan(ranges))
+    if variations is None:
+        variations, seed = plan(ranges), 1
+    variations = tuple(variations)
     if any(v.payload for v in variations) and site is None:
         try:
             site = payload_site(blueprint, max(v.payload for v in variations))
@@ -362,7 +366,7 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
                 progress(len(runs), len(work), runs[-1])
     return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs[:len(variations)]),
                  camera_error if camera_error is not None and not camera_error.nominal else None,
-                 tuple(runs[len(variations):]))
+                 tuple(runs[len(variations):]), seed)
 
 
 @dataclass(frozen=True)
@@ -380,6 +384,7 @@ class Disturbed:
     blind: bool = False             # the program ran without its looks (ADR 0032)
     regrasps: int | None = None     # looking again after a missed grasp, capped (ADR 0033); None: the runner's own
     checks: bool | None = None      # False: every picture taken as new and lit (ADR 0038); None: the runner's own
+    seed: int | None = None         # what the set-ups were drawn with (FR-027)
 
 
 def setups(ranges=Ranges(), samples=8, seed=1):
@@ -429,7 +434,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
                    for i, d in enumerate(tried))
     return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries, blind, regrasps,
-                     checks)
+                     checks, seed)
 
 
 def _last(run):
@@ -611,7 +616,7 @@ def disturbed_from_json(text):
     site = tuple(d['site']) if d['site'] is not None else None
     return Disturbed(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']),
                      d['corrections'], groups, d.get('retries'), d.get('blind', False), d.get('regrasps'),
-                     d.get('checks'))
+                     d.get('checks'), d.get('seed'))
 
 
 def disturbed_markdown(result):
@@ -636,7 +641,8 @@ def disturbed_markdown(result):
     worst = max((missed_by(r.seen[-1]) or 0. for _, _, runs in result.groups for r in runs if r.seen), default=0.)
     lines = [f'# {field.title}, disturbed: {result.design}', '',
              f'Each disturbance tried on the same {n} set-ups - the design as designed and {drawn_count} drawn at '
-             f'random within the ranges of ADR 0024 - {what}.{capped}', '',
+             f'random within the ranges of ADR 0024' + (f' with seed {result.seed}' if result.seed is not None else '')
+             + f' - {what}.{capped}', '',
              '| Disturbance | Every goal met | Drawn at random | Broken by it | Last goal, median change | Pushed |'
              ' Went back |' + (' Looked again | Camera saw it moved |' if looked else '') + ' Missed in |',
              '| --- | --- | --- | --- | --- | --- | --- |' + (' --- | --- |' if looked else '') + ' --- |']
@@ -705,7 +711,8 @@ def from_json(text):
     site = tuple(d['site']) if d['site'] is not None else None
     camera = d.get('camera')
     return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs,
-                 CameraError(**camera) if camera else None, tuple(_run(r) for r in d.get('jitter', ())))
+                 CameraError(**camera) if camera else None, tuple(_run(r) for r in d.get('jitter', ())),
+                 d.get('seed'))
 
 
 # -- reading a sweep ---------------------------------------------------------------------------
@@ -788,7 +795,8 @@ def markdown(sweep):
             'drive': f'driven straight ahead at full speed for {sweep.duration:g} s',
             'program': "running the field's program, solved once for the design on its mark"}[sweep.protocol]
     lines = [f'# {field.title}, varied: {sweep.design}', '',
-             f'{len(ran)} runs, {what}' + (f'; {len(skipped)} could not run' if skipped else '') + '.']
+             f'{len(ran)} runs, {what}' + (f'; {len(skipped)} could not run' if skipped else '') + '.'
+             + (f' Set-ups drawn with seed {sweep.seed}.' if sweep.seed is not None else '')]
     if sweep.site is not None:
         lines.append(f'Payload site: ({sweep.site[0]:.3f}, {sweep.site[1]:.3f}) m in plan, a steel block of the payload\'s mass.')
     if sweep.camera is not None:
@@ -972,7 +980,12 @@ def main(argv=None):
     parser.add_argument('--design', default='mobile_platform',
                         help=f'an example ({", ".join(DESIGNS)}) or a saved Blueprint JSON file')
     parser.add_argument('--samples', type=int, default=8, help='random repeats after the one-at-a-time runs')
-    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--seed', type=int, default=None, help='what the random set-ups are drawn with (default 1)')
+    parser.add_argument('--holdout', metavar='DECISION',
+                        help='draw held-out set-ups for this decision (such as "ADR 0049"): --seed must be one the '
+                             'ledger has not seen for the field, and is entered in it before the sweep runs (FR-027)')
+    parser.add_argument('--ledger', default=None,
+                        help='the seeds ledger (default: docs/sweeps/seeds.jsonl, from the repository\'s root)')
     parser.add_argument('--jobs', type=int, default=max(1, min(4, (os.cpu_count() or 2) - 1)))
     parser.add_argument('--out', help='write the report here as well as printing it')
     parser.add_argument('--json', help='write the sweep here as JSON')
@@ -1014,9 +1027,22 @@ def main(argv=None):
             camera_error = CameraError(tuple(v / 1000 for v in values[:3]), tuple(values[3:]) or (0., 0., 0.))
         except ValueError:
             parser.error(f'--camera-error takes three millimetres and optionally three degrees, not {args.camera_error!r}')
+    if args.holdout:
+        from pathlib import Path
+        from little_world.inventory import holdout
+        if args.seed is None:
+            parser.error('--holdout needs --seed: a seed the ledger has not seen for the field')
+        ledger = Path(args.ledger) if args.ledger else holdout.LEDGER
+        if not ledger.is_file():
+            parser.error(f'no ledger of seeds at {ledger}: run from the repository\'s root, or give --ledger')
+        try:
+            holdout.reserve(args.seed, args.field, args.holdout, ledger)
+        except ValueError as error:
+            parser.error(str(error))
+    seed = 1 if args.seed is None else args.seed
     bp = design(args.design)
     ranges = ranges_for(args.field)
-    variations = plan(ranges, samples=args.samples, seed=args.seed)
+    variations = plan(ranges, samples=args.samples, seed=seed)
 
     def progress(done, total, r):
         print(f'  {done}/{total} {r.variation.label}: ' + (f'not run ({r.error})' if r.error else f'{r.seconds:.0f} s'), flush=True)
@@ -1029,14 +1055,14 @@ def main(argv=None):
                 parser.error(f'no disturbance called {unknown[0]!r} for {args.field}; there are: '
                              + '; '.join(known))
             chosen = tuple(known[label] for label in args.only)
-        result = disturb(args.field, bp, chosen, args.name or args.design, args.samples, args.seed, args.jobs,
+        result = disturb(args.field, bp, chosen, args.name or args.design, args.samples, seed, args.jobs,
                          progress, args.corrections, args.retries, args.blind, args.regrasps,
                          False if args.unchecked_camera else None)
         text = disturbed_markdown(result)
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
                        ranges=ranges, corrections=args.corrections, retries=args.retries, blind=args.blind,
-                       regrasps=args.regrasps, camera_error=camera_error, jitter=args.jitter)
+                       regrasps=args.regrasps, camera_error=camera_error, jitter=args.jitter, seed=seed)
         text = markdown(result)
     print(text)
     from pathlib import Path
