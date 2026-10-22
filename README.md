@@ -188,6 +188,11 @@ change the design, try again.** A desktop robotics sandbox on
   what it added and what to check (a misspelt attribute, a joint too weak to hold the arm up, a
   mesh MuJoCo cannot read). The robot is then driven from the keyboard, programmed with blocks
   and placed like the Menagerie arms ([ADR 0044](docs/adr/0044-robots-from-their-own-files.md)).
+- **The tool travels its line.** In Tool mode a step now carries the tool along a straight line
+  at 5 cm/s instead of letting each joint take its own path - a 10 cm step of the kit arm strayed
+  up to 12.7 mm from its line, now 0.3 mm - and holding the arrow keys, or Page Up and Page Down,
+  drives the tool continuously until it can reach no further. The same for every arm: kit,
+  Menagerie or imported ([ADR 0045](docs/adr/0045-the-tool-travels-its-line.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

@@ -1,4 +1,4 @@
-"""Moving an arm's tool rather than its joints (ADR 0016).
+"""Moving an arm's tool rather than its joints (ADR 0016, 0045).
 
 MuJoCo-bound, like the keyboard binding it drives: the Jacobian comes from the model.
 A move is solved on a scratch copy of the state by damped least squares over the arm's
@@ -11,9 +11,11 @@ from math import degrees, radians
 import mujoco as mj
 import numpy as np
 from little_world.construction.structure import modules
-from little_world.programming.program import Block, Program
+from little_world.programming.program import Block, Program, smoothstep
 
 REACHED = .002      # m: a solution this close to the goal reaches it
+SPEED = .05         # m/s: how fast a tool move travels its straight line (ADR 0045)
+WAYPOINT = .002     # m: a move's line is solved this often along it, each point from the last
 AIMED = .005        # m: an aimed pose whose tool settles further than this off its point is solved again
 LEVEL = .15         # m of position error that one unit of tool-direction error weighs as
 DAMPING = .01       # damped least squares: keeps steps finite near a stretched-out arm
@@ -108,6 +110,8 @@ class ToolMotion:
         self.first_joint = joint_ids[0]
         self.moving = {b for b in range(m.nbody) if _below(m, b, first)}
         self.machine = {b for b in range(m.nbody) if m.body(b).name.startswith(self.prefix)}
+        self.gliding = None     # a Glide under way (ADR 0045)
+        self._drive = None      # where a held key has carried the tool's target, and its angle
 
     # -- reading the tool --------------------------------------------------------------
 
@@ -275,6 +279,7 @@ class ToolMotion:
     def jog(self, forward=0., left=0., up=0., hold_angle=True):
         """Move the tool's target by metres along the arm's forward, left and up.
         Returns the distance it falls short by; the targets change only if it reaches."""
+        self.stop()
         start = self.targets()
         point, pointing = self.tool(angles=start)
         f, l, u = self.frame()
@@ -286,8 +291,114 @@ class ToolMotion:
         return short
 
     def teach(self):
-        """The arm's current joint targets as a pose."""
-        return self.pose(self.targets())
+        """The arm's current joint targets as a pose - where a move under way is going."""
+        return self.pose(self.destination())
+
+    # -- moving along the line (ADR 0045) ----------------------------------------------
+
+    def line(self, start, goal, angles, hold):
+        """Joint angles for points every WAYPOINT from `start` to `goal`, each solved from the
+        one before, so the arm keeps one way of bending all along. A point the last cannot
+        reach - leaving a stretched-out, singular arm - is solved from the joint angles that
+        far between the start and the end's own solution. (angles, short): `short` is how far
+        the worst point stays from the line; a line that leaves the reach, or crosses a pose
+        the arm cannot hold the tool's angle through, is not taken."""
+        start, goal = np.asarray(start, dtype=float), np.asarray(goal, dtype=float)
+        steps = max(1, int(np.ceil(np.linalg.norm(goal - start) / WAYPOINT)))
+        first = np.array(angles, dtype=float)
+        end = None
+        out, q, worst = [first], first, 0.
+        for k in range(1, steps + 1):
+            point = start + (goal - start) * k / steps
+            trial, cost = self._descend(point, q, hold)
+            if cost > REACHED ** 2:
+                if end is None:
+                    end, _ = self.solve(goal, first, hold)
+                blend, blended = self._descend(point, first + (end - first) * k / steps, hold)
+                if blended < cost:
+                    trial, cost = blend, blended
+            q = trial
+            worst = max(worst, float(np.sqrt(cost)))
+            out.append(q)
+        return out, worst
+
+    def glide(self, forward=0., left=0., up=0., hold_angle=True, speed=SPEED):
+        """Move the tool's target by metres along the arm's forward, left and up, travelling
+        the straight line at `speed` from rest to rest (`advance` hands it out step by step).
+        Returns how far the line falls short; nothing moves unless all of it is reached."""
+        start = self.targets()
+        point, pointing = self.tool(angles=start)
+        f, l, u = self.frame()
+        goal = point + forward * f + left * l + up * u
+        angles, short = self.line(point, goal, start, pointing[2] if hold_angle else None)
+        if short <= REACHED:
+            self.gliding = Glide(angles, float(np.linalg.norm(goal - point)) / speed)
+            self._drive = None
+        return short
+
+    def drive(self, direction, dt, hold_angle=True, speed=SPEED):
+        """While a key is held: carry the tool's target along `direction` (forward, left, up;
+        any length, 0 to stop) at `speed`, solving each step from the last. Returns how far
+        the step fell short - the arm at the edge of its reach, or unable to hold the tool's
+        angle, stops there."""
+        direction = np.asarray(direction, dtype=float)
+        if not np.any(direction):
+            self._drive = None
+            return 0.
+        self.gliding = None
+        start = self.targets()
+        if self._drive is None:
+            point, pointing = self.tool(angles=start)
+            self._drive = (point, pointing[2] if hold_angle else None)
+        point, hold = self._drive
+        f, l, u = self.frame()
+        heading = direction[0] * f + direction[1] * l + direction[2] * u
+        goal = point + heading / np.linalg.norm(heading) * speed * dt
+        q, cost = self._descend(goal, start, hold)
+        if np.sqrt(cost) > REACHED:
+            return float(np.sqrt(cost))
+        self._drive = (goal, hold)
+        self._set(q)
+        return 0.
+
+    def advance(self, dt):
+        """One step of a gliding move: the joint targets where the tool should be by now.
+        False once there is nothing to move."""
+        if self.gliding is None:
+            return False
+        self._set(self.gliding.at(dt))
+        if self.gliding.done:
+            self.gliding = None
+        return True
+
+    def destination(self):
+        """The joint angles a move under way ends at; the targets when nothing moves."""
+        return self.gliding.angles[-1].copy() if self.gliding is not None else self.targets()
+
+    def stop(self):
+        """Forget a move under way; the joints keep the targets they have."""
+        self.gliding, self._drive = None, None
+
+    def _set(self, angles):
+        for (_, name, *_), value in zip(self.joints, angles):
+            self.control.targets[name] = float(value)
+
+
+class Glide:
+    """The joint angles along a tool move's line, handed out as the tool travels it in
+    `duration` seconds, smoothly from rest to rest."""
+
+    def __init__(self, angles, duration):
+        self.angles, self.duration, self.elapsed, self.done = angles, max(duration, 1e-9), 0., False
+
+    def at(self, dt):
+        self.elapsed += dt
+        s = smoothstep(min(1., self.elapsed / self.duration)) * (len(self.angles) - 1)
+        k = min(int(s), len(self.angles) - 2) if len(self.angles) > 1 else 0
+        self.done = self.elapsed >= self.duration
+        if len(self.angles) == 1:
+            return self.angles[0]
+        return self.angles[k] + (self.angles[k + 1] - self.angles[k]) * (s - k)
 
 
 def _below(model, body, top):

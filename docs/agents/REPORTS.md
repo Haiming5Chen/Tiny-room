@@ -11,6 +11,17 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-21 · Claude (Cowork) · FR-032: the tool travels its line
+Did: ADR 0045 (`control/tool_motion.py` glide, line, drive, Glide; `ui/key_bindings.py`
+tool_key, tick_tool; the main loop ticks the tool): tool steps travel their straight line at 5
+cm/s; in Tool mode held arrow and page keys drive the tool; works for kit, Menagerie and
+imported arms.
+Measured: kit arm 10 cm steps 0.2-0.3 mm off the line (7-13 mm before); the imported arm's
+3.6 cm step 0.4 mm (10.2); UR5e 0.6-3.5 mm (its sag); held keys 14.7 cm in 3 s within 0.3 mm.
+Unfinished: LW-031 done. LW-030 (imported grippers and the grasp blocks) open.
+For the owner: next by the ranking FR-026 (feel the grasp; its code is written, it needs its
+sweeps), then FR-033 (an interactive first hour, which can now teach tool moves).
+
 ## 2026-10-21 · Claude (Cowork) · FR-031: robots from their own files; the readings of 21 Oct merged
 Did: merged the weekly reading and the focused reading of 21 Oct (67725f5): FR-027 to FR-035,
 notes under 10 proposals, 43 collection items. On the owner's request of 21 Oct, ADR 0044:

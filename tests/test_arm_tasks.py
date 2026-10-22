@@ -235,8 +235,10 @@ def test_tool_mode_teach_and_the_pick_and_place_template_in_the_window(monkeypat
             step['before'] = forward
             click('Back')
         elif n == 3:
-            assert not app.building and app.tool_result == 'Target moved'
-            assert app.tool_readout()[0] == pytest.approx(step['before'] - 2., abs=.05)
+            assert not app.building and app.tool_result == 'Moving straight'
+            assert app.tool_readout()[0] == pytest.approx(step['before'] - 2., abs=.05), "where it goes"
+            if app.tool_motion.gliding is not None:
+                return   # along the line at the tool speed (ADR 0045); taught once there
             click('Teach pose  ->  program step')
         elif n == 4:
             assert [b.kind for b in app.program.blocks] == ['pose']

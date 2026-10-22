@@ -104,6 +104,9 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.controls.clear()
         self.joint_control.clear()
         self.motor_test = None
+        if getattr(self,'tool_keys',None):
+            self.tool_keys.clear()
+            if self.tool_motion is not None:self.tool_motion.drive((0,0,0),0.)
 
     def rebuild(self):
         """Only called with an active GL context and World in BUILD."""
@@ -306,6 +309,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             if key==glfw.KEY_SPACE:self.stop_program();return
             if key==glfw.KEY_P:self.pause_program();return
             if key in range(32,127) or key in (glfw.KEY_UP,glfw.KEY_DOWN,glfw.KEY_LEFT,glfw.KEY_RIGHT):return
+        if self.tool_key(key,action):return
         if self.control_panel and action == glfw.PRESS and key == glfw.KEY_ESCAPE:
             self.control_panel=False
             return
@@ -878,6 +882,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                     accumulator+=elapsed
                     while accumulator>=active.world.timestep:
                         active.tick_program()
+                        active.tick_tool()
                         commands={}
                         commands.update(active.drive_control.step_commands(active.program_drive if active.program_drive is not None else active.controls.targets(),active.world.timestep,angular=active.program_drive is not None))
                         commands.update(active.joint_commands())

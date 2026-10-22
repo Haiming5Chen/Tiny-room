@@ -19,6 +19,7 @@ class KeyBindings:
         self.tool_step=.02
         self.tool_hold=True
         self.tool_motion=None;self.tool_reason='';self.tool_result=''
+        self.tool_keys=set()   # arrow and page keys held in Tool mode: the tool driven straight (ADR 0045)
 
     def bind_joint_runtime(self):
         from little_world.control.mujoco_keyboard import MujocoKeyboardControl
@@ -38,10 +39,45 @@ class KeyBindings:
         if self.tool_motion is None:return
         self.runner.stop();self.program_keys.clear();self.clear_keys();self.paused=False
         step=self.tool_step
-        short=self.tool_motion.jog(forward*step,left*step,up*step,self.tool_hold)
-        self.tool_result='Target moved' if short<=.002 else f'Out of reach: {100*short:.1f} cm short'
-        self.status=('Tool target moved; the joints follow.' if short<=.002 else
-                     f'Out of reach by {100*short:.1f} cm; nothing moved. Try a smaller step or release Hold tool angle.')
+        short=self.tool_motion.glide(forward*step,left*step,up*step,self.tool_hold)
+        self.tool_result='Moving straight' if short<=.002 else f'Out of reach: {100*short:.1f} cm short'
+        self.status=('The tool moves along a straight line; the joints follow.' if short<=.002 else
+                     f'Out of reach along the line by {100*short:.1f} cm; nothing moved. Try a smaller step or release Hold tool angle.')
+
+    # Held in Tool mode, these move the tool along the arm's forward, left and up (ADR 0045).
+    TOOL_KEYS={glfw.KEY_UP:(1,0,0),glfw.KEY_DOWN:(-1,0,0),glfw.KEY_LEFT:(0,1,0),glfw.KEY_RIGHT:(0,-1,0),
+               glfw.KEY_PAGE_UP:(0,0,1),glfw.KEY_PAGE_DOWN:(0,0,-1)}
+
+    def tool_key(self,key,action):
+        """An arrow or page key in Tool mode: held, it carries the tool straight along the arm's
+        forward, left or up at the tool speed. True when the key was taken."""
+        if key not in self.TOOL_KEYS or not self.control_panel or self.control_mode!='Tool':return False
+        if self.tool_motion is None:
+            if action==glfw.PRESS:self.status=self.tool_reason or 'This machine has no arm tool to move.'
+            return True
+        if action==glfw.PRESS:
+            if self.building:self.simulate()
+            if self.tool_motion is None:return True
+            self.runner.stop();self.program_keys.clear();self.paused=False
+            self.tool_keys.add(key);self.tool_result='Moving straight'
+        elif action==glfw.RELEASE:
+            self.tool_keys.discard(key)
+            if not self.tool_keys:self.tool_motion.drive((0,0,0),0.)
+        return True
+
+    def tick_tool(self):
+        """One physics step of the tool: driven while its keys are held, else gliding to where
+        a step button sent it."""
+        motion=self.tool_motion
+        if motion is None:return
+        if self.tool_keys:
+            direction=[sum(self.TOOL_KEYS[k][i] for k in self.tool_keys) for i in range(3)]
+            short=motion.drive(direction,self.world.timestep,self.tool_hold)
+            if short>.002 and self.tool_result!='At the edge of its reach':
+                self.tool_result='At the edge of its reach'
+                self.status='The tool cannot go further that way'+(' and keep its angle; release Hold tool angle to go on.' if self.tool_hold else '.')
+        else:
+            motion.advance(self.world.timestep)
 
     def teach_pose(self):
         """Add the arm's current joint targets to the program as a pose step."""
@@ -58,7 +94,7 @@ class KeyBindings:
         """Where the tool's target is, in centimetres along the arm's forward, left and up."""
         import numpy as np
         motion=self.tool_motion
-        point,_=motion.tool(angles=motion.targets())
+        point,_=motion.tool(angles=motion.destination())
         base=self.data.xpos[motion.base]
         return tuple(100*float(np.dot(point-base,axis)) for axis in motion.frame())
 
@@ -161,7 +197,7 @@ class KeyBindings:
             text('No tool to move.',x+16,185,13)
             text(self.tool_reason or 'Add a gripper to an arm and bind its joints.',x+16,209,11,(.6,.74,.77),294)
             return
-        text('Steps move the tool in a straight line; the joints follow.',x+16,181,11,(.6,.74,.77),294)
+        text('Steps, or the arrow and page keys held, move the tool along a straight line.',x+16,181,11,(.6,.74,.77),294)
         for i,(label,step) in enumerate((('1 cm',.01),('2 cm',.02),('5 cm',.05))):
             button(label,x+16+i*100,199,94,lambda n=step:setattr(self,'tool_step',n),active=abs(self.tool_step-step)<1e-9,h=26)
         for i,(label,move) in enumerate((('Up',dict(up=1)),('Forward',dict(forward=1)),('Left',dict(left=1)),

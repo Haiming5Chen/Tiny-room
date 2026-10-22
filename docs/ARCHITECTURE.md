@@ -135,8 +135,11 @@ that margin from the simulator's supporting contacts during the run.
 An arm's tool can be moved instead of its joints (ADR 0016, `control/tool_motion.py`,
 MuJoCo-bound like the keyboard binding it drives): the tool module's point, the
 keyboard-bound joints between it and the machine, and a Levenberg-Marquardt solve on a
-scratch copy of the state whose result becomes joint targets for the same servos.
-Programs carry `pose` and `grasp` blocks as data (`programming/program.py`, version 2
+scratch copy of the state whose result becomes joint targets for the same servos. A step
+of the tool is solved along its straight line every 2 mm and handed out as the tool
+travels it (`ToolMotion.glide`, `advance`, ADR 0045); held keys carry the tool's target
+step by step (`ToolMotion.drive`); the window ticks the tool each physics step
+(`KeyBindings.tick_tool`). Programs carry `pose` and `grasp` blocks as data (`programming/program.py`, version 2
 when used); `programming/execution.py` hands a runner's output to a position controller
 the same way in the window, in inventory trials and headless. A pose may carry the point
 its tool was aimed at; a runner given the arm's aim (`ToolMotion.aim`) checks where the

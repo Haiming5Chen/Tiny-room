@@ -1396,3 +1396,20 @@ Not claimed: robots that float or walk, ball and planar joints; more than 8 driv
 speed limits, current, gearing or heat in the servos added; grippers from files driven by the
 grasp blocks (OPEN LW-030); a straight-line tool path (the tool bows some 10 mm on a 3.6 cm
 jog, OPEN LW-031); that a file's masses and limits are right.
+
+## The tool travels its line — 2026-10-21
+
+ADR 0045 (FR-032; the owner's request of 21 October for control that costs little to learn).
+A tool step is solved every 2 mm along its straight line and handed out at 5 cm/s; held arrow
+and page keys carry the tool at that speed. Kit arm, 10 cm steps left, up and down: 7.7, 6.9
+and 12.7 mm off the line before, 0.2, 0.2 and 0.3 after; from its stretched pose, back 2 and 6
+cm: 4.5 and 7.8 mm before, 2.3 and 1.3 after; UR5e: 2.3 to 4.3 mm before, 0.6 to 3.5 after (its
+own sag under its weight remains); the imported test arm's 3.6 cm step: 10.2 mm before, 0.4
+after. A 10 cm step arrives within 2 mm after 1.9 s (0.6 to 0.9 before). Held for 3 s, the tool
+went 14.7 cm within 0.3 mm of its line; driven out of reach it stops and stays. Checked in
+`tests/test_tool_glide.py` (8, one a window test) and `tests/test_arm_tasks.py`'s window test.
+Suites on MuJoCo 3.10.0: 1028 passed with a display, 979 headless.
+
+Not claimed: the servos' lag and sag; collisions along the line; lines through poses the arm
+cannot take (refused, not bent around); dragging the tool with the mouse; a program's pose
+blocks, which still move joint by joint.
