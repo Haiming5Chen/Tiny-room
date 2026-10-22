@@ -39,3 +39,18 @@ def base_targets(output, base):
 
 def needs_grasp(program):
     return any(b.kind == 'grasp' for b in program.blocks)
+
+
+def held_now(program, observations, felt=None):
+    """What a program takes to be held this step. With its gripper's jaw servos read (`felt`,
+    their registers: control/feel.py, ADR 0048), the program's grasp targets when the jaws hold
+    something - a servo feels that it holds, not what - and nothing otherwise. Without them, a
+    registered model's own gripper, the simulator's contacts, as before."""
+    if not needs_grasp(program):
+        return frozenset()
+    if felt is None:
+        return observations.grasped()
+    from little_world.control.feel import holding
+    if not holding(felt):
+        return frozenset()
+    return frozenset(b.target for b in program.blocks if b.kind == 'grasp' and b.target) or frozenset({'held'})

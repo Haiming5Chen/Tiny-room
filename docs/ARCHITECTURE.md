@@ -453,6 +453,17 @@ finishes every lesson whose check passes; one `Progress` lives on the window's h
 JSON file beside the robot library (`$LITTLE_WORLD_PROGRESS` in tests). A lesson's set-up uses
 only the actions a user has: loading a kit, choosing a field, simulating, opening a panel.
 
+## The grasp a program feels
+
+`control/feel.py` (standard library, ADR 0048) reads a kit gripper's jaws as ROBOTIS XH430-W350
+servos: from each jaw's torque, angle, goal and speed, the registers a real one reports - Present
+Position, Present Velocity, Present Current and the Moving flag - rounded as they count.
+`holding` says the jaws hold something when both are still, stopped short of their goal and
+pushing towards it. `programming/execution.held_now` gives a program its grasp from that wherever
+programs run - the window, the benchmark, sweeps; a registered model's own gripper servo is not
+read this way and keeps the contacts (`Observations.grasped`). The contacts stay the judge: each
+grasp check records what was felt and what was so (`Run.felt`), and sweep reports count them.
+
 ## Spatial drag preview and library styles
 
 Real robots and Anime / kit are catalog views over one shared Blueprint format;

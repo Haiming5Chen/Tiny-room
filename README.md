@@ -204,6 +204,12 @@ change the design, try again.** A desktop robotics sandbox on
   if the file gives none). The grasp blocks and Tool mode's Open and Close work with it as with
   the Panda's: a box it holds, turned over by the elbow, stays within half a millimetre of where
   it was held ([ADR 0047](docs/adr/0047-a-gripper-from-its-file.md)).
+- **A grasp the program feels.** The Fetch program no longer asks the simulator whether it holds
+  the cube: it reads its gripper's servos as a real one reports them - where each jaw stopped
+  against where it was sent, how fast it moves and the current it draws, counted as an XH430's
+  registers count - and takes the cube as held when both jaws have stopped short and push. Over
+  71 set-ups it felt every hold the contacts showed and none that was not there; sweeps count how
+  often feeling and contacts agree ([ADR 0048](docs/adr/0048-a-grasp-the-program-feels.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

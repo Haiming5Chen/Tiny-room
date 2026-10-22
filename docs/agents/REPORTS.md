@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-22 · Claude (Cowork) · FR-026: a grasp the program feels
+Did: ADR 0048 (`control/feel.py`, `programming/execution.held_now`, the sweep's, benchmark's
+and window's program loops, `Run.felt` and its line in sweep reports): programs take a grasp
+from what the kit gripper's servos would report, not from the simulator's contacts, which stay
+the judge.
+Measured: Fetch, 71 set-ups: 71 of 71 every goal; 71 grasp checks, all felt as the contacts
+showed; 54 ms later at the check. Disturbed (9 set-ups under each of 7 disturbances): the same outcomes as with the contacts, and 54 grasp checks all felt as the contacts showed; no sweep check met empty jaws, and the cube taken from between closing jaws is felt as not held.
+Unfinished: LW-029 (a reach that meets a moved cube waits for its pose; the arm's servos are not
+read). FR-027 (held-out draws) is coded and runs next, on draws none of this was tuned on.
+For the owner: the kit gripper is read as a ROBOTIS XH430 - an assumption; a real servo would
+check the 6-count threshold against its own noise.
+
 ## 2026-10-22 · Claude (Cowork) · LW-030: a gripper from its file
 Did: ADR 0047 (`physics/importer.py`, `assets/robot_models.py`, the backend's `robot_jaws` and
 `servo_grips`, the keyboard control's closure, `Observations`): an imported robot's gripper is

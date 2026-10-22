@@ -45,6 +45,12 @@ def trial(bp,program,mode,seconds,dt):
         from little_world.control.navigation import BasePose
         try:base=BasePose(backend,drive_control,bp)
         except ValueError:base=None
+        # The program feels its grasps from its jaw servos' registers (ADR 0048).
+        from little_world.control.feel import read
+        from little_world.control.tool_motion import ToolMotion
+        try:jaws=ToolMotion(backend,bp,control).jaws
+        except ValueError:jaws=()
+        felt_jaws=lambda:read(backend,control,jaws) if jaws else None
         motor_channels={}
         for i in range(model.nu):motor_channels[i]=i
         root=next(b.id for b in bp.components if isinstance(b,Body) and b.parent is None)
@@ -54,9 +60,9 @@ def trial(bp,program,mode,seconds,dt):
             drive=(3.,3.) if mode=='hold_drive' and step*dt<2 else (0.,0.)
             control.clear()
             if mode=='program' and runner.state=='running':
-                from little_world.programming.execution import apply,base_targets,joint_angles,needs_grasp
+                from little_world.programming.execution import apply,base_targets,held_now,joint_angles
                 contacts,distances=obs.program_inputs(program)
-                held=obs.grasped() if needs_grasp(program) else frozenset()
+                held=held_now(program,obs,felt_jaws())
                 output=runner.tick(dt,joint_angles(control),contacts,distances,held,base.pose() if base else None)
                 drive=base_targets(output,base) if output['base'] else output['drive']
                 for key in apply(output,control):control.press(key)

@@ -1451,3 +1451,21 @@ test). Suites on MuJoCo 3.10.0: 1037 passed with a display, 985 headless.
 Not claimed: grippers named otherwise, or driven through a tendon or a linkage; the file's
 velocity limit (sent at once from open to closed, the fingers reach 0.76 m/s); a slip or payload
 rating; that a file's effort is the gripper's real force.
+
+## A grasp the program feels — 2026-10-22
+
+ADR 0048 (FR-026, the weekly reading of 19 October). The kit gripper's jaws read as XH430-W350
+servos at 12 V: the kit jaw's 0.6 N m is 85 counts of 2.69 mA at the datasheet's stall point
+(3.4 N m at 1.3 A); a degree is 11 pulses; the Moving Threshold's 10 counts are 0.24 rad/s.
+Holding: both jaws still, at least 2 pulses short of their goal, pushing with at least 6 counts.
+Fetch, 71 set-ups (seed 1), the program feeling its grasps: 71 of 71 met every goal, as with the
+contacts; 71 grasp checks, the jaws felt a hold at every one and the contacts showed one at every
+one; the checks passed 54 ms later (median), the cube in the bin 62 ms later; squeeze 3.66 N
+over 50 ms (3.96 with the contacts), fall 0.35 cm (0.31). A held jaw draws 11 to 25 counts (28
+carrying 0.5 kg); closing on air, at most 6, moving. Disturbed (9 set-ups under each of 7 disturbances): the same outcomes as with the contacts, and 54 grasp checks all felt as the contacts showed; no sweep check met empty jaws, and the cube taken from between closing jaws is felt as not held. Checked in `tests/test_feel.py`
+(7). Suites on MuJoCo 3.10.0: 1044 passed with a display, 992 headless.
+
+Not claimed: that the kit gripper is a ROBOTIS one (an assumption, stated); a real servo's
+current noise and friction (the registers here are exact but for their counting); what is held,
+only that something is; the arm's own servos (a reach that meets something still waits for its
+pose, OPEN LW-029).

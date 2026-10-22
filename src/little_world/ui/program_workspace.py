@@ -284,13 +284,16 @@ class ProgramWorkspace:
         elif self.runner.state=='paused':self.start_program()
 
     def tick_program(self):
-        from little_world.programming.execution import apply,base_targets,joint_angles,needs_grasp
+        from little_world.programming.execution import apply,base_targets,held_now,joint_angles
         self.program_keys.clear();self.program_drive=None
         if self.runner.state!='running':return
         contacts,distances=self.observations.program_inputs(self.program)
-        held=self.observations.grasped() if needs_grasp(self.program) else frozenset()
         base=getattr(self,'base_pose',None)
         motion=getattr(self,'tool_motion',None)
+        # The program feels its grasps from its jaw servos' registers (ADR 0048).
+        from little_world.control.feel import read
+        felt=read(self.backend,self.joint_control,motion.jaws) if motion is not None else None
+        held=held_now(self.program,self.observations,felt)
         result=self.runner.tick(self.world.timestep,joint_angles(self.joint_control),contacts,distances,held,
                                 base.pose() if base is not None else None,motion.aim if motion is not None else None,
                                 getattr(self,'eye',None))

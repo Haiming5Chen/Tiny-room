@@ -46,6 +46,7 @@ class Run:
     message: str = ''               # the program's last word: why it stopped, when it failed
     event: float | None = None      # when the disturbance began, simulated seconds; None if it never did
     handled: tuple = ()             # how each handled part was treated (ADR 0040): handling.Handled, one a part
+    felt: tuple = ()                # each grasp check's (time, felt held, held): the jaw servos against the truth (ADR 0048)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -149,7 +150,8 @@ def ranges_for(field_id):
 
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
-        retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None):
+        retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
+        feel=True):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -160,7 +162,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     and lit (ADR 0038; None: the runner's own). `camera_error` sets the field's camera off the
     pose the program believes it at (ADR 0039); `timestep`, seconds a step (None: the world's
     own, 2 ms). The parts the field's goals carry are watched for how they are handled (ADR
-    0040). `trace`, a list, gets each step's time and
+    0040). The program feels its grasps from its jaw servos' registers (ADR 0048); `feel`
+    False hands it the simulator's contacts instead, as before. `trace`, a list, gets each step's time and
     a digest of every body's position and speed: what makes a set-up's undisturbed and
     disturbed runs one run until the event (ADR 0036)."""
     from little_world import Entity, World
@@ -209,7 +212,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             if trace is not None:
                 trace.append((state.time, _digest(backend)))
         if protocol == 'program':
-            from little_world.programming.execution import apply, base_targets, joint_angles, needs_grasp
+            from little_world.programming.execution import apply, base_targets, held_now, joint_angles
+            from little_world.control import feel as feeling
             from little_world.programming.observations import Observations
             from little_world.programming.program import Runner
             from little_world.control.tool_motion import ToolMotion
@@ -218,9 +222,12 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             tracker = GoalTracker(field.goals, _root(bp))
             obs = Observations(backend.model, backend.data, getattr(backend, 'robot_jaws', ()))
             try:
-                aim = ToolMotion(backend, bp, control).aim     # aimed poses checked (ADR 0025)
+                motion = ToolMotion(backend, bp, control)
+                aim, jaws = motion.aim, motion.jaws             # aimed poses checked (ADR 0025)
             except ValueError:
-                aim = None
+                aim, jaws = None, ()
+            readable = feel and jaws and feeling.read(backend, control, jaws) is not None
+            felt_at = []        # each grasp check's (time, felt, held): what the jaws said, and the truth
             caps = {k: v for k, v in (('corrections', corrections), ('retries', retries), ('regrasps', regrasps),
                                       ('checks', checks))
                     if v is not None}
@@ -241,9 +248,15 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             actual = []         # where each looked-for object really was: measured, not seen
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
-                held = obs.grasped() if needs_grasp(program) else frozenset()
+                held = held_now(program, obs, feeling.read(backend, control, jaws) if readable else None)
+                at = runner.index
+                checking = at < len(program.blocks) and program.blocks[at].kind == 'grasp'
                 out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held,
                                   base.pose() if base else None, aim, see)
+                if checking and (runner.index != at or runner.state != 'running'):
+                    target = program.blocks[at].target
+                    truth = obs.grasped()
+                    felt_at.append((round(state.time, 3), bool(held), (target in truth) if target else bool(truth)))
                 if len(runner.seen) > len(actual):
                     body = backend.model.body(runner.seen[-1][0]).id
                     actual.append(tuple(float(v) for v in backend.data.xpos[body]))
@@ -279,7 +292,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    tuple((*look, at) for look, at in zip(runner.seen, actual)) if runner else (),
                    runner.regrasps if runner else 0, runner.message if runner else '',
                    kick.began + tracker.start if kick is not None and kick.began is not None else None,
-                   tuple(w.result() for w in watching))
+                   tuple(w.result() for w in watching), tuple(felt_at) if protocol == 'program' else ())
 
 
 def handled_parts(field):
@@ -543,6 +556,28 @@ def _handling(runs):
     return lines
 
 
+def _felt(runs):
+    """What the program felt at its grasp checks against what the contacts showed (ADR 0048),
+    as report lines; [] when no run made a grasp check."""
+    checks = [(f, h) for r in runs for _, f, h in r.felt]
+    if not checks:
+        return []
+    count = lambda f, h: sum(1 for x in checks if x == (f, h))
+    times = lambda n: {1: 'once', 2: 'twice'}.get(n, f'{n} times')
+    wrong = count(True, False) + count(False, True)
+    return ['', f'The program felt its grasps with its jaw servos - where each jaw stopped against where it was '
+            f'sent, how fast it moved and the current it drew (ADR 0048) - at {_n(len(checks), "grasp check")} in '
+            f'{_n(sum(1 for r in runs if r.felt), "run")}: it felt a hold where the contacts showed one '
+            f'{times(count(True, True))}'
+            + (f', and none where they showed none {times(count(False, False))}' if count(False, False) else '')
+            + (f'; it was wrong {times(wrong)} ({count(True, False)} a hold that was not there, '
+               f'{count(False, True)} one it missed).' if wrong else '; it was never wrong.')]
+
+
+def _n(n, what):
+    return f'{n} {what}' + ('' if n == 1 else 's')
+
+
 def _p(p):
     """An exact p as a report prints it: four places, or below the smallest of them."""
     return '< 0.0001' if p < 1e-4 else f'= {p:.4f}'
@@ -619,6 +654,7 @@ def disturbed_markdown(result):
                 f' {100 * median(g.seen):.1f} cm ({100 * g.seen[0]:.1f} to {100 * g.seen[-1]:.1f}) |'))
         lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {broken} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
     lines += _handled_by_disturbance(result)
+    lines += _felt([r for _, _, runs in result.groups for r in runs])
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
@@ -653,7 +689,7 @@ def _run(r):
                r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0),
                tuple((look[0], *(tuple(v) for v in look[1:])) for look in r.get('seen', ())),
                r.get('regrasped', 0), r.get('message', ''), r.get('event'),
-               tuple(_handled(h) for h in r.get('handled', ())))
+               tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())))
 
 
 def _handled(h):
@@ -784,6 +820,7 @@ def markdown(sweep):
                   f'{1000 * looks[-1]:.1f} mm), each time within {1000 * worst:.1f} mm of where it really was.']
     lines += ['', _how_sure(sweep)]
     lines += _handling(ran)
+    lines += _felt(ran)
     from little_world.inventory.jitter import lines as knife_edge
     lines += knife_edge(drawn(sweep), sweep.jitter)
     nominal = next((r for r in ran if r.variation.nominal), None)
