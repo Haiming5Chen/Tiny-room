@@ -216,7 +216,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             for _ in range(round(SETTLE * .002 / world.timestep)):
                 state = _hold(world, drive, control, field, state)
             tracker = GoalTracker(field.goals, _root(bp))
-            obs = Observations(backend.model, backend.data)
+            obs = Observations(backend.model, backend.data, getattr(backend, 'robot_jaws', ()))
             try:
                 aim = ToolMotion(backend, bp, control).aim     # aimed poses checked (ADR 0025)
             except ValueError:

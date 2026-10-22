@@ -14,7 +14,13 @@ What it adds, to a model with no actuators of its own:
   degree of where it is sent against its own weight at any pose (weighed at the home pose
   and 64 others), never softer than settling its joint in a quarter of a second, critically
   damped at the joint's own inertia, its force within the file's effort limit;
-- a URDF `<mimic>` as a joint equality, the follower without a servo of its own;
+- a URDF `<mimic>` as a joint equality, the follower without a servo of its own, as stiff
+  as MuJoCo takes at the 2 ms step;
+- for a gripper - a limited joint named like a finger whose finger closes on another, or on a
+  fixed jaw, at one end of its travel (ADR 0047): its closing direction and its two jaws, a
+  servo driven by how closed it is that squeezes with the file's effort (or the kit gripper's
+  12 N at each jaw) once the jaws are stopped, the jaws' contacts the stiffest MuJoCo takes,
+  and the tool point between the jaws;
 - one body per link (the root link kept as the robot's base), visual shapes kept and
   collision shapes hidden behind them;
 - links that already touch at the home pose kept from touching each other, as neighbours
@@ -53,6 +59,12 @@ MOST = 8                # servos a robot can have: a RobotServo's channels
 MESHES = ('.stl', '.obj', '.msh')   # the mesh files MuJoCo 3.10 reads
 FACES = 200_000         # a mesh with more faces is reported as slow (PickNik's MuJoCo guide decimates past it)
 TOOL = re.compile(r'(tool|tcp|end_?effector|flange|ee_link|ee$|tip|grasp)', re.I)
+FINGER = re.compile(r'(finger|gripper|jaw|claw|pinch)', re.I)
+CLOSING = .003          # m: a gripper's fingers come at least this much closer at one end of its travel
+SQUEEZE_AT = .1         # a gripper squeezes with all its force once its jaws are stopped this share of its travel short
+GRIP = 12.              # N at each jaw: what a gripper whose file gives no effort squeezes with - the kit gripper's (ADR 0017)
+JAW_SOLREF = (.004, 1.) # a jaw's contact: a time constant of twice the 2 ms step, the stiffest MuJoCo takes
+JAW_SOLIMP = (.95, .99, .001)
 VERSION = 1
 
 # What a URDF may say (ROS urdf/XML, read 21 Oct 2026): anything else is reported, because
@@ -441,6 +453,10 @@ def prepare(path, assets, name=None):
             raise ImportFailed(f"Joint '{follower}' mimics '{leader}', which is not one of its joints.")
         e = spec.add_equality(type=mj.mjtEq.mjEQ_JOINT, name1=follower, name2=leader)
         e.data = np.array([offset, k, 0, 0, 0] + [0] * (len(e.data) - 5))
+        # A mimic is a gear or a linkage: as stiff as MuJoCo takes at the 2 ms step. With
+        # MuJoCo's default softness a follower finger gave 3.5 mm under a 20 N squeeze.
+        e.solref[:] = JAW_SOLREF
+        e.solimp[:3] = JAW_SOLIMP
         report.added(f"'{follower}' follows '{leader}'" + (f' ({k:g} times as far)' if k != 1 else '')
                      + ': a joint equality, as the file\'s <mimic> says')
     try:
@@ -485,12 +501,46 @@ def prepare(path, assets, name=None):
     except Exception as error:
         raise ImportFailed(f'MuJoCo could not make a model of it: {_plain(error)}') from None
     weight = _weight(model, joints, mimic, home, np.random.default_rng(0))
+    parent = {b.name: (b.parent.name if b.parent is not None else None) for b in bodies}
+    grip = None if own else _gripper(model, servos, mimic, jid, home, parent)
     if not own:
         sags = []
-        for (actuator, n), a in zip(servos, spec.actuators):
+        for channel, ((actuator, n), a) in enumerate(zip(servos, spec.actuators)):
             j = jid[n]
             inertia = float(model.dof_M0[model.jnt_dofadr[j]])
             hinge = model.jnt_type[j] == mj.mjtJoint.mjJNT_HINGE
+            if grip is not None and channel == grip['channel']:
+                # A gripper squeezes what stops its jaws: with all its force once they are
+                # stopped SQUEEZE_AT of its travel short of where they are sent. A servo that
+                # stiff is stable at 2 ms only with the inertia of a geared drive behind the
+                # finger - a gripper's motor and screw - which is added where the finger is lighter.
+                given = bool(model.jnt_actfrclimited[j])
+                squeeze = float(max(abs(model.jnt_actfrcrange[j]))) if given else GRIP * grip['lever'] * grip['share']
+                kp = squeeze / (SQUEEZE_AT * abs(grip['closed'] - grip['open']))
+                drive = kp / FASTEST ** 2
+                if drive > inertia:
+                    spec.joint(n).armature += drive - inertia
+                    inertia = drive
+                a.set_to_position(kp=kp, kv=2 * sqrt(kp * inertia))
+                if not given:
+                    a.forcelimited = mj.mjtLimited.mjLIMITED_TRUE
+                    a.forcerange = (-squeeze, squeeze)
+                grip.update(squeeze=squeeze, given=given, unit='N m' if hinge else 'N',
+                            jaw=squeeze / (grip['lever'] * grip['share']))
+                # MuJoCo's contacts are soft in proportion to the mass behind them: squeezed
+                # with 20 N, a 10 g box let the jaws sink 7 mm into each side. The jaws'
+                # contacts are made the stiffest MuJoCo takes at the 2 ms step, and decide
+                # their own contacts (priority) with torsional friction, so that what they
+                # hold does not turn about the line between them.
+                for jaw in grip['jaws']:
+                    for g in spec.body(jaw).geoms:
+                        if g.contype or g.conaffinity:
+                            g.priority, g.condim = 1, 4
+                            g.solref[:] = JAW_SOLREF
+                            g.solimp[:3] = JAW_SOLIMP
+                a.ctrlrange = tuple(float(x) for x in model.jnt_range[j])
+                a.ctrllimited = True
+                continue
             stiff = max(inertia * SLOWEST ** 2, weight[n] / (SAG if hinge else SAG_SLIDE))
             kp = min(stiff, inertia * FASTEST ** 2)
             a.set_to_position(kp=kp, kv=2 * sqrt(kp * inertia))
@@ -522,7 +572,7 @@ def prepare(path, assets, name=None):
             if weight[n] > limit:
                 report.warn(f"'{n}' can push at most {limit:g} {unit}; holding the robot up takes up to "
                             f'{weight[n]:.3g} {unit} at some poses: it will sag there')
-        elif not own:
+        elif not own and not (grip is not None and n == servos[grip['channel']][1]):
             report.warn(f"'{n}' has no effort limit in the file: its servo is as strong as it needs to be, "
                         'which a real motor is not')
     try:
@@ -534,7 +584,6 @@ def prepare(path, assets, name=None):
         data.qpos[model.jnt_qposadr[jid[n]]] = home[n]
     mj.mj_forward(model, data)
     # Links that touch at the home pose, other than neighbours, are kept apart from each other.
-    parent = {b.name: (b.parent.name if b.parent is not None else None) for b in bodies}
     neighbours = {frozenset((a, p)) for a, p in parent.items() if p}
     touching = {}
     for c in data.contact[:data.ncon]:
@@ -574,6 +623,16 @@ def prepare(path, assets, name=None):
     last = max((model.body(int(model.jnt_bodyid[jid[n]])).name for _, n in servos), key=lambda n: depth[n])
     tool = tools[0] if tools and depth[tools[0]] >= depth[last] else last
     joint_kind = {n: KINDS[model.jnt_type[jid[n]]] for n in joints}
+    units = ['deg' if joint_kind[n] == 'hinge' else 'mm' for _, n in servos]
+    if grip is not None:
+        units[grip['channel']] = '%'
+        tool = [grip['palm'], grip['point']]
+        report.added(f"'{servos[grip['channel']][1]}' closes a gripper - its fingers {1000 * grip['wide']:.0f} mm "
+                     f"apart open, {1000 * grip['narrow']:.0f} mm closed: it is driven by how closed it is, 0 to 100 %, "
+                     f"and presses what it closes on with up to {grip['jaw']:.3g} N at each jaw ("
+                     + (f"its effort in the file, {grip['squeeze']:.3g} {grip['unit']}" if grip['given']
+                        else "the file gives no effort: the kit gripper's")
+                     + '); the tool point is between its fingers, and the grasp blocks hold with it')
     hinge_n = sum(k == 'hinge' for k in joint_kind.values())
     report.lines.insert(0, ('found', f'{title} ({kind}): {len(bodies)} links, {len(joints)} joints '
                             f'({hinge_n} hinge{"s" if hinge_n != 1 else ""}'
@@ -588,12 +647,86 @@ def prepare(path, assets, name=None):
         root=base.name, joints=joints,
         actuators=[a for a, _ in servos], servo_joints=[n for _, n in servos],
         limits=[_limits(model, a, jid[n]) for a, n in servos],
-        units=['deg' if joint_kind[n] == 'hinge' else 'mm' for _, n in servos],
+        units=units,
         labels=[_label(n) for _, n in servos],
-        tool=[tool, [0., 0., 0.]], exclude=exclude,
+        tool=tool if isinstance(tool, list) else [tool, [0., 0., 0.]], exclude=exclude,
+        gripper=None if grip is None else dict(channel=grip['channel'], open=grip['open'], closed=grip['closed'],
+                                               jaws=list(grip['jaws'])),
         report=report.lines,
     )
     return spec, meta, report, copied
+
+
+def _gripper(model, servos, mimic, jid, home, parent):
+    """A gripper the file describes, if any: a limited servo joint named like a finger (or its
+    link), whose finger comes closer to the other finger - its mimic follower's link - or, with
+    none, to a fixed jaw - the link it hangs from or a link fixed to that one - at one end of its
+    travel than at the other. The end where they are nearest closes it. A dict - its servo channel, the open and closed joint positions,
+    the two jaw links, the link carrying them and the point between the jaws in its frame,
+    the fingers' gap open and closed, a hinged finger's lever (1 for a slide) and how many
+    shares of the joint's force there are, one for each finger it closes - or None."""
+    followers = {leader: follower for follower, (leader, _, _) in mimic.items()}
+    data = mj.MjData(model)
+
+    def gap(q, finger, other):
+        pose = dict(home)
+        pose[finger] = q
+        for follower, (leader, k, offset) in mimic.items():
+            pose[follower] = offset + k * pose[leader]
+        for n, v in pose.items():
+            data.qpos[model.jnt_qposadr[jid[n]]] = v
+        mj.mj_forward(model, data)
+        a, b = (model.body(name).id for name in other)
+        geoms = lambda body: [g for g in range(model.ngeom) if model.geom_bodyid[g] == body
+                              and (model.geom_contype[g] or model.geom_conaffinity[g])]
+        pairs = [(g, h) for g in geoms(a) for h in geoms(b)]
+        if not pairs:
+            return None, None, None
+        best = min(pairs, key=lambda gh: mj.mj_geomDistance(model, data, gh[0], gh[1], 1., None))
+        middle = (data.geom_xpos[best[0]] + data.geom_xpos[best[1]]) / 2
+        return max(0., float(mj.mj_geomDistance(model, data, best[0], best[1], 1., None))), middle, best[0]
+
+    for channel, (_, n) in enumerate(servos):
+        j = jid[n]
+        finger = model.body(int(model.jnt_bodyid[j])).name
+        if not (FINGER.search(n) or FINGER.search(finger)) or not model.jnt_limited[j]:
+            continue
+        other_joint = followers.get(n)
+        if other_joint:
+            others = [model.body(int(model.jnt_bodyid[jid[other_joint]])).name]
+        elif parent[finger] is None:
+            continue
+        else:
+            # A fixed jaw: the link the finger hangs from, or a link fixed to that one.
+            hub = model.body(parent[finger]).id
+            others = [parent[finger]] + [model.body(i).name for i in range(model.nbody)
+                                         if model.body_parentid[i] == hub and i != hub
+                                         and not model.body_jntnum[i] and model.body(i).name != finger]
+        lo, hi = (float(x) for x in model.jnt_range[j])
+        found = []
+        for other in others:
+            (a, _, _), (b, _, _) = gap(lo, n, (finger, other)), gap(hi, n, (finger, other))
+            if a is not None and b is not None and abs(a - b) >= CLOSING:
+                found.append((min(a, b), other, a, b))
+        if not found:
+            continue
+        _, other, a, b = min(found)
+        closed, opened = (lo, hi) if a < b else (hi, lo)
+        _, middle, jaw = gap(closed, n, (finger, other))
+        # A finger on a hinge squeezes with a torque: the force at its jaw times its lever.
+        lever = 1.
+        if model.jnt_type[j] == mj.mjtJoint.mjJNT_HINGE:
+            arm = data.geom_xpos[jaw] - data.xanchor[j]
+            lever = float(np.linalg.norm(arm - (arm @ data.xaxis[j]) * data.xaxis[j])) or 1.
+        # With a follower the joint's force closes both fingers: each jaw gets its share.
+        share = 1. + abs(mimic[other_joint][1]) if other_joint else 1.
+        palm = parent[finger]
+        p = model.body(palm).id
+        gap(home[n], n, (finger, other))     # the frame of the link carrying the jaws, at home
+        point = data.xmat[p].reshape(3, 3).T @ (middle - data.xpos[p])
+        return dict(channel=channel, open=opened, closed=closed, jaws=(finger, other), palm=palm,
+                    point=[float(x) for x in point], wide=max(a, b), narrow=min(a, b), lever=lever, share=share)
+    return None
 
 
 def _limits(model, actuator, joint):

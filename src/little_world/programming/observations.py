@@ -3,8 +3,9 @@ from math import sqrt
 
 
 class Observations:
-    def __init__(self,model,data):
-        self.model=model;self.data=data
+    def __init__(self,model,data,jaws=()):
+        # `jaws`: an imported gripper's two jaw links, by name (MujocoBackend.robot_jaws, ADR 0047).
+        self.model=model;self.data=data;self.jaws=tuple(tuple(pair) for pair in jaws)
         self.names={i:model.body(i).name for i in range(1,model.nbody)}
         self.indices={name:i for i,name in self.names.items()}
 
@@ -38,5 +39,9 @@ class Observations:
                 if '_finger_right_pad' in a:right.setdefault(a.split('_finger_right_pad')[0],set()).add(b)
                 if '__robot_left_finger' in a:left.setdefault(a.split('left_finger')[0],set()).add(b)
                 if '__robot_right_finger' in a:right.setdefault(a.split('right_finger')[0],set()).add(b)
+                for first,second in self.jaws:
+                    prefix=first.split('__robot_')[0]+'__robot_'
+                    if a==first:left.setdefault(prefix,set()).add(b)
+                    if a==second:right.setdefault(prefix,set()).add(b)
         return frozenset(obj for prefix,objects in left.items() for obj in objects & right.get(prefix,set())
                          if not obj.startswith(prefix) and self.model.body_weldid[self.indices[obj]]!=0)

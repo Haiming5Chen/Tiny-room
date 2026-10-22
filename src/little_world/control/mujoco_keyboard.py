@@ -10,6 +10,7 @@ class MujocoKeyboardControl(KeyboardPositionControl):
         self.channels={}
         self.servos={}
         self.units={}   # a robot servo's: 'deg', 'mm' or '%' (a gripper, by its closure)
+        self.grips={}   # a gripper servo's (control open, closed, joint position open, closed)
         model=backend.model
         for spec in self.specs:
             for name in spec.actuators:
@@ -19,6 +20,8 @@ class MujocoKeyboardControl(KeyboardPositionControl):
                     joint=model.joint(joint_name).id
                     self.servos[name]=(actuator,channel)
                     self.units[name]=getattr(backend,'servo_units',{}).get(self.prefix+name,'%' if channel==7 else 'deg')
+                    if self.units[name]=='%':
+                        self.grips[name]=getattr(backend,'servo_grips',{}).get(self.prefix+name) or (255.,0.,.04,0.)
                     self.channels[name]=(int(model.jnt_qposadr[joint]),int(model.jnt_dofadr[joint]),0,0,0)
                     continue
                 actuator=model.actuator(self.prefix+name).id
@@ -43,7 +46,10 @@ class MujocoKeyboardControl(KeyboardPositionControl):
                 if name not in self.servos:continue
                 idx,channel=self.servos[name]
                 unit=self.units[name]
-                rate=-255*spec.speed/100 if unit=='%' else spec.speed/1000 if unit=='mm' else radians(spec.speed)
+                if unit=='%':
+                    opened,closed=self.grips[name][:2]
+                    rate=(closed-opened)*spec.speed/100
+                else:rate=spec.speed/1000 if unit=='mm' else radians(spec.speed)
                 target=self.targets.get(name,float(data.ctrl[idx]))+direction*rate*dt
                 lo,hi=self.backend.model.actuator_ctrlrange[idx] if self.backend.model.actuator_ctrllimited[idx] else (-6.283185307,6.283185307)
                 self.targets[name]=result[name]=max(float(lo),min(float(hi),target))
@@ -56,18 +62,26 @@ class MujocoKeyboardControl(KeyboardPositionControl):
     def unit(self,name):
         return self.units.get(name,'deg')
 
+    def closure(self,name,ctrl):
+        """How closed a gripper servo's control `ctrl` sends it, 0 (open) to 1 (closed)."""
+        opened,closed=self.grips[name][:2]
+        return (ctrl-opened)/(closed-opened)
+
     def display_position(self,name):
         from math import degrees
         q=self.channels[name][0]
         if self.gripper(name):
-            return max(0.,min(100.,100*(1-float(self.backend.data.qpos[q])/.04))), '% closed'
+            q_open,q_closed=self.grips[name][2:]
+            return max(0.,min(100.,100*(float(self.backend.data.qpos[q])-q_open)/(q_closed-q_open))), '% closed'
         if self.unit(name)=='mm':
             return 1000*float(self.backend.data.qpos[q]), 'mm'
         return degrees(float(self.backend.data.qpos[q])), 'deg'
 
     def set_position_target(self,name,value):
         from math import radians
-        if self.gripper(name):self.targets[name]=255*(1-value/100)
+        if self.gripper(name):
+            opened,closed=self.grips[name][:2]
+            self.targets[name]=opened+(closed-opened)*value/100
         elif self.unit(name)=='mm':self.targets[name]=value/1000
         else:self.targets[name]=radians(value)
 
@@ -78,7 +92,8 @@ class MujocoKeyboardControl(KeyboardPositionControl):
             idx,channel=self.servos[name]
             current=self.targets.get(name,float(self.backend.data.ctrl[idx]))
             if self.gripper(name):
-                self.targets[name]=max(0.,min(255.,current-amount*255/100))
+                opened,closed=self.grips[name][:2]
+                self.targets[name]=max(min(opened,closed),min(max(opened,closed),current+(closed-opened)*amount/100))
             else:
                 lo,hi=self.backend.model.actuator_ctrlrange[idx] if self.backend.model.actuator_ctrllimited[idx] else (-6.283185307,6.283185307)
                 step=amount/1000 if self.unit(name)=='mm' else radians(amount)

@@ -250,8 +250,10 @@ class MujocoBackend:
         geared = []  # native joints carrying a gearmotor's sourced friction
         profiles={}
         robots=[]
+        robot_jaws=[]   # an imported gripper's two jaw links, by their names here (ADR 0047)
         servo_names={}
         servo_units={}
+        servo_grips={}
         for entity in scene.entities:
             bp = entity.blueprint
             bp.validate()
@@ -318,6 +320,8 @@ class MujocoBackend:
                     for a,c in meta.get('exclude',()):
                         spec.add_exclude(bodyname1=native_prefix+a,bodyname2=native_prefix+c)
                     robots.append((name,native_prefix,meta))
+                    from little_world.assets.robot_models import jaws
+                    if jaws(b.robot_asset):robot_jaws.append(tuple(native_prefix+j for j in jaws(b.robot_asset)))
                     camera_names.extend(c.name for c in child.cameras)
                     return nb
                 shape, size = b.geometry.shape, b.geometry.size
@@ -356,6 +360,9 @@ class MujocoBackend:
                     native_name=prefix+c.body+'__robot_'+metadata(asset)['actuators'][c.channel]
                     servo_names[prefix+c.id]=(native_name,c.channel)
                     servo_units[prefix+c.id]=units(asset)[c.channel]
+                    if servo_units[prefix+c.id]=='%':
+                        from little_world.assets.robot_models import grip
+                        servo_grips[prefix+c.id]=grip(asset,c.channel)
                 elif isinstance(c, Motor):
                     # A motor's affine bias is zero unless a step gives it a slope: the
                     # sourced speed-torque line where it binds (ADR 0011), or the
@@ -416,8 +423,11 @@ class MujocoBackend:
         self._camera_ids = {n: model.camera(n).id for n in camera_names}
         self.servo_info={}
         self.servo_joint_names={}
-        # What each robot servo is driven in: 'deg', 'mm' or '%' (robot_models.units).
+        # What each robot servo is driven in: 'deg', 'mm' or '%' (robot_models.units); for a
+        # gripper's, how its closure maps to its control and its joint (robot_models.grip).
         self.servo_units=dict(servo_units)
+        self.servo_grips=dict(servo_grips)
+        self.robot_jaws=tuple(robot_jaws)
         for name,(native_name,channel) in servo_names.items():
             idx=model.actuator(native_name).id
             self._motor_ids[name]=idx

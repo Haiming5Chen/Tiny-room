@@ -7,11 +7,12 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0046. The newest: 0046 the first hour, checked by the app
-  (FR-033); 0045 the tool travels its line (FR-032), both by the focused reading's ranking; 0044
-  robots from their own files (FR-031, the owner's request of 21 Oct).
-- **Tests**: on MuJoCo 3.10.0, 1035 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 983 headless; each test runs with an empty robot library of its own.
+- **Decision records** 0001 to 0047. The newest: 0047 a gripper from its file (OPEN LW-030,
+  FR-031's loose end); 0046 the first hour, checked by the app (FR-033); 0045 the tool travels
+  its line (FR-032), both by the focused reading's ranking; 0044 robots from their own files
+  (FR-031, the owner's request of 21 Oct).
+- **Tests**: on MuJoCo 3.10.0, 1037 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 985 headless; each test runs with an empty robot library of its own.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006, FR-011, FR-015 to

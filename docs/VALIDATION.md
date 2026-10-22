@@ -1430,3 +1430,24 @@ MuJoCo 3.10.0: 1035 passed with a display, 983 headless.
 
 Not claimed: that the lessons shorten anyone's first hour (no study here); that a check sees
 understanding rather than the simulator's state.
+
+## A gripper from its file — 2026-10-22
+
+ADR 0047 (OPEN LW-030). The two-link test arm with a parallel gripper at its end - two 30 g
+fingers sliding across the palm, the second mimicking the first, 20 N of effort: the finger joint
+is found as the gripper, closing where the fingers meet, its jaws the two finger links. Before,
+its servo was sized as any joint's (16 N/m) and pressed a 3 cm box with 0.12 N at each jaw; a
+10.8 g box turned over by the elbow slid 7.3 mm and on at 4.4 mm/s. Squeezing with its 20 N at
+MuJoCo's default contact softness, the jaws sank 6.8 mm into each side of the box and the mimic
+finger gave 3.5 mm. Now a block program closes the jaws on the box (60 % in 1 s) and its grasp
+check passes at 50.9 % closed; turned over a right angle, the box hangs from the jaws alone and
+stays within 1 mm of where it was held (0.44 mm); fully closed, each jaw presses with 10.0 N,
+sinking 0.15 mm; opened, the box falls free. Tool mode drives the gripper, its tool point between
+the jaws. A claw closing on a fixed jaw, no effort in its file, squeezes with 12 N at its jaw and,
+closing on nothing, stops where its jaws meet (77 % of its travel). The same two slides named as
+a stage's are driven in millimetres. Checked in `tests/test_robot_library.py` (20, one a window
+test). Suites on MuJoCo 3.10.0: 1037 passed with a display, 985 headless.
+
+Not claimed: grippers named otherwise, or driven through a tendon or a linkage; the file's
+velocity limit (sent at once from open to closed, the fingers reach 0.76 m/s); a slip or payload
+rating; that a file's effort is the gripper's real force.

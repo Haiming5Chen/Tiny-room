@@ -63,7 +63,7 @@ sideways, within 0.4 degree, within 1 degree after 0.18 s; imported with a 3 N m
 says it will sag, pushes no more than 3 N m and falls to its 115-degree limit. The parallel gripper's mimic finger follows its leader to 30 mm within 0.5 mm. The
 UR5e imported from its own file keeps its six servos, adds nothing, and follows the shipped arm
 joint for joint within 0.5 degree; the FR3 and Gen3 import the same way; the Panda's file is
-refused by name (its gripper is driven through a tendon). RESULT
+refused by name (its gripper is driven through a tendon).
 
 Links that overlap at the home pose are kept from colliding (without that, the test arm starts
 pushed 4 degrees off); a jog sends the imported arm's tool where it is asked within 2 mm (on the

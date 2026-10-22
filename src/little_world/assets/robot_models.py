@@ -61,6 +61,22 @@ def units(asset):
     return tuple('%' if asset=='franka_panda' and i==7 else 'deg' for i in range(len(meta['actuators'])))
 
 
+def grip(asset, channel):
+    """For a gripper servo: (its control when open, when closed, its joint's position open,
+    closed); None for any other servo. The Panda's gripper takes 0 to 255 for 4 cm to closed; an
+    imported gripper's control is its joint's position (ADR 0047)."""
+    if asset=='franka_panda' and channel==7:return (255.,0.,.04,0.)
+    g=metadata(asset).get('gripper')
+    if g and g['channel']==channel:return (g['open'],g['closed'],g['open'],g['closed'])
+    return None
+
+
+def jaws(asset):
+    """The two links an imported gripper holds between, or ()."""
+    g=metadata(asset).get('gripper') if robot_library.is_user(asset) else None
+    return tuple(g['jaws']) if g else ()
+
+
 def blueprint(asset='franka_panda'):
     from little_world.core.component import Body,Geometry,Transform,Attachment,RobotServo
     from little_world.core.blueprint import Blueprint,ControllerSpec
@@ -75,5 +91,7 @@ def blueprint(asset='franka_panda'):
     if asset!='franka_panda':labels=tuple(meta.get('labels') or ('Joint '+str(i+1) for i in range(len(meta['actuators']))))
     # A slide is jogged in mm/s, a hinge in degrees/s.
     speeds=tuple(60 if u=='%' else 50 if u=='mm' else 20 for u in units(asset))
+    grips=metadata(asset).get('gripper')
+    if asset!='franka_panda' and grips:labels=tuple('Gripper close / open' if i==grips['channel'] else l for i,l in enumerate(labels))
     controls=tuple(ControllerSpec(('panda_' if asset=='franka_panda' else 'joint_')+str(i+1),'keyboard_position',(parts[i+1].id,),label,*keys[i],speeds[i]) for i,label in enumerate(labels[:len(meta['actuators'])]))
     return Blueprint(parts,(METAL,),controls)

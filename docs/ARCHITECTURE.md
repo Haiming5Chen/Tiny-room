@@ -435,9 +435,12 @@ words. `assets/robot_library.py` (standard library) keeps the results outside th
 one folder per robot that is never rewritten (`$LITTLE_WORLD_ROBOTS`, else the platform's
 application-data folder), and names them `user:<name>`. Designs carry the name, never a path:
 the core accepts the pattern, `robot_models` resolves it, and the backend attaches a library
-model exactly as it attaches a Menagerie arm. A servo's unit - 'deg', 'mm', or the Panda
-gripper's '%' - goes from `robot_models.units` through the backend (`servo_units`) to the
-keyboard control and the block programs. Tests each run with an empty library.
+model exactly as it attaches a Menagerie arm. A servo's unit - 'deg', 'mm', or a gripper's
+'%' - goes from `robot_models.units` through the backend (`servo_units`) to the keyboard control
+and the block programs. A gripper found at import (ADR 0047) is metadata of the robot - its
+channel, its open and closed positions, its two jaws: `robot_models.grip` maps its closure to its
+control, the backend names its jaws (`robot_jaws`) and `Observations` counts both of them on a
+movable object as held. Tests each run with an empty library.
 
 ## Lessons the app checks
 

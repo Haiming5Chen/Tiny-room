@@ -37,7 +37,7 @@ def trial(bp,program,mode,seconds,dt):
     from little_world.programming.observations import Observations
     backend=MujocoBackend()
     with World(backend,workshop_scene(Entity('machine',bp)),dt) as world:
-        world.start();model,data=backend.model,backend.data;control=MujocoKeyboardControl(backend,bp);obs=Observations(model,data)
+        world.start();model,data=backend.model,backend.data;control=MujocoKeyboardControl(backend,bp);obs=Observations(model,data,getattr(backend,'robot_jaws',()))
         runner=Runner()
         if mode=='program':program.validate(bp,tuple(obs.indices));runner.start(program)
         from little_world.control.mujoco_drive import MujocoDrive

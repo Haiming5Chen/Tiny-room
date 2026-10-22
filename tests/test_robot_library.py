@@ -146,20 +146,22 @@ def test_the_files_effort_limit_is_its_servos_strength(tmp_path):
     assert control.display_position('servo_1')[0] > 100, "too weak to hold the arm out, it sags past"
 
 
-def test_a_mimic_finger_follows_its_leader_and_a_slide_is_driven_in_millimetres(tmp_path):
+def test_a_mimic_slide_follows_its_leader_and_a_slide_is_driven_in_millimetres(tmp_path):
     from little_world.assets.robot_models import metadata
     from little_world.programming.program import Block, Program
-    path = tmp_path / 'gripper.urdf'
-    path.write_text(GRIPPER)
+    path = tmp_path / 'stage.urdf'
+    # The gripper's two slides, named as a double stage's rather than as fingers (a gripper
+    # is driven by how closed it is: ADR 0047, below).
+    path.write_text(GRIPPER.replace('_finger_joint', '_slide').replace('Two-finger gripper', 'Double stage'))
     asset, report = import_robot(path)
-    assert asset == 'user:two-finger-gripper'
+    assert asset == 'user:double-stage'
     meta = metadata(asset)
-    assert meta['servo_joints'] == ['left_finger_joint'] and meta['units'] == ['mm']
-    assert any("'right_finger_joint' follows 'left_finger_joint'" in t for t in report.of('added'))
+    assert meta['servo_joints'] == ['left_slide'] and meta['units'] == ['mm'] and meta['gripper'] is None
+    assert any("'right_slide' follows 'left_slide'" in t for t in report.of('added'))
     bp, backend, control = scene(asset)
     control.set_position_target('servo_1', 30.)
     run(backend, control, 1.)
-    right = backend.model.joint('machine/root__robot_right_finger_joint').id
+    right = backend.model.joint('machine/root__robot_right_slide').id
     assert control.display_position('servo_1') == (pytest.approx(30., abs=.5), 'mm')
     assert 1000 * backend.data.qpos[backend.model.jnt_qposadr[right]] == pytest.approx(30., abs=.5)
     Program((Block('move', 'joint_1', 30., 1.),)).validate(bp)
@@ -384,3 +386,159 @@ def test_the_joint_lab_imports_a_robot_from_its_file_and_runs_it(tmp_path):
     app.draw = use
     app.run(60)
     assert finished
+
+
+# -- a gripper in the file (ADR 0047) --------------------------------------------------
+
+# A parallel gripper at the arm's end: two fingers sliding across the palm, the right one
+# mimicking the left, closing along the elbow's axis (y) so that the elbow can turn what they
+# hold over.
+HAND = '''<link name="palm">{palm}<collision><geometry><box size="0.03 0.09 0.02"/></geometry></collision></link>
+  <link name="left_finger">{finger}<collision><origin xyz="0 0 0.035"/><geometry><box size="0.02 0.01 0.05"/></geometry></collision></link>
+  <link name="right_finger">{finger}<collision><origin xyz="0 0 0.035"/><geometry><box size="0.02 0.01 0.05"/></geometry></collision></link>
+  <joint name="wrist_mount" type="fixed"><parent link="forearm"/><child link="palm"/><origin xyz="0 0 0.26"/></joint>
+  <joint name="left_finger_joint" type="prismatic"><parent link="palm"/><child link="left_finger"/>
+    <origin xyz="0 -0.035 0.01"/><axis xyz="0 1 0"/><limit lower="0" upper="0.03" effort="20" velocity="0.1"/></joint>
+  <joint name="right_finger_joint" type="prismatic"><parent link="palm"/><child link="right_finger"/>
+    <origin xyz="0 0.035 0.01"/><axis xyz="0 -1 0"/><limit lower="0" upper="0.03" effort="20" velocity="0.1"/>
+    <mimic joint="left_finger_joint" multiplier="1" offset="0"/></joint>
+</robot>'''.format(palm=inertial(.2, 0, 2e-4, 2e-4), finger=inertial(.03, .025, 1e-5, 1e-5))
+
+
+def jaw_force(backend, jaw, other):
+    """The force pressing `jaw` (a body) on `other`, summed over their contacts (N)."""
+    import mujoco as mj
+    m, d = backend.model, backend.data
+    a, b = m.body(jaw).id, m.body(other).id
+    total, f = 0., np.zeros(6)
+    for i in range(d.ncon):
+        c = d.contact[i]
+        if {int(m.geom_bodyid[c.geom1]), int(m.geom_bodyid[c.geom2])} == {a, b}:
+            mj.mj_contactForce(m, d, i, f)
+            total += f[0]
+    return total
+
+
+def test_a_gripper_in_the_file_is_found_and_its_grasp_blocks_hold_what_it_closes_on(tmp_path):
+    """The arm with a parallel gripper at its end: the finger joint is found as a gripper,
+    closing at the end of its travel where the fingers meet. A block program closes it on a box
+    and checks the grasp as the pick-and-place programs do; the elbow then turns the box over a
+    right angle, where only the jaws' grip holds it, and the box stays where it was held."""
+    from little_world.assets.robot_models import blueprint, metadata
+    from little_world.control.mujoco_keyboard import MujocoKeyboardControl
+    from little_world.control.tool_motion import ToolMotion
+    from little_world.core.blueprint import Blueprint
+    from little_world.core.component import Body, Geometry, Transform
+    from little_world.core.entity import Entity
+    from little_world.core.scene import Scene
+    from little_world.materials import WOOD
+    from little_world.physics.mujoco_backend import MujocoBackend
+    from little_world.programming.execution import apply, joint_angles
+    from little_world.programming.observations import Observations
+    from little_world.programming.program import Block, Program, Runner
+    asset, report = import_robot(package(tmp_path, arm().replace('</robot>', HAND)))
+    meta = metadata(asset)
+    assert meta['units'] == ['deg', 'deg', '%'] and meta['gripper']['channel'] == 2
+    assert (meta['gripper']['open'], meta['gripper']['closed']) == (0., .03), "closed where the fingers meet"
+    assert meta['gripper']['jaws'] == ['left_finger', 'right_finger'] and meta['tool'][0] == 'palm'
+    assert meta['tool'][1] == pytest.approx([0., 0., .045]), "the tool point: between the jaws, above the palm"
+    assert any("'left_finger_joint' closes a gripper - its fingers 60 mm apart open, 0 mm closed" in t
+               and 'up to 10 N at each jaw (its effort in the file, 20 N)' in t for t in report.of('added'))
+    bp = blueprint(asset)
+    assert [c.label for c in bp.controllers][2] == 'Gripper close / open'
+    # A 3 cm box on the palm between the open jaws, the arm upright at home.
+    probe = MujocoBackend()
+    probe.compile(Scene((Entity('machine', bp),)), STEP)
+    x, y, z = (float(v) for v in sum(probe.data.xpos[probe.model.body(f'machine/root__robot_{side}_finger').id]
+                                     for side in ('left', 'right')) / 2)
+    objects = Blueprint((Body('box', Geometry('box', (.02, .03, .03)), 'wood', Transform((x, y, z + .016)),
+                              dynamic=True),), (WOOD,))
+    backend = MujocoBackend()
+    backend.compile(Scene((Entity('machine', bp), Entity('objects', objects))), STEP)
+    m, d = backend.model, backend.data
+    control = MujocoKeyboardControl(backend, bp)
+    seen = Observations(m, d, backend.robot_jaws)
+    assert backend.robot_jaws == (('machine/root__robot_left_finger', 'machine/root__robot_right_finger'),)
+    motion = ToolMotion(backend, bp, control)
+    assert motion.jaws == ('servo_3',), "Tool mode's Open and Close drive the gripper"
+    fingers = [d.geom_xpos[g] for g in range(m.ngeom) if m.body(int(m.geom_bodyid[g])).name.endswith('_finger')]
+    assert np.linalg.norm(motion.tool()[0] - sum(fingers) / 2) < .001, "the tool point is between the jaws"
+    run(backend, control, .3)
+    assert control.display_position('servo_3') == (pytest.approx(0., abs=1.), '% closed')
+    assert seen.grasped() == frozenset()
+    palm, box = m.body('machine/root__robot_palm').id, m.body('objects/box').id
+    held_at = lambda: d.xmat[palm].reshape(3, 3).T @ (d.xpos[box] - d.xpos[palm])
+    program = Program((Block('action', 'joint_3', 1, 1.), Block('grasp', 'objects/box', duration=.5),
+                       Block('pose', value=30., duration=5., angles=(('joint_2', (90.,)),)), Block(duration=1.)))
+    program.validate(bp, ('objects/box',))
+    runner, grasped_at = Runner(), None
+    runner.start(program)
+    while runner.state == 'running' and d.time < 15.:
+        out = runner.tick(STEP, joint_angles(control), held=seen.grasped())
+        if runner.index == 2 and grasped_at is None:      # the grasp is checked: the box is held
+            grasped_at, closure = held_at(), control.display_position('servo_3')[0]
+        control.clear()
+        for key in apply(out, control):
+            control.press(key)
+        backend.step(control.step_commands(STEP))
+    assert runner.state == 'completed', runner.message
+    assert 45 < closure < 55, "stopped by the 3 cm box: half closed"
+    assert control.display_position('servo_2')[0] == pytest.approx(90., abs=1.)
+    assert seen.grasped() == {'objects/box'}
+    assert all(palm not in (int(m.geom_bodyid[c.geom1]), int(m.geom_bodyid[c.geom2])) for c in d.contact[:d.ncon]), \
+        "turned over, the box is off the palm: the jaws alone hold it"
+    assert np.linalg.norm(held_at() - grasped_at) < .001, "and it stays where it was held"
+    # The program's close went to 60 %: squeezing, short of its whole force. Sent fully closed,
+    # the joint pushes with the file's 20 N, which the two jaws share (averaged over 0.2 s: the
+    # held box rocks a milliradian between its eight contacts).
+
+    def jaws():
+        total = np.zeros(2)
+        for _ in range(100):
+            backend.step(control.step_commands(STEP))
+            total += [jaw_force(backend, f'machine/root__robot_{side}_finger', 'objects/box') for side in ('left', 'right')]
+        return tuple(total / 100)
+    assert all(5. < f < 10. for f in jaws())
+    control.set_position_target('servo_3', 100.)
+    run(backend, control, .3)
+    assert jaws() == (pytest.approx(10., abs=.2), pytest.approx(10., abs=.2))
+    assert 45 < control.display_position('servo_3')[0] < 55, "and the jaws do not sink into the box"
+    control.set_position_target('servo_3', 0.)
+    run(backend, control, 1.)
+    assert seen.grasped() == frozenset() and control.display_position('servo_3')[0] < 1.
+
+
+CLAW = '''<robot name="Claw">
+  <link name="palm">{heavy}<collision><geometry><box size="0.06 0.04 0.02"/></geometry></collision></link>
+  <link name="fixed_jaw">{light}<collision><origin xyz="0 0 0.04"/><geometry><box size="0.01 0.03 0.06"/></geometry></collision></link>
+  <link name="claw">{light}<collision><origin xyz="0 0 0.04"/><geometry><box size="0.01 0.03 0.06"/></geometry></collision></link>
+  <joint name="jaw_mount" type="fixed"><parent link="palm"/><child link="fixed_jaw"/><origin xyz="0.025 0 0.01"/></joint>
+  <joint name="claw_joint" type="revolute"><parent link="palm"/><child link="claw"/>
+    <origin xyz="-0.025 0 0.01"/><axis xyz="0 1 0"/><limit lower="-0.3" upper="0.9" velocity="1"/></joint>
+</robot>'''.format(heavy=inertial(.3, 0, 1e-4, 1e-4), light=inertial(.02, .04, 1e-5, 1e-5))
+
+
+def test_a_claw_closing_on_a_fixed_jaw_squeezes_as_the_kit_gripper_when_its_file_gives_no_effort(tmp_path):
+    """One hinged finger closing on a jaw fixed to the palm, with no effort in the file: the
+    gripper is still found - the fixed jaw is the other jaw - and squeezes as the kit gripper
+    does, 12 N at its jaw: a torque of that force times the finger's lever."""
+    from little_world.assets.robot_models import metadata
+    path = tmp_path / 'claw.urdf'
+    path.write_text(CLAW)
+    asset, report = import_robot(path)
+    meta = metadata(asset)
+    assert meta['units'] == ['%'] and meta['gripper']['jaws'] == ['claw', 'fixed_jaw']
+    assert (meta['gripper']['open'], meta['gripper']['closed']) == (pytest.approx(-.3), pytest.approx(.9))
+    line = next(t for t in report.of('added') if 'closes a gripper' in t)
+    assert "up to 12 N at each jaw (the file gives no effort: the kit gripper's)" in line
+    assert not any("'claw_joint' has no effort limit" in t for t in report.of('warning')), "said once, as the gripper's"
+    bp, backend, control = scene(asset)
+    servo = backend.model.actuator('machine/root__robot_servo_claw_joint').id
+    assert backend.model.actuator_forcerange[servo][1] == pytest.approx(12. * .04, rel=.05), \
+        "12 N at a jaw 4 cm from the hinge"
+    control.set_position_target('servo_1', 100.)
+    run(backend, control, 1.)
+    # Its file lets the claw turn on past the fixed jaw: closing on nothing, it stops where the
+    # jaws meet, 0.62 rad - 77 % of its travel - and presses them together.
+    assert control.display_position('servo_1')[0] == pytest.approx(77., abs=1.)
+    assert jaw_force(backend, 'machine/root__robot_claw', 'machine/root__robot_fixed_jaw') > 5.

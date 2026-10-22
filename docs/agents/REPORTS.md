@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-22 · Claude (Cowork) · LW-030: a gripper from its file
+Did: ADR 0047 (`physics/importer.py`, `assets/robot_models.py`, the backend's `robot_jaws` and
+`servo_grips`, the keyboard control's closure, `Observations`): an imported robot's gripper is
+found at import and driven by how closed it is; its servo squeezes with the file's effort, and
+its jaws' contacts and its mimic equality are as stiff as MuJoCo takes at the 2 ms step; the
+grasp blocks, Tool mode and the run report see it hold.
+Measured: before, 0.12 N at each jaw and a turned-over 10.8 g box creeping out at 4.4 mm/s;
+after, 10.0 N at each jaw and the box within 0.44 mm of where it was held
+(tests/test_robot_library.py, 20).
+Unfinished: FR-026 (feel the grasp): its sweeps were lost to a restart of the workspace and
+run again.
+For the owner: a gripper is recognised by its joint and link names (finger, gripper, jaw, claw,
+pinch); a gripper of your own named otherwise is still driven joint by joint.
+
 ## 2026-10-22 · Claude (Cowork) · FR-033: the first hour, checked by the app
 Did: ADR 0046 (`lessons.py`, `ui/lessons_panel.py`, the Guide tab, a sample arm file
 `assets/samples/sample_arm.urdf`): five lessons with a set-up and a check each; the window

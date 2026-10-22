@@ -118,7 +118,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
     def bind_runtime(self):
         self.model, self.data = self.backend.model, self.backend.data
         from little_world.programming.observations import Observations
-        self.observations=Observations(self.model,self.data)
+        self.observations=Observations(self.model,self.data,getattr(self.backend,'robot_jaws',()))
         self.grip_history={};self.possible_slips=set()
         if not hasattr(self, 'render_scene'):
             self.render_scene = mj.MjvScene(self.model, maxgeom=10000)
