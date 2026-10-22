@@ -110,6 +110,7 @@ class RealLab:
             text('Arm-only model: no gripper.',18,498,11,(.9,.72,.4),270)
             text('Pick-and-place is validated for Panda.',18,521,11,(.66,.77,.79),270)
         button('Reset experiment',18,wh-110,268,self.reset_cell,h=34)
+        self.draw_lesson_note(text,self.PANEL+16,70,ww-self.PANEL-36)
         text(self.status,18,wh-24,11,(.66,.77,.79),ww-36)
         self.draw_control_panel(ui,button,text,ww,wh,fw,fh)
         self.draw_dialog(ui,button,text,ww,wh)

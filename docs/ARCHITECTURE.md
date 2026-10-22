@@ -439,6 +439,17 @@ model exactly as it attaches a Menagerie arm. A servo's unit - 'deg', 'mm', or t
 gripper's '%' - goes from `robot_models.units` through the backend (`servo_units`) to the
 keyboard control and the block programs. Tests each run with an empty library.
 
+## Lessons the app checks
+
+`lessons.py` (standard library, ADR 0046) holds the first hour as data: each lesson a goal,
+steps, a set-up name and a check over `Facts` - what a workspace can say about the work: the
+field and its goals, the tool's distance from the cube, the program and how its run ended, the
+Joint lab's robot and how far its joints moved, the last repeats with variations. The window's
+`LessonsPanel` (`ui/lessons_panel.py`) gathers the facts of the active workspace each frame and
+finishes every lesson whose check passes; one `Progress` lives on the window's host, kept in a
+JSON file beside the robot library (`$LITTLE_WORLD_PROGRESS` in tests). A lesson's set-up uses
+only the actions a user has: loading a kit, choosing a field, simulating, opening a panel.
+
 ## Spatial drag preview and library styles
 
 Real robots and Anime / kit are catalog views over one shared Blueprint format;

@@ -25,6 +25,9 @@ class GuidedBuild:
         self.choose('Matched arm family / approximate',tuple(FAMILIES),selected)
 
     def draw_guide(self,ui,button,text,section,ww,wh):
+        # The first hour's lessons first (ADR 0046); the starter kits and checks a click away.
+        if getattr(self,'guide_view','Lessons')=='Lessons':
+            self.draw_lessons(ui,button,text,section,ww,wh);return
         section('WHAT DO YOU WANT TO BUILD?',122)
         for i,name in enumerate(('Tabletop pickup','Mobile pickup','Driving cart')):
             button(name,12,154+i*42,264,lambda n=name:self.starter_kit(n),self.building,h=34)
@@ -44,4 +47,5 @@ class GuidedBuild:
             for line in textwrap.wrap(message,37):
                 text(line,16,y,11,(.7,.78,.8),254);y+=17
             y+=8
+        button('Lessons: the first hour',12,wh-118,264,lambda:setattr(self,'guide_view','Lessons'),h=30)
         button('Search all parts',12,wh-78,264,lambda:(self.open_bench(),self.bench_search()),self.building)

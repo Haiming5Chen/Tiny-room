@@ -1413,3 +1413,20 @@ Suites on MuJoCo 3.10.0: 1028 passed with a display, 979 headless.
 Not claimed: the servos' lag and sag; collisions along the line; lines through poses the arm
 cannot take (refused, not bent around); dragging the tool with the mouse; a program's pose
 blocks, which still move joint by joint.
+
+## The first hour, checked by the app — 2026-10-22
+
+ADR 0046 (FR-033; the owner's request of 21 October for learning that costs little). Five
+lessons as data, each checked from what the window can see. Each was finished in the window
+through a user's actions: the tool lesson by holding arrow and page keys towards the cube as a
+user watching it would (the arm first drawn back along a line that never passes the cube); the
+program lesson by the Pick and place template and Run, the cube lifted; the import lesson by the
+prefilled form with the sample arm (three joints, a servo added to each, nothing to check) and
+the joint motion example; the drive lesson by a two-stop drive-to program through the door into
+the bay, the frame untouched; the sweep lesson by the sprint, Stop and Repeat with variations.
+Each check says what is missing before it passes; progress survives a restart and a spoilt file
+starts afresh. Checked in `tests/test_lessons.py` (7, three of them window tests). Suites on
+MuJoCo 3.10.0: 1035 passed with a display, 983 headless.
+
+Not claimed: that the lessons shorten anyone's first hour (no study here); that a check sees
+understanding rather than the simulator's state.

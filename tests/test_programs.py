@@ -134,7 +134,8 @@ def test_guided_test_workspace_and_sensor_block_editor(tmp_path,monkeypatch):
         while app.events:app.events.pop(0)()
     def draw():
         nonlocal done
-        app.show_guide();click('Tabletop pickup')
+        # The Guide opens on the first hour's lessons (ADR 0046); the starter kits are a click away.
+        app.show_guide();click('Build help: starter kits and checks');click('Tabletop pickup')
         app.show_program();click('Add');click('contact')
         # Choose through native modal buttons, exercising chained sensor forms.
         a='machine/two_finger_gripper_1_finger_left_pad';b='objects/grasp_cube'

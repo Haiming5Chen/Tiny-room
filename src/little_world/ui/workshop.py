@@ -33,6 +33,7 @@ class Button:
 
 from .program_workspace import ProgramWorkspace
 from .guided_build import GuidedBuild
+from .lessons_panel import LessonsPanel
 from .test_workspace import TestWorkspace
 from .inventory_workspace import InventoryWorkspace
 
@@ -46,7 +47,7 @@ from .varied_runs import VariedRuns
 from .disturbed_runs import DisturbedRuns
 
 
-class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, TestWorkspace, InventoryWorkspace, TestDrive, VariedRuns, DisturbedRuns):
+class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, LessonsPanel, TestWorkspace, InventoryWorkspace, TestDrive, VariedRuns, DisturbedRuns):
     PANEL = 288
 
     def __init__(self, path, blueprint=None):
@@ -719,6 +720,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             button('Follow',self.PANEL+163,72,70,self.toggle_follow,active=self.follow)
         button('Operate',self.PANEL+239,72,85,self.operate_robot)
         button('Guide',self.PANEL+330,72,64,self.show_guide)
+        self.draw_lesson_note(text,self.PANEL+16,108,ww-self.PANEL-36-(338 if self.control_panel else 0))
         field_label='Field: '+self.field_title()
         button(field_label,self.PANEL+400,72,min(200,ww-self.PANEL-576),self.choose_field,self.building)
         button('Undo',ww-166,72,68,lambda:self.edit(self.editor.undo),self.building and bool(self.editor.past),h=26)
@@ -896,6 +898,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                         active.state=active.world.step(commands)
                         accumulator-=active.world.timestep
                         if active.paused:break
+                active.check_lessons()
                 active.draw()
                 if screenshot and not captured and now-started>.4:
                     width,height=glfw.get_framebuffer_size(self.window)

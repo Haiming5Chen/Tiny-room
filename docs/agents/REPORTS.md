@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-22 · Claude (Cowork) · FR-033: the first hour, checked by the app
+Did: ADR 0046 (`lessons.py`, `ui/lessons_panel.py`, the Guide tab, a sample arm file
+`assets/samples/sample_arm.urdf`): five lessons with a set-up and a check each; the window
+finishes them as the work satisfies them, in any order, and keeps progress per user.
+Measured: each lesson finished in the window by a user's actions (tests/test_lessons.py).
+Unfinished: LW-030 (an imported gripper and the grasp blocks) still open; FR-026's sweeps (feel
+the grasp) running.
+For the owner: try the Guide's lessons on the Mac - whether the steps read clearly to you is the
+check no test can make.
+
 ## 2026-10-21 · Claude (Cowork) · FR-032: the tool travels its line
 Did: ADR 0045 (`control/tool_motion.py` glide, line, drive, Glide; `ui/key_bindings.py`
 tool_key, tick_tool; the main loop ticks the tool): tool steps travel their straight line at 5

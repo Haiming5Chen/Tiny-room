@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!-- A three-joint arm to try the robot import with (ADR 0044, 0046): primitive shapes, made for
+     Little World. A real description file would come from CAD; this one has no motors either,
+     so the import adds a servo to each joint. -->
+<robot name="Sample arm">
+  <link name="base_link">
+    <inertial><origin xyz="0 0 0.03"/><mass value="3.0"/>
+      <inertia ixx="0.008" iyy="0.008" izz="0.014" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.03"/><geometry><cylinder radius="0.09" length="0.06"/></geometry>
+      <material name="graphite"><color rgba="0.22 0.24 0.27 1"/></material></visual>
+    <collision><origin xyz="0 0 0.03"/><geometry><cylinder radius="0.09" length="0.06"/></geometry></collision>
+  </link>
+  <link name="turret">
+    <inertial><origin xyz="0 0 0.05"/><mass value="1.2"/>
+      <inertia ixx="0.0016" iyy="0.0016" izz="0.0015" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.05"/><geometry><cylinder radius="0.05" length="0.1"/></geometry>
+      <material name="teal"><color rgba="0.2 0.62 0.6 1"/></material></visual>
+    <collision><origin xyz="0 0 0.05"/><geometry><cylinder radius="0.05" length="0.1"/></geometry></collision>
+  </link>
+  <link name="upper_arm">
+    <inertial><origin xyz="0 0 0.14"/><mass value="1.0"/>
+      <inertia ixx="0.0068" iyy="0.0068" izz="0.0004" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.14"/><geometry><box size="0.05 0.05 0.28"/></geometry>
+      <material name="sand"><color rgba="0.86 0.78 0.6 1"/></material></visual>
+    <collision><origin xyz="0 0 0.14"/><geometry><box size="0.05 0.05 0.28"/></geometry></collision>
+  </link>
+  <link name="forearm">
+    <inertial><origin xyz="0 0 0.11"/><mass value="0.6"/>
+      <inertia ixx="0.0026" iyy="0.0026" izz="0.0002" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.11"/><geometry><box size="0.04 0.04 0.22"/></geometry>
+      <material name="sand"/></visual>
+    <collision><origin xyz="0 0 0.11"/><geometry><box size="0.04 0.04 0.22"/></geometry></collision>
+  </link>
+  <link name="tool0"/>
+  <joint name="base_yaw" type="revolute">
+    <parent link="base_link"/><child link="turret"/><origin xyz="0 0 0.06"/><axis xyz="0 0 1"/>
+    <limit lower="-2.6" upper="2.6" effort="8" velocity="1.5"/>
+  </joint>
+  <joint name="shoulder" type="revolute">
+    <parent link="turret"/><child link="upper_arm"/><origin xyz="0 0 0.1"/><axis xyz="0 1 0"/>
+    <limit lower="-1.6" upper="1.6" effort="20" velocity="1.5"/>
+  </joint>
+  <joint name="elbow" type="revolute">
+    <parent link="upper_arm"/><child link="forearm"/><origin xyz="0 0 0.28"/><axis xyz="0 1 0"/>
+    <limit lower="-2.4" upper="2.4" effort="8" velocity="2.0"/>
+  </joint>
+  <joint name="tool_mount" type="fixed">
+    <parent link="forearm"/><child link="tool0"/><origin xyz="0 0 0.22"/>
+  </joint>
+</robot>

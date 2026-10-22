@@ -28,3 +28,9 @@ def own_robot_library(tmp_path_factory, monkeypatch):
     robot_library.forget()
     yield
     robot_library.forget()
+
+
+@pytest.fixture(autouse=True)
+def own_lesson_progress(tmp_path_factory, monkeypatch):
+    """No test reads or writes the user's lesson progress (ADR 0046)."""
+    monkeypatch.setenv('LITTLE_WORLD_PROGRESS', str(tmp_path_factory.mktemp('lessons') / 'lessons.json'))

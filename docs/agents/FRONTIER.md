@@ -521,7 +521,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: 1–2 days; stdlib; no new dependency.
 
 ### FR-033 · Learn it inside the app: an interactive first hour
-- Status: proposed
+- Status: done (ADR 0046, 2026-10-22: five lessons the app checks, in the Guide; taken by the focused reading's ranking - the owner, 21 Oct: "controlling and learning cost as low as possible")
 - From: the focused reading of 2026-10-21 on control, robot files and MCP (FR-W03): [CoBlox study, ABB](https://new.abb.com/news/detail/26823/training-end-users-to-program-industrial-robots) (79 novices: an interactive tutorial against a video, 9 min 59 s against 13 min 38 s to create a pick-and-place program, correctness 12.1 against 9.4 of 15).
 - Idea: Little World teaches with guided assembly steps and documents. Turn the first hour into tasks the app checks itself, each a few minutes: drive the cart through the doorway; move the arm's tool onto the cube (FR-032); make a block program that picks it up; import a robot (FR-031) and make it wave; run a sweep and read its spread. Each task names its goal, watches the field's goals, and says what went wrong in the words of the run report. Progress is kept per user, outside the repository.
 - In Little World: a `ui/tutorial.py` driving existing workspaces through their public actions; tasks as data (field, design, goal, hint); an ADR.

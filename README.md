@@ -193,6 +193,11 @@ change the design, try again.** A desktop robotics sandbox on
   up to 12.7 mm from its line, now 0.3 mm - and holding the arrow keys, or Page Up and Page Down,
   drives the tool continuously until it can reach no further. The same for every arm: kit,
   Menagerie or imported ([ADR 0045](docs/adr/0045-the-tool-travels-its-line.md)).
+- **The first hour, checked by the app.** The Guide now opens on five short lessons - drive the
+  cart through the doorway, bring the gripper to the cube by moving the tool, program the arm to
+  lift it, bring in a robot from its file, ask how sure a result is. "Start this lesson" sets up
+  the machine and the field; the app watches the work and ticks a lesson off when it is done, in
+  any order, saying in a line what is still missing ([ADR 0046](docs/adr/0046-the-first-hour-checked-by-the-app.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
