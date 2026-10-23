@@ -15,6 +15,7 @@ import time
 
 from little_world.fields import FIELDS
 from little_world.fields.disturbance import DEFAULTS, Disturbing
+from little_world.control.latency import Latency, sourced
 from little_world.fields.variation import CameraError, Ranges, Variation, friction, payload_site, plan, varied
 from little_world.inventory.confidence import CONFIDENCE, interval, lower_bound, mcnemar, runs_needed, upper_bound
 
@@ -67,6 +68,7 @@ class Sweep:
     camera: CameraError | None = None   # the field's camera off where it is believed to be (ADR 0039)
     jitter: tuple = ()                  # the drawn set-ups run again a micrometre off (ADR 0043)
     seed: int | None = None             # what the set-ups were drawn with; None: not known (FR-027)
+    latency: Latency | None = None      # how late the program's pictures, commands and readings were (FR-028)
 
 
 def design(name):
@@ -155,7 +157,7 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True, probe=None, recovery=None, alarm=None):
+        feel=True, probe=None, recovery=None, alarm=None, latency=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -175,7 +177,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     'retreat', 'guess', 'none' or 'ignore', the baselines of FR-023 and FR-022. `alarm`, a time in the
     world's seconds (as `Run.felt` and `Run.event` are): then something outside the program says its
     reach is going wrong, and it recovers as its own recovery would, if it is listening (`Runner.alarm`,
-    FR-022); the run is its unalarmed run until then, step for step."""
+    FR-022); the run is its unalarmed run until then, step for step. `latency`, a
+    `control.latency.Latency`: the program's pictures show the world as it was that long ago, and its
+    servo commands and readings cross the bus that late (FR-028); None or zero, at once, as before."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -245,6 +249,10 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                     if v is not None}
             runner = Runner(**caps)
             runner.start(program)
+            lag = late = None
+            if latency is not None and not latency.zero:
+                from little_world.control.latency import Lag
+                lag = Lag(latency, world.timestep)          # commands and readings over the bus (FR-028)
             try:
                 believed = None
                 if camera_error is not None and not camera_error.nominal and field.camera:
@@ -253,6 +261,10 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                     backend.move_camera(name, camera_error.shift, camera_error.turn)
                 see = (eye(backend, field, scene, variation, ideal, believed)
                        if any(b.kind == 'look' for b in program.blocks) else None)
+                if see is not None and lag is not None and latency.picture:
+                    from little_world.perception.eye import Late
+                    see = late = Late(see, backend, latency.steps(world.timestep)[0])
+                    late.keep()
                 if kick is not None:
                     kick.camera = see       # what a camera fault fails (ADR 0038)
             except ValueError as error:
@@ -261,13 +273,17 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             alarmed, recovered, listened, recoveries = [], [], [], 0
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
-                held = held_now(program, obs, feeling.read(backend, control, jaws) if readable else None)
+                registers = feeling.read(backend, control, jaws) if readable else None
+                angles = joint_angles(control)
+                if lag is not None:
+                    angles, registers = lag.reading((angles, registers))
+                held = held_now(program, obs, registers)
                 if alarm is not None and not alarmed and state.time >= alarm - 1e-9:
                     at = runner.index       # the block the alarm came in, before it sends the program back
                     alarmed.append((round(state.time, 3), runner.alarm(), at))
                 at = runner.index
                 checking = at < len(program.blocks) and program.blocks[at].kind == 'grasp'
-                out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held,
+                out = runner.tick(world.timestep, angles, contacts, distances, held,
                                   base.pose() if base else None, aim, see)
                 if runner.regrasps > recoveries:
                     recoveries = runner.regrasps
@@ -284,12 +300,16 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 if len(runner.seen) > len(actual):
                     body = backend.model.body(runner.seen[-1][0]).id
                     actual.append(tuple(float(v) for v in backend.data.xpos[body]))
+                if lag is not None:
+                    out = lag.command(out)
                 control.held = apply(out, control)
                 ahead = base_targets(out, base) if out['base'] else out['drive']
                 commands = dict(drive.step_commands(ahead, world.timestep, angular=True))
                 commands.update(control.step_commands(world.timestep))
                 commands.update(field.commands(state))
                 state = world.step(commands)
+                if late is not None:
+                    late.keep()
                 watch(state)
                 if runner.state != 'running':
                     break
@@ -366,13 +386,14 @@ def _one(args):
 
 def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1, progress=None,
           ranges=Ranges(), corrections=None, retries=None, blind=False, regrasps=None, camera_error=None,
-          jitter=0, seed=None):
+          jitter=0, seed=None, latency=None):
     """Every variation's run of a field (by default the plan for `ranges`, drawn with seed 1);
     `progress(done, total, run)` after each. `corrections` caps aimed poses' corrections;
     `blind` runs the program without its looks (ADR 0032); `camera_error` sets the field's
     camera off where the program believes it, in every run (ADR 0039); `jitter` runs each
     set-up drawn at random that many times more, a micrometre off (ADR 0043); `seed`, what
-    given `variations` were drawn with, is recorded with the sweep (FR-027)."""
+    given `variations` were drawn with, is recorded with the sweep (FR-027); `latency`, how late the
+    program's pictures, commands and readings are, in every run (FR-028)."""
     from little_world.inventory.jitter import jittered
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
@@ -385,7 +406,8 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     again = [jittered(v, k) for v in variations if v.label.startswith('repeat') for k in range(1, jitter + 1)]
-    work = [(field_id, blueprint, v, program, site, None, corrections, retries, False, regrasps, None, None, camera_error)
+    work = [(field_id, blueprint, v, program, site, None, corrections, retries, False, regrasps, None, None, camera_error,
+             None, True, None, None, None, latency)
             for v in (*variations, *again)]
     runs = []
     if jobs > 1:
@@ -402,7 +424,7 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
                 progress(len(runs), len(work), runs[-1])
     return Sweep(field_id, name, protocol, duration, site, ranges, tuple(runs[:len(variations)]),
                  camera_error if camera_error is not None and not camera_error.nominal else None,
-                 tuple(runs[len(variations):]), seed)
+                 tuple(runs[len(variations):]), seed, latency if latency is not None and not latency.zero else None)
 
 
 @dataclass(frozen=True)
@@ -422,6 +444,7 @@ class Disturbed:
     checks: bool | None = None      # False: every picture taken as new and lit (ADR 0038); None: the runner's own
     seed: int | None = None         # what the set-ups were drawn with (FR-027)
     recovery: str | None = None     # what the program did when its reach went wrong; None: its own, looking again (FR-023)
+    latency: Latency | None = None  # how late the program's pictures, commands and readings were (FR-028)
 
 
 def setups(ranges=Ranges(), samples=8, seed=1):
@@ -431,10 +454,11 @@ def setups(ranges=Ranges(), samples=8, seed=1):
 
 
 def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, seed=1, jobs=1, progress=None,
-            corrections=None, retries=None, blind=False, regrasps=None, checks=None, recovery=None):
+            corrections=None, retries=None, blind=False, regrasps=None, checks=None, recovery=None, latency=None):
     """Every set-up run undisturbed and then under each disturbance (by default the field's
     own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each. `recovery`,
-    what the program does when its reach goes wrong (FR-023; None: its own)."""
+    what the program does when its reach goes wrong (FR-023; None: its own); `latency`, how late
+    its pictures, commands and readings are (FR-028)."""
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
@@ -449,7 +473,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     tried = (None, *disturbances)
     work = [(field_id, blueprint, v, program, site, d, corrections, retries, False, regrasps, None, checks,
-             None, None, True, None, recovery)
+             None, None, True, None, recovery, None, latency)
             for d in tried for v in variations]
     runs = []
     if jobs > 1:
@@ -468,7 +492,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
                    for i, d in enumerate(tried))
     return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries, blind, regrasps,
-                     checks, seed, recovery)
+                     checks, seed, recovery, latency if latency is not None and not latency.zero else None)
 
 
 def _last(run):
@@ -650,13 +674,24 @@ def disturbed_from_json(text):
     site = tuple(d['site']) if d['site'] is not None else None
     return Disturbed(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']),
                      d['corrections'], groups, d.get('retries'), d.get('blind', False), d.get('regrasps'),
-                     d.get('checks'), d.get('seed'), d.get('recovery'))
+                     d.get('checks'), d.get('seed'), d.get('recovery'),
+                     Latency(**d['latency']) if d.get('latency') else None)
 
 
 RECOVERED = {'retreat': 'reached again where it had seen the object',
              'guess': 'looked again and reached as far off in a random direction',
              'none': 'stopped',
              'ignore': 'went on as taught'}
+
+
+def late(latency):
+    """A report's sentence on the latencies a sweep ran with, or '' for none (FR-028)."""
+    if latency is None or latency.zero:
+        return ''
+    ms = lambda s: f'{1000 * s:.0f} ms' if s >= .0095 else f'{1000 * s:.1f} ms'
+    return (f' Time passed while the program looked and moved (`--latency`, FR-028): its pictures showed the world '
+            f'as it was {ms(latency.picture)} before, its commands reached the servos {ms(latency.command)} late and '
+            f'its readings of them came {ms(latency.reading)} late.')
 
 
 def disturbed_markdown(result):
@@ -678,7 +713,8 @@ def disturbed_markdown(result):
         (' The program took every picture as new and lit (`--unchecked-camera`, ADR 0038).' if result.checks is False else '') + \
         ('' if result.recovery in (None, 'look') else
          ' When its reach went wrong the program did not look again but ' + RECOVERED[result.recovery]
-         + f' (`--recovery {result.recovery}`, {"FR-022" if result.recovery == "ignore" else "FR-023"}).')
+         + f' (`--recovery {result.recovery}`, {"FR-022" if result.recovery == "ignore" else "FR-023"}).') + \
+        late(result.latency)
     groups = summaries(result)
     looked = any(g.seen for g in groups)
     worst = max((missed_by(r.seen[-1]) or 0. for _, _, runs in result.groups for r in runs if r.seen), default=0.)
@@ -757,7 +793,7 @@ def from_json(text):
     camera = d.get('camera')
     return Sweep(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']), runs,
                  CameraError(**camera) if camera else None, tuple(_run(r) for r in d.get('jitter', ())),
-                 d.get('seed'))
+                 d.get('seed'), Latency(**d['latency']) if d.get('latency') else None)
 
 
 # -- reading a sweep ---------------------------------------------------------------------------
@@ -846,6 +882,8 @@ def markdown(sweep):
         lines.append(f'Payload site: ({sweep.site[0]:.3f}, {sweep.site[1]:.3f}) m in plan, a steel block of the payload\'s mass.')
     if sweep.camera is not None:
         lines.append(f'The field\'s camera stood off where the program believed it: {sweep.camera.describe()} (ADR 0039).')
+    if sweep.latency is not None:
+        lines.append(late(sweep.latency).strip())
     by_goal = {rate.label: rate for rate in rates(sweep)[1:]}
     lines += ['', '| Goal | Met | Drawn at random | Times (fastest / median / slowest) | Not met in |',
               '| --- | --- | --- | --- | --- |']
@@ -1050,6 +1088,10 @@ def main(argv=None):
                         help='take every picture as new and lit, as before ADR 0038 (to measure what the checks change)')
     parser.add_argument('--regrasps', type=int, default=None,
                         help='cap how often a program that looked looks again after a missed grasp (0: never; default: the runner\'s own)')
+    parser.add_argument('--latency', default=None, metavar='SECONDS|sourced',
+                        help="how late a program's pictures, servo commands and readings are: seconds on every path, "
+                             "or 'sourced' - the camera's frame interval and the finder's time, the servo bus at its "
+                             "defaults (FR-028)")
     parser.add_argument('--recovery', choices=('look', 'retreat', 'guess', 'none', 'ignore'), default=None,
                         help='what the program does when its reach goes wrong: look again (its own, ADR 0033), or a '
                              'baseline - reach again where it saw the object, reach as far off at random, stop '
@@ -1090,6 +1132,12 @@ def main(argv=None):
             holdout.reserve(args.seed, args.field, args.holdout, ledger)
         except ValueError as error:
             parser.error(str(error))
+    latency = None
+    if args.latency is not None:
+        try:
+            latency = sourced() if args.latency == 'sourced' else Latency.every(float(args.latency))
+        except ValueError:
+            parser.error(f"--latency takes seconds, 0 or more, or 'sourced', not {args.latency!r}")
     seed = 1 if args.seed is None else args.seed
     bp = design(args.design)
     ranges = ranges_for(args.field)
@@ -1108,12 +1156,13 @@ def main(argv=None):
             chosen = tuple(known[label] for label in args.only)
         result = disturb(args.field, bp, chosen, args.name or args.design, args.samples, seed, args.jobs,
                          progress, args.corrections, args.retries, args.blind, args.regrasps,
-                         False if args.unchecked_camera else None, args.recovery)
+                         False if args.unchecked_camera else None, args.recovery, latency)
         text = disturbed_markdown(result)
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,
                        ranges=ranges, corrections=args.corrections, retries=args.retries, blind=args.blind,
-                       regrasps=args.regrasps, camera_error=camera_error, jitter=args.jitter, seed=seed)
+                       regrasps=args.regrasps, camera_error=camera_error, jitter=args.jitter, seed=seed,
+                       latency=latency)
         text = markdown(result)
     print(text)
     from pathlib import Path

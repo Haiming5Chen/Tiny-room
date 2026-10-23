@@ -236,6 +236,13 @@ change the design, try again.** A desktop robotics sandbox on
   own check came at least 0.28 s before that in every set-up. A false alarm costs about 6 s and
   broke 1 run of 71, one raised while the cube was held
   ([ADR 0052](docs/adr/0052-how-late-is-too-late.md)).
+- **Time passes while the program looks.** A sweep can run with the program's pictures, servo
+  commands and readings late by sourced amounts - the camera's frame interval and the finder's
+  measured time (139 ms), a Dynamixel bus at its defaults (7.6 ms out, 33 ms back) - and the Fetch
+  program met every goal it met without. Late pictures alone change nothing, even half a second
+  late, since it acts only on a cube that stands still; its limit is its grasp check's half second,
+  which a command's trip to the jaws and the hold's trip back must fit in: 0.2 s each way held,
+  0.3 s did not ([ADR 0053](docs/adr/0053-time-passes-while-the-program-looks.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

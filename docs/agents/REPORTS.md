@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-23 · Claude (Cowork) · FR-028: time passes while the program looks
+Did: ADR 0053 (`control/latency.py`: the bus's times from Protocol 2.0 packets, `Latency`, `sourced`,
+`Lag`; `MujocoBackend.kept`, `as_it_was`, `sight`; `perception.eye.Late`; `run`/`sweep`/`disturb`
+`latency=`, `sweep --latency`; `inventory/margin.py`): sweeps run with the program's pictures, servo
+commands and readings late by sourced amounts, and the margin read against the sweep without.
+Measured: the sourced latency (139 / 7.6 / 33 ms) held every Fetch set-up - 27 of 27 disturbed, 71 of
+71 undisturbed; pictures half a second late alone changed nothing; the margin is the grasp check's
+0.5 s, which the bus round trip must fit in: 0.2 s each way held everywhere, 0.25 s broke 11 of 27,
+0.3 s all; the sourced bus is six times under it.
+Unfinished: the finder's time was measured on the cloud's CPU, not the owner's Mac; the window runs
+without latency. FR-025 (a falsifier search) is next by the ranking.
+For the owner: nothing to decide.
+
 ## 2026-10-23 · Claude (Cowork) · FR-022: how late is too late
 Did: ADR 0052 (`Runner.alarm` and `listening`, the recovery `ignore`, a sweep run's `alarm`,
 `Run.recovered` and `Run.listening`, `sweep.shared_site`, `inventory/branch.py`): an alarm from

@@ -7,6 +7,7 @@ nearest and furthest depths, and the points it makes in the field. Only the pixe
 see the region round where the part was planned are cast: what the search would not use is
 not computed. The part's pose is never read from the simulator.
 """
+from collections import deque
 from dataclasses import dataclass
 import numpy as np
 
@@ -118,7 +119,7 @@ class Eye:
         (top, bottom), (left, right) = self.window(position, rotation, planned, search)
         rows, cols = np.arange(top, bottom), np.arange(left, right)
         self.frames += 1
-        stamp = float(getattr(getattr(self.backend, 'data', None), 'time', 0.))
+        stamp = float(getattr(getattr(self.backend, 'sight', getattr(self.backend, 'data', None)), 'time', 0.))
         if not len(rows) or not len(cols) or dark:
             return Picture((top, bottom), (left, right), np.full((len(rows), len(cols)), np.nan), position, rotation,
                            frame=self.frames, stamp=stamp)
@@ -178,6 +179,40 @@ class Eye:
         points, _ = self.points(picture)
         tolerance = max(.005, 3 * self.sensor.sigma(float(np.linalg.norm(np.asarray(centre) - picture.position))))
         return place(points, picture.position, centre, self.sizes[target], tolerance)
+
+
+class Late:
+    """A camera whose sightings reach the program late (FR-028): each picture shows the world as
+    it was `steps` steps of the simulation ago - the frame interval and the finder's time - while
+    the world has moved on. `keep()` after every step keeps the moments it will show; until it has
+    kept that many, a picture shows the oldest. Everything else is the camera's own (`Eye`)."""
+
+    def __init__(self, eye, backend, steps):
+        self.eye, self.backend = eye, backend
+        self.moments = deque(maxlen=int(steps) + 1)
+
+    def keep(self):
+        self.moments.append(self.backend.kept())
+
+    def _then(self):
+        if not self.moments:
+            self.keep()
+        return self.backend.as_it_was(self.moments[0])
+
+    def __call__(self, target, planned, search=None):
+        with self._then():
+            return self.eye(target, planned, search)
+
+    def place(self, target, centre):
+        with self._then():
+            return self.eye.place(target, centre)
+
+    def fail(self, fault):
+        with self._then():
+            return self.eye.fail(fault)
+
+    def __getattr__(self, name):
+        return getattr(self.eye, name)
 
 
 def sizes_in(scene, entity='objects'):

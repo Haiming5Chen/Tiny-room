@@ -202,6 +202,13 @@ time and records when the program recovered and the spans it listened; `inventor
 0052) branches a failing run by running it again with an alarm every 0.5 s - deterministic, so
 each branch is its parent until the alarm - for the window in which a recovery still rescues it,
 and alarms one set-up after another that needed none, for what a false alarm costs.
+`control/latency.py` (standard library) holds how late a program's pictures, servo commands and
+readings are, from their sources - the camera's frame interval, the finder's time, a Dynamixel bus's
+packets at its defaults - and `Lag`, which holds commands and readings back step by step; a sweep run
+with a `latency` hands the program the camera of `perception.eye.Late`, which shows the world as it
+was through `MujocoBackend.kept` and `as_it_was` (MuJoCo's ray casting on poses kept from then, on an
+MjData of its own). `inventory/margin.py` (ADR 0053) reads sweeps at each latency against the sweep
+without.
 
 A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
 names a Blueprint camera in the field and its sensor, whose numbers are in

@@ -204,6 +204,8 @@ class MujocoBackend:
         self._body_ids = {}
         self._motor_ids = {}
         self._camera_ids = {}
+        self._seen = None           # what the cameras see when not the world now: a past moment (FR-028)
+        self._past = None           # the MjData that moment is laid out in, made once
         self._static_states = {}
         self._motor_profiles = {}
         self._geom_surface = None
@@ -700,7 +702,43 @@ class MujocoBackend:
         if camera not in self._camera_ids:
             raise ValueError(f"unknown camera: {camera}")
         i = self._camera_ids[camera]
-        return self.data.cam_xpos[i].copy(), self.data.cam_xmat[i].reshape(3, 3).copy()
+        d = self.sight
+        return d.cam_xpos[i].copy(), d.cam_xmat[i].reshape(3, 3).copy()
+
+    @property
+    def sight(self):
+        """The MjData the cameras see: the world now, or - inside `as_it_was` - a moment kept."""
+        return self._seen if self._seen is not None else self.data
+
+    def kept(self):
+        """This moment, kept for a camera to see later (FR-028): its time, the joints' positions
+        and the mocap bodies' poses - all that places what a camera sees."""
+        self._ready()
+        d = self.data
+        return (float(d.time), d.qpos.copy(), d.mocap_pos.copy(), d.mocap_quat.copy())
+
+    def as_it_was(self, moment):
+        """Within it, the cameras - `camera_pose`, `cast` - see the world as it was at a moment
+        `kept` earlier, laid out on an MjData of their own; the world itself is untouched."""
+        from contextlib import contextmanager
+
+        @contextmanager
+        def seeing():
+            self._ready()
+            if self._past is None:
+                self._past = mj.MjData(self.model)
+            past = self._past
+            past.time, past.qpos[:] = moment[0], moment[1]
+            if self.model.nmocap:
+                past.mocap_pos[:], past.mocap_quat[:] = moment[2], moment[3]
+            mj.mj_kinematics(self.model, past)
+            mj.mj_camlight(self.model, past)
+            self._seen = past
+            try:
+                yield past
+            finally:
+                self._seen = None
+        return seeing()
 
     def move_camera(self, camera, shift=(0., 0., 0.), turn=(0., 0., 0.)):
         """Set a camera off the pose it was built at: `shift` metres along the world's axes,
@@ -743,7 +781,7 @@ class MujocoBackend:
         n = len(world)
         geoms, found = np.zeros(n, np.int32), np.zeros(n)
         if n:
-            mj.mj_multiRay(self.model, self.data, position, world.reshape(-1), np.array((1, 1, 1, 0, 0, 0), np.uint8),
+            mj.mj_multiRay(self.model, self.sight, position, world.reshape(-1), np.array((1, 1, 1, 0, 0, 0), np.uint8),
                            1, int(self.model.cam_bodyid[self._camera_ids[camera]]), geoms, found, None, n, float(cutoff))
         return np.where(found >= 0, found, np.nan)
 

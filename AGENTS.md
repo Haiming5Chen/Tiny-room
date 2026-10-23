@@ -125,7 +125,7 @@ seven minutes on two cores.
 | `src/little_world/physics/mujoco_backend.py` | the only MuJoCo adapter: compiles Blueprints, steps, applies commands |
 | `src/little_world/physics/importer.py` | robots from their own URDF or MJCF files into the robot library (ADR 0044), their grippers found (ADR 0047) |
 | `src/little_world/lessons.py` | the first hour's lessons as data and checks; the window's panel is `ui/lessons_panel.py` (ADR 0046) |
-| `src/little_world/control/` | drive and arm controllers, navigation, tool motion, telemetry |
+| `src/little_world/control/` | drive and arm controllers, navigation, tool motion, telemetry, latencies (ADR 0053) |
 | `src/little_world/fields/` | test fields and their goals (goals read the core `State` only) |
 | `src/little_world/perception/` | depth cameras and finding known parts in their pictures (ADR 0032) |
 | `src/little_world/programming/` | block programs and the runner |
@@ -144,6 +144,8 @@ seven minutes on two cores.
 - With multiccd off (ADR 0027), a pair MuJoCo has no collider of its own for - a cylinder on a
   box - touches at one point, where box on box keeps several. The Fetch field's results rest on
   box on box; its casters' wheels touch the floor at one point (ADR 0050).
+- A program's grasp check waits 0.5 s: within it a closing command must reach the jaws and the
+  hold come back over the bus. With 0.25 s each way, held cubes went unfelt (ADR 0053).
 - Servo damping is integrated by the solver through a `Torque` slope, not applied a step
   late (ADR 0014); a controller that returns a plain float loses that.
 - MuJoCo does not filter contacts between a child and a parent welded to the world: moving

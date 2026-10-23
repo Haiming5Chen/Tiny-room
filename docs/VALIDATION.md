@@ -1543,3 +1543,21 @@ MuJoCo 3.10.0: 1070 passed with a display, 1018 headless.
 Not claimed: a certification (the tuning draws, ADR 0049); deadlines finer than the 0.5 s between
 alarms; a real detector's errors (the alarm is always on time, and the false alarms' moments are
 drawn evenly); an alarm the user can raise from the window; anything for fields other than Fetch.
+
+## Time passes while the program looks — 2026-10-23
+
+ADR 0053 (FR-028, the weekly reading of 21 October). Latencies from their sources
+(`control/latency.py`): a picture 139 ms - the D435's 33 ms frame interval at 30 fps and the finder's
+106 ms, measured; a command 7.6 ms and a reading 33 ms - Protocol 2.0 packets for the kit's six servos
+at the X series' default 57,600 bps and 500 us return delays. The Fetch field's 9 set-ups (seed 1),
+undisturbed, shoved 6 N s and with the cube moved 2 s after the look: at the sourced latency 27 of 27
+met every goal (+0.0 to +0.1 s); at 0.2 s on every path 27 of 27 (about 4 s later undisturbed); at
+0.25 s 16 of 27; at 0.3 s none - every failure the jaws holding the cube and the grasp check over
+before the hold had crossed the bus. One path at a time, 0.5 s late: pictures 9 of 9 unchanged
+(within 10 ms), commands 7 of 9, readings 7 of 9. The 71 set-ups of ADR 0048's sweep at the sourced
+latency: 71 of 71, a median 0.03 s later. Checked in `tests/test_latency.py` (7). Suites on MuJoCo
+3.10.0: 1077 passed with a display, 1025 headless.
+
+Not claimed: the camera's pipeline beyond its frame interval, a USB adapter's latency timer, retries
+or lost packets; the finder's time on the owner's Mac (it was measured on the cloud's CPU); latency
+in the interactive window; a certification (the tuning draws, ADR 0049).
