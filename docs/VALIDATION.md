@@ -1504,3 +1504,19 @@ cylinder goes from 1 to several. Checked in `tests/test_census.py` (3). Suites o
 Not claimed: drawn set-ups (one run, as designed); where the points are or what each carries;
 any result with multiccd on (none was rerun: FR-030 reruns only a face on a face held by one
 point, and there is none).
+
+## What looking again earns — 2026-10-23
+
+ADR 0051 (FR-023, the weekly readings of 19 and 21 October). The Fetch field's 9 set-ups (seed 1),
+undisturbed and under four disturbances, with the program's own recovery and with three
+baselines run on the same set-ups (`sweep --disturb --recovery`). The cube moved 5 cm, 2 s after
+the look: looking again 9 of 9; reaching again where it had been 0 of 9; looking again but reaching
+as far off in a random direction 0 of 9 (2 aims out of reach, 5 grasps of nothing, 2 reaches
+blocked); stopping 0 of 9 - 9 discordant pairs against each, exact McNemar p = 0.0039. Undisturbed,
+the cube moved before the look and the cart shoved 6 N s: 9 of 9 for all four; the camera frozen:
+0 of 9 for all four. No recovery fired undisturbed. One run of the own arm repeated came out the
+same. Checked in `tests/test_recovery.py` (8). Suites on MuJoCo 3.10.0: 1060 passed with a display, 1008 headless.
+
+Not claimed: a certification (the draws are the tuning draws, ADR 0049); a baseline's rescue rate
+below 31 % for a late move (8 drawn set-ups); FR-023's `timed` arm (not run: a retreat at the
+detector's own moment rescued nothing); the cost of false alarms (FR-022).

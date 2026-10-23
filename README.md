@@ -223,6 +223,12 @@ change the design, try again.** A desktop robotics sandbox on
   is box on box and keeps its count either way; only the casters' wheels touch at one point
   instead of four or five. It also found that at the bin the cart stands on three: one caster
   lifts 0.2 mm ([ADR 0050](docs/adr/0050-a-contact-census.md)).
+- **What looking again earns.** The Fetch program's recovery - when its reach goes wrong, go back,
+  look again, reach where the cube now is - is now tried against three simpler ones on the same
+  set-ups: reach again where the cube had been, look again but reach as far off in a random
+  direction, and stop. With the cube moved after the look, looking again fetched it in 9 of 9
+  set-ups, each simpler one in none; elsewhere all four tie, and the report says why
+  ([ADR 0051](docs/adr/0051-what-looking-again-earns.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

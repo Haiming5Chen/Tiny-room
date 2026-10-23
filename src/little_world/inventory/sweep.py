@@ -152,7 +152,7 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True, probe=None):
+        feel=True, probe=None, recovery=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -167,7 +167,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     False hands it the simulator's contacts instead, as before. `trace`, a list, gets each step's time and
     a digest of every body's position and speed: what makes a set-up's undisturbed and
     disturbed runs one run until the event (ADR 0036). `probe(state, backend)`, if given, is called
-    after every step, for a study that reads more of the run (the contact census, FR-030)."""
+    after every step, for a study that reads more of the run (the contact census, FR-030).
+    `recovery` is what the program does when its reach goes wrong - `Runner`'s 'look' (its own),
+    'retreat', 'guess' or 'none', the baselines of FR-023."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -233,7 +235,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             readable = feel and jaws and feeling.read(backend, control, jaws) is not None
             felt_at = []        # each grasp check's (time, felt, held): what the jaws said, and the truth
             caps = {k: v for k, v in (('corrections', corrections), ('retries', retries), ('regrasps', regrasps),
-                                      ('checks', checks))
+                                      ('checks', checks), ('recovery', recovery))
                     if v is not None}
             runner = Runner(**caps)
             runner.start(program)
@@ -388,6 +390,7 @@ class Disturbed:
     regrasps: int | None = None     # looking again after a missed grasp, capped (ADR 0033); None: the runner's own
     checks: bool | None = None      # False: every picture taken as new and lit (ADR 0038); None: the runner's own
     seed: int | None = None         # what the set-ups were drawn with (FR-027)
+    recovery: str | None = None     # what the program did when its reach went wrong; None: its own, looking again (FR-023)
 
 
 def setups(ranges=Ranges(), samples=8, seed=1):
@@ -397,9 +400,10 @@ def setups(ranges=Ranges(), samples=8, seed=1):
 
 
 def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, seed=1, jobs=1, progress=None,
-            corrections=None, retries=None, blind=False, regrasps=None, checks=None):
+            corrections=None, retries=None, blind=False, regrasps=None, checks=None, recovery=None):
     """Every set-up run undisturbed and then under each disturbance (by default the field's
-    own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each."""
+    own, `fields.disturbance.DEFAULTS`); `progress(done, total, run)` after each. `recovery`,
+    what the program does when its reach goes wrong (FR-023; None: its own)."""
     if field_id not in PROTOCOLS:
         raise ValueError(f'the {field_id} field has no protocol a machine can follow alone; '
                          f'fields that do: {", ".join(sorted(PROTOCOLS))}')
@@ -418,7 +422,8 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     tried = (None, *disturbances)
-    work = [(field_id, blueprint, v, program, site, d, corrections, retries, False, regrasps, None, checks)
+    work = [(field_id, blueprint, v, program, site, d, corrections, retries, False, regrasps, None, checks,
+             None, None, True, None, recovery)
             for d in tried for v in variations]
     runs = []
     if jobs > 1:
@@ -437,7 +442,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
     groups = tuple(('none' if d is None else d.label, '' if d is None else d.describe(), tuple(runs[i * n:(i + 1) * n]))
                    for i, d in enumerate(tried))
     return Disturbed(field_id, name, protocol, duration, site, ranges, corrections, groups, retries, blind, regrasps,
-                     checks, seed)
+                     checks, seed, recovery)
 
 
 def _last(run):
@@ -619,7 +624,12 @@ def disturbed_from_json(text):
     site = tuple(d['site']) if d['site'] is not None else None
     return Disturbed(d['field'], d['design'], d['protocol'], d['duration'], site, Ranges(**d['ranges']),
                      d['corrections'], groups, d.get('retries'), d.get('blind', False), d.get('regrasps'),
-                     d.get('checks'), d.get('seed'))
+                     d.get('checks'), d.get('seed'), d.get('recovery'))
+
+
+RECOVERED = {'retreat': 'reached again where it had seen the object',
+             'guess': 'looked again and reached as far off in a random direction',
+             'none': 'stopped'}
 
 
 def disturbed_markdown(result):
@@ -638,7 +648,10 @@ def disturbed_markdown(result):
         (' The program ran without its looks (`--blind`, ADR 0032).' if result.blind else '') + \
         ('' if result.regrasps is None else
          f' A program looked again after a missed grasp at most {result.regrasps} times (ADR 0033; the runner allows 1).') + \
-        (' The program took every picture as new and lit (`--unchecked-camera`, ADR 0038).' if result.checks is False else '')
+        (' The program took every picture as new and lit (`--unchecked-camera`, ADR 0038).' if result.checks is False else '') + \
+        ('' if result.recovery in (None, 'look') else
+         ' When its reach went wrong the program did not look again but ' + RECOVERED[result.recovery]
+         + f' (`--recovery {result.recovery}`, FR-023).')
     groups = summaries(result)
     looked = any(g.seen for g in groups)
     worst = max((missed_by(r.seen[-1]) or 0. for _, _, runs in result.groups for r in runs if r.seen), default=0.)
@@ -1008,6 +1021,9 @@ def main(argv=None):
                         help='take every picture as new and lit, as before ADR 0038 (to measure what the checks change)')
     parser.add_argument('--regrasps', type=int, default=None,
                         help='cap how often a program that looked looks again after a missed grasp (0: never; default: the runner\'s own)')
+    parser.add_argument('--recovery', choices=('look', 'retreat', 'guess', 'none'), default=None,
+                        help='what the program does when its reach goes wrong: look again (its own, ADR 0033), or a '
+                             'baseline - reach again where it saw the object, reach as far off at random, stop (FR-023)')
     parser.add_argument('--blind', action='store_true',
                         help="run the field's program without looking with the field's camera (ADR 0032)")
     parser.add_argument('--jitter', type=int, default=0, metavar='K',
@@ -1017,6 +1033,8 @@ def main(argv=None):
         parser.error('--jitter counts repeats from zero')
     if args.jitter and args.disturb:
         parser.error('--jitter is for a varied sweep, not --disturb')
+    if args.recovery and not args.disturb:
+        parser.error('--recovery is for --disturb: it is what a disturbed program does when its reach goes wrong')
     if args.unchecked_camera and not args.disturb:
         parser.error('--unchecked-camera is for --disturb: only a disturbance makes the camera fail')
     camera_error = None
@@ -1060,7 +1078,7 @@ def main(argv=None):
             chosen = tuple(known[label] for label in args.only)
         result = disturb(args.field, bp, chosen, args.name or args.design, args.samples, seed, args.jobs,
                          progress, args.corrections, args.retries, args.blind, args.regrasps,
-                         False if args.unchecked_camera else None)
+                         False if args.unchecked_camera else None, args.recovery)
         text = disturbed_markdown(result)
     else:
         result = sweep(args.field, bp, variations, args.name or args.design, jobs=args.jobs, progress=progress,

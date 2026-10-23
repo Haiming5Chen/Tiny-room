@@ -192,7 +192,10 @@ ledger of seeds decisions were tuned or judged on (`docs/sweeps/seeds.jsonl`), l
 and reads a held-out sweep beside its tuning sweep. `MujocoBackend.contact_census` counts the
 contact points between each pair of bodies at an instant, as the model is set and with multiccd
 on, both on copies of the instant; `inventory/census.py` (ADR 0050) takes it at the moments a
-Fetch run's results are decided, through a sweep run's `probe`, which is handed every step.
+Fetch run's results are decided, through a sweep run's `probe`, which is handed every step. The
+runner's recovery is a choice (`Runner(recovery=)`: its own `look`, or the baselines `retreat`,
+`guess` and `none`); `sweep --disturb --recovery` runs one, and `inventory/recovery.py` (ADR 0051)
+reads it beside the program's own, pair by pair.
 
 A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
 names a Blueprint camera in the field and its sensor, whose numbers are in

@@ -23,6 +23,11 @@ REACHING=.02    # m: an aimed pose this close to where a looked-at object was pl
 MOVED=.01       # m: seen this much further from where the look saw it, the object has been moved
 LIT=.5          # share of a picture's pixels with depth below which the camera is dark (ADR 0038)
 # What the program says of a camera whose picture it cannot use (ADR 0038).
+# What a program that looked does when its reach goes wrong (FR-023): looks again and reaches
+# where it now sees the object (ADR 0033) - or, as baselines for that, reaches again where it saw
+# it before ('retreat'), looks again but reaches at a point as far off in a random direction
+# ('guess'), or stops ('none').
+RECOVERIES=('look','retreat','guess','none')
 TROUBLE={'stale':"the camera's picture is not new",'dark':"the camera's picture has no depth"}
 
 
@@ -177,13 +182,16 @@ def smoothstep(s):
 
 
 class Runner:
-    def __init__(self,corrections=CORRECTIONS,retries=RETRIES,regrasps=REGRASPS,checks=True):
+    def __init__(self,corrections=CORRECTIONS,retries=RETRIES,regrasps=REGRASPS,checks=True,recovery='look'):
         # How often an aimed pose may be solved again (ADR 0025); 0 runs poses as taught.
         # How often a program may go back to a stop it was pushed off (ADR 0031); 0 never.
         # How often a program that looked may look again after a missed grasp (ADR 0033).
         # Whether each picture is checked for a camera that is stuck or dark (ADR 0038).
+        # What it does when its reach goes wrong: one of RECOVERIES (FR-023).
         if corrections<0 or retries<0 or regrasps<0:raise ValueError('corrections, retries and regrasps are counted from zero')
-        self.limit=corrections;self.retry_limit=retries;self.regrasp_limit=regrasps;self.checks=bool(checks);self.stop()
+        if recovery not in RECOVERIES:raise ValueError(f'a recovery is one of {", ".join(RECOVERIES)}, not {recovery!r}')
+        self.limit=corrections;self.retry_limit=retries;self.regrasp_limit=regrasps;self.checks=bool(checks)
+        self.recovery=recovery;self.stop()
     def stop(self):
         self.state='stopped';self.index=0;self.elapsed=0.;self.cycle=0;self.single=False;self.message='Stopped'
         self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
@@ -191,6 +199,7 @@ class Runner:
         self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.seen=[]
         self.regrasps=0;self.reopen=None;self.followed={};self.goal=None
         self.above=None;self.rising=None;self.frame=None;self.faults=[]
+        self.after_look=None;self.earlier=None
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
@@ -234,14 +243,22 @@ class Runner:
         that a jaw resting on the object lifts off it instead of dragging it across the table
         (ADR 0037). False when it cannot."""
         if self.looked is None or self.stop_block is None or self.regrasps>=self.regrasp_limit:return False
+        if self.recovery=='none':return False
         blocks=self.program.blocks;close=blocks[self.index-1] if reopen and self.index>0 else None
         start=self.stop_block
         if start>0 and blocks[start-1].kind=='pose':start-=1
         self.regrasps+=1;self.message=message
         self.reopen=(close.target,-close.value,close.duration) if close is not None and close.kind=='action' else None
         self.rising=self.above if rise else None;self.above=None
-        self.elapsed=0.;self.index=start;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
-        self.sightings=[];self.picture_at=0.;self.offset=None;self.looked=None;self.faults=[]
+        self.elapsed=0.;self.pose_from=None;self.pose_goal=None;self.corrections=0;self.driver=None
+        self.sightings=[];self.picture_at=0.;self.faults=[]
+        if self.recovery=='retreat' and self.after_look is not None:
+            # The baseline: back up and reach again from just after the look, aimed where it
+            # saw the object - no new picture (FR-023).
+            self.index=self.after_look
+            return True
+        self.earlier=self.offset if self.recovery=='guess' else None
+        self.index=start;self.offset=None;self.looked=None
         return True
     def reaches_for(self,block):
         """Whether an aimed pose reaches for the object a look at this stop looked for."""
@@ -309,6 +326,17 @@ class Runner:
         if any(sum((a-b)**2 for a,b in zip(v,middle))>STILL**2 for v in last):return False
         self.offset=tuple(a-b for a,b in zip(middle,block.point));self.looked=block.point
         self.seen.append((block.target,block.point,middle))
+        self.after_look=self.index+1
+        if self.earlier is not None:
+            # The 'guess' baseline: looked again, but aimed as far from where it was first seen as
+            # it now is, in a random direction across the table - the same reach, without what
+            # the look found (FR-023). Drawn from the sighting, so a set-up always draws the same.
+            from math import cos,sin,pi
+            from random import Random
+            dx,dy=self.offset[0]-self.earlier[0],self.offset[1]-self.earlier[1]
+            turn=Random(round(1e6*(middle[0]+3*middle[1]))).uniform(0.,2*pi)
+            self.offset=(self.earlier[0]+dx*cos(turn)-dy*sin(turn),self.earlier[1]+dx*sin(turn)+dy*cos(turn),self.offset[2])
+            self.earlier=None
         return True
     def travel(self,block):
         """Seconds a pose's slowest joint needs at the pose's speed, from where it started."""

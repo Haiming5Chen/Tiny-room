@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-23 · Claude (Cowork) · FR-023: what looking again earns
+Did: ADR 0051 (`Runner(recovery=)`, `sweep --disturb --recovery`, `Disturbed.recovery`,
+`inventory/recovery.py`): the program's recovery tried against three baselines on the same set-ups
+and read pair by pair.
+Measured: the cube moved after the look - looking again 9 of 9, reaching again where it was 0 of 9,
+a random re-aim as far off 0 of 9, stopping 0 of 9 (p = 0.0039 each); ties under the other
+disturbances, each for a reason the report gives.
+Unfinished: FR-022 (false alarms and the latest moment a recovery still helps) is next by the
+ranking.
+For the owner: nothing to decide; ADR 0033's look stays, now with the evidence that it, and what it
+sees, is what rescues.
+
 ## 2026-10-22 · Claude (Cowork) · FR-030: a contact census
 Did: ADR 0050 (`MujocoBackend.contact_census`, `inventory/census.py`, a sweep run's `probe`):
 the contact points of each pair of parts at the moments a Fetch run's results are decided, as
