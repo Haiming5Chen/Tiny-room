@@ -11,6 +11,21 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-23 · Claude (Cowork) · FR-022: how late is too late
+Did: ADR 0052 (`Runner.alarm` and `listening`, the recovery `ignore`, a sweep run's `alarm`,
+`Run.recovered` and `Run.listening`, `sweep.shared_site`, `inventory/branch.py`): an alarm from
+outside makes a program that looked recover as its own recovery does; failing runs are branched by
+replaying them with an alarm every 0.5 s, and set-ups that needed no recovery are alarmed once.
+Measured: the cube moved 2 s after the look, its checks ignored - an alarm rescued the run until the
+program left the table in 5 of 9 set-ups and only until its own closing tipped the cube over in the
+other 4; the program's own check came at least 0.28 s before that deadline in all 9. A frozen camera
+has no window. 71 false alarms: 70 still met every goal, a median 5.9 s later; the one broken was
+raised while the cube was held. The own runs reproduced ADR 0048's bit for bit (80 runs).
+Unfinished: OPEN LW-033 (an alarm while the object is held drops it) and LW-034 (a cube on its side
+is grasped as if it stood and lost on the way); the window has no button for an alarm. FR-028
+(latency) is next by the ranking.
+For the owner: nothing to decide.
+
 ## 2026-10-23 · Claude (Cowork) · FR-023: what looking again earns
 Did: ADR 0051 (`Runner(recovery=)`, `sweep --disturb --recovery`, `Disturbed.recovery`,
 `inventory/recovery.py`): the program's recovery tried against three baselines on the same set-ups

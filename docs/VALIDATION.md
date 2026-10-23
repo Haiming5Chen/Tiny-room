@@ -1520,3 +1520,26 @@ same. Checked in `tests/test_recovery.py` (8). Suites on MuJoCo 3.10.0: 1060 pas
 Not claimed: a certification (the draws are the tuning draws, ADR 0049); a baseline's rescue rate
 below 31 % for a late move (8 drawn set-ups); FR-023's `timed` arm (not run: a retreat at the
 detector's own moment rescued nothing); the cost of false alarms (FR-022).
+
+## How late is too late — 2026-10-23
+
+ADR 0052 (FR-022, the weekly reading of 19 October). An alarm from outside (`Runner.alarm`) makes a
+program that looked recover as its own recovery does; with the recovery `ignore` its checks fire
+and the program goes on as taught. The Fetch field's 9 set-ups (seed 1) with the cube moved 5 cm
+2 s after the look, the checks ignored, each run again with an alarm every 0.5 s of the time the
+program listened (135 branches): in 5 set-ups an alarm rescued the run until the program left the
+table (deadline 22.5 s, 2.6 to 2.8 s after its own check); in 4 the program's own closing tipped the
+cube onto its side and the window closed at 20.0 to 20.5 s (0.28 to 0.85 s after its own check).
+The window opened before the move - an alarm 1.01 s before it rescued, 1.11 s before it did not -
+and had one hole, an alarm whose opening of the jaws tipped the cube itself. The camera frozen with
+its pictures taken as new: none of 15 alarms rescued it. The 71 set-ups of ADR 0048's sweep, each
+with one false alarm drawn from the time its program listened: 70 still met every goal, a median
+5.9 s later (1.1 to 8.5); the one broken was raised while the cube was held, dropped it on its
+side, and a cube on its side was lost on the way to the bin in 20 of 24 runs. The program's own
+runs reproduced ADR 0048's bit for bit (9 disturbed, 71 undisturbed). Checked in
+`tests/test_branch.py` (10), including a pair of Fetch runs identical until the alarm. Suites on
+MuJoCo 3.10.0: 1070 passed with a display, 1018 headless.
+
+Not claimed: a certification (the tuning draws, ADR 0049); deadlines finer than the 0.5 s between
+alarms; a real detector's errors (the alarm is always on time, and the false alarms' moments are
+drawn evenly); an alarm the user can raise from the window; anything for fields other than Fetch.

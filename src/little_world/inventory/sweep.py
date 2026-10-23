@@ -47,6 +47,9 @@ class Run:
     event: float | None = None      # when the disturbance began, simulated seconds; None if it never did
     handled: tuple = ()             # how each handled part was treated (ADR 0040): handling.Handled, one a part
     felt: tuple = ()                # each grasp check's (time, felt held, held): the jaw servos against the truth (ADR 0048)
+    alarm: tuple = ()               # an alarm raised from outside: ((when, whether the program acted on it, its block),) (FR-022)
+    recovered: tuple = ()           # when the program began each recovery, its own or an alarm's (FR-022)
+    listening: tuple = ()           # the spans (from, to) in which an alarm would have made it look again (FR-022)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -152,7 +155,7 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True, probe=None, recovery=None):
+        feel=True, probe=None, recovery=None, alarm=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -169,7 +172,10 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     disturbed runs one run until the event (ADR 0036). `probe(state, backend)`, if given, is called
     after every step, for a study that reads more of the run (the contact census, FR-030).
     `recovery` is what the program does when its reach goes wrong - `Runner`'s 'look' (its own),
-    'retreat', 'guess' or 'none', the baselines of FR-023."""
+    'retreat', 'guess', 'none' or 'ignore', the baselines of FR-023 and FR-022. `alarm`, a time in the
+    world's seconds (as `Run.felt` and `Run.event` are): then something outside the program says its
+    reach is going wrong, and it recovers as its own recovery would, if it is listening (`Runner.alarm`,
+    FR-022); the run is its unalarmed run until then, step for step."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -252,13 +258,25 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             except ValueError as error:
                 return Run(variation, error=str(error))
             actual = []         # where each looked-for object really was: measured, not seen
+            alarmed, recovered, listened, recoveries = [], [], [], 0
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
                 held = held_now(program, obs, feeling.read(backend, control, jaws) if readable else None)
+                if alarm is not None and not alarmed and state.time >= alarm - 1e-9:
+                    at = runner.index       # the block the alarm came in, before it sends the program back
+                    alarmed.append((round(state.time, 3), runner.alarm(), at))
                 at = runner.index
                 checking = at < len(program.blocks) and program.blocks[at].kind == 'grasp'
                 out = runner.tick(world.timestep, joint_angles(control), contacts, distances, held,
                                   base.pose() if base else None, aim, see)
+                if runner.regrasps > recoveries:
+                    recoveries = runner.regrasps
+                    recovered.append(round(state.time, 3))
+                listen = runner.listening()
+                if listen and (not listened or listened[-1][1] is not None):
+                    listened.append([round(state.time, 3), None])
+                elif not listen and listened and listened[-1][1] is None:
+                    listened[-1][1] = round(state.time, 3)
                 if checking and (runner.index != at or runner.state != 'running'):
                     target = program.blocks[at].target
                     truth = obs.grasped()
@@ -275,6 +293,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 watch(state)
                 if runner.state != 'running':
                     break
+            if listened and listened[-1][1] is None:
+                listened[-1][1] = round(state.time, 3)
             control.held = set()
             for _ in range(round(AFTER / world.timestep)):
                 state = _hold(world, drive, control, field, state)
@@ -298,7 +318,21 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    tuple((*look, at) for look, at in zip(runner.seen, actual)) if runner else (),
                    runner.regrasps if runner else 0, runner.message if runner else '',
                    kick.began + tracker.start if kick is not None and kick.began is not None else None,
-                   tuple(w.result() for w in watching), tuple(felt_at) if protocol == 'program' else ())
+                   tuple(w.result() for w in watching), tuple(felt_at) if protocol == 'program' else (),
+                   *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened))
+                     if protocol == 'program' else ()))
+
+
+def shared_site(blueprint, variations):
+    """Where every loaded set-up's payload goes: the place for the heaviest, so that all sit
+    alike; None when none is loaded, or when it cannot be placed - each loaded run then reports
+    why it could not be loaded."""
+    if not any(v.payload for v in variations):
+        return None
+    try:
+        return payload_site(blueprint, max(v.payload for v in variations))
+    except ValueError:
+        return None
 
 
 def handled_parts(field):
@@ -346,11 +380,8 @@ def sweep(field_id, blueprint, variations=None, name='design', site=None, jobs=1
     if variations is None:
         variations, seed = plan(ranges), 1
     variations = tuple(variations)
-    if any(v.payload for v in variations) and site is None:
-        try:
-            site = payload_site(blueprint, max(v.payload for v in variations))
-        except ValueError:
-            site = None     # each loaded run then reports why it could not be loaded
+    if site is None:
+        site = shared_site(blueprint, variations)
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     again = [jittered(v, k) for v in variations if v.label.startswith('repeat') for k in range(1, jitter + 1)]
@@ -413,12 +444,7 @@ def disturb(field_id, blueprint, disturbances=None, name='design', samples=8, se
                          f'{", ".join(sorted(DEFAULTS))}')
     ranges = ranges_for(field_id)
     variations = setups(ranges, samples, seed)
-    site = None
-    if any(v.payload for v in variations):
-        try:
-            site = payload_site(blueprint, max(v.payload for v in variations))
-        except ValueError:
-            site = None
+    site = shared_site(blueprint, variations)
     protocol, duration = PROTOCOLS[field_id]
     program = solve(field_id, blueprint, look=not blind) if protocol == 'program' else None
     tried = (None, *disturbances)
@@ -629,7 +655,8 @@ def disturbed_from_json(text):
 
 RECOVERED = {'retreat': 'reached again where it had seen the object',
              'guess': 'looked again and reached as far off in a random direction',
-             'none': 'stopped'}
+             'none': 'stopped',
+             'ignore': 'went on as taught'}
 
 
 def disturbed_markdown(result):
@@ -651,7 +678,7 @@ def disturbed_markdown(result):
         (' The program took every picture as new and lit (`--unchecked-camera`, ADR 0038).' if result.checks is False else '') + \
         ('' if result.recovery in (None, 'look') else
          ' When its reach went wrong the program did not look again but ' + RECOVERED[result.recovery]
-         + f' (`--recovery {result.recovery}`, FR-023).')
+         + f' (`--recovery {result.recovery}`, {"FR-022" if result.recovery == "ignore" else "FR-023"}).')
     groups = summaries(result)
     looked = any(g.seen for g in groups)
     worst = max((missed_by(r.seen[-1]) or 0. for _, _, runs in result.groups for r in runs if r.seen), default=0.)
@@ -711,7 +738,9 @@ def _run(r):
                r['seconds'], r.get('disturbed', ''), r.get('pushed'), r.get('went_back', 0),
                tuple((look[0], *(tuple(v) for v in look[1:])) for look in r.get('seen', ())),
                r.get('regrasped', 0), r.get('message', ''), r.get('event'),
-               tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())))
+               tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())),
+               tuple(tuple(x) for x in r.get('alarm', ())), tuple(r.get('recovered', ())),
+               tuple(tuple(x) for x in r.get('listening', ())))
 
 
 def _handled(h):
@@ -1021,9 +1050,10 @@ def main(argv=None):
                         help='take every picture as new and lit, as before ADR 0038 (to measure what the checks change)')
     parser.add_argument('--regrasps', type=int, default=None,
                         help='cap how often a program that looked looks again after a missed grasp (0: never; default: the runner\'s own)')
-    parser.add_argument('--recovery', choices=('look', 'retreat', 'guess', 'none'), default=None,
+    parser.add_argument('--recovery', choices=('look', 'retreat', 'guess', 'none', 'ignore'), default=None,
                         help='what the program does when its reach goes wrong: look again (its own, ADR 0033), or a '
-                             'baseline - reach again where it saw the object, reach as far off at random, stop (FR-023)')
+                             'baseline - reach again where it saw the object, reach as far off at random, stop '
+                             '(FR-023), go on as taught (FR-022)')
     parser.add_argument('--blind', action='store_true',
                         help="run the field's program without looking with the field's camera (ADR 0032)")
     parser.add_argument('--jitter', type=int, default=0, metavar='K',

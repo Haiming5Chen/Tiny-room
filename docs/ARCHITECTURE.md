@@ -195,7 +195,13 @@ on, both on copies of the instant; `inventory/census.py` (ADR 0050) takes it at 
 Fetch run's results are decided, through a sweep run's `probe`, which is handed every step. The
 runner's recovery is a choice (`Runner(recovery=)`: its own `look`, or the baselines `retreat`,
 `guess` and `none`); `sweep --disturb --recovery` runs one, and `inventory/recovery.py` (ADR 0051)
-reads it beside the program's own, pair by pair.
+reads it beside the program's own, pair by pair. An alarm from outside (`Runner.alarm`) makes a
+program that looked recover as its own recovery does, while `Runner.listening()` says it would; the
+recovery `ignore` lets the checks fire with nothing coming of them. A sweep run takes an alarm at a
+time and records when the program recovered and the spans it listened; `inventory/branch.py` (ADR
+0052) branches a failing run by running it again with an alarm every 0.5 s - deterministic, so
+each branch is its parent until the alarm - for the window in which a recovery still rescues it,
+and alarms one set-up after another that needed none, for what a false alarm costs.
 
 A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
 names a Blueprint camera in the field and its sensor, whose numbers are in

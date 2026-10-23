@@ -229,6 +229,13 @@ change the design, try again.** A desktop robotics sandbox on
   direction, and stop. With the cube moved after the look, looking again fetched it in 9 of 9
   set-ups, each simpler one in none; elsewhere all four tie, and the report says why
   ([ADR 0051](docs/adr/0051-what-looking-again-earns.md)).
+- **How late is too late.** A detector outside a program can raise an alarm, and the program looks
+  again as its own recovery does. Replaying a failing Fetch run with an alarm every half second
+  shows when looking again can still rescue it: with the cube moved after the look, until the
+  program leaves the table - or, where its own closing jaws tip the cube over, only until then; its
+  own check came at least 0.28 s before that in every set-up. A false alarm costs about 6 s and
+  broke 1 run of 71, one raised while the cube was held
+  ([ADR 0052](docs/adr/0052-how-late-is-too-late.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

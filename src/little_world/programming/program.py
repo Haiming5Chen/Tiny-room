@@ -26,8 +26,10 @@ LIT=.5          # share of a picture's pixels with depth below which the camera 
 # What a program that looked does when its reach goes wrong (FR-023): looks again and reaches
 # where it now sees the object (ADR 0033) - or, as baselines for that, reaches again where it saw
 # it before ('retreat'), looks again but reaches at a point as far off in a random direction
-# ('guess'), or stops ('none').
-RECOVERIES=('look','retreat','guess','none')
+# ('guess'), or stops ('none'). With 'ignore' its checks fire and nothing comes of them: the
+# program goes on as taught, so that an alarm from outside can be tried at every moment of what
+# follows (FR-022).
+RECOVERIES=('look','retreat','guess','none','ignore')
 TROUBLE={'stale':"the camera's picture is not new",'dark':"the camera's picture has no depth"}
 
 
@@ -243,7 +245,7 @@ class Runner:
         that a jaw resting on the object lifts off it instead of dragging it across the table
         (ADR 0037). False when it cannot."""
         if self.looked is None or self.stop_block is None or self.regrasps>=self.regrasp_limit:return False
-        if self.recovery=='none':return False
+        if self.recovery in ('none','ignore'):return False
         blocks=self.program.blocks;close=blocks[self.index-1] if reopen and self.index>0 else None
         start=self.stop_block
         if start>0 and blocks[start-1].kind=='pose':start-=1
@@ -259,6 +261,28 @@ class Runner:
             return True
         self.earlier=self.offset if self.recovery=='guess' else None
         self.index=start;self.offset=None;self.looked=None
+        return True
+    def listening(self):
+        """Whether an alarm now would make the program look again: running, at a stop where it
+        looked, with a regrasp left, and not already going back (FR-022)."""
+        return self.state=='running' and not self.reopen and not self.rising and \
+            self.looked is not None and self.stop_block is not None and self.regrasps<self.regrasp_limit
+    def alarm(self,message='An alarm: looking again'):
+        """A detector outside the program says its reach is going wrong (FR-022): it recovers as
+        its own recovery does, whatever recovery it was given - opens the jaws by as much as they
+        closed since the look, rises if the arm reached down, goes back and looks again (ADR 0033,
+        0037). Only while `listening`; whether it acted."""
+        if not self.listening():return False
+        blocks=self.program.blocks;closed={}
+        for i in range(self.after_look,self.index+1):
+            b=blocks[i]
+            if b.kind=='action':
+                closed[b.target]=closed.get(b.target,0.)+b.value*(b.duration if i<self.index else min(self.elapsed,b.duration))
+        mode=self.recovery;self.recovery='look'
+        try:self.regrasp(message,rise=self.above is not None)
+        finally:self.recovery=mode
+        shut=[(target,amount) for target,amount in closed.items() if amount>1e-9]
+        if shut:self.reopen=(shut[0][0],-1.,shut[0][1])     # the jaws' key held open as long as it was held shut
         return True
     def reaches_for(self,block):
         """Whether an aimed pose reaches for the object a look at this stop looked for."""
@@ -386,7 +410,7 @@ class Runner:
                     target,planned,where=self.seen[-1]
                     sighting=see(target,where)
                     fault=self.trouble(see)
-                    if fault:
+                    if fault and self.recovery!='ignore':
                         # A picture the camera did not take now, or one without depth, says
                         # nothing of where the object is: look again, which names the fault if it
                         # lasts - or stop here (ADR 0038).
@@ -455,6 +479,7 @@ class Runner:
             if condition:self.advance()
             elif self.elapsed+1e-9>=b.duration:
                 if b.kind=='grasp' and self.regrasp('Nothing held: looking again',reopen=True,rise=True):pass
+                elif b.kind=='grasp' and self.recovery=='ignore':self.advance()
                 else:self.fail('Nothing held: the grasp missed' if b.kind=='grasp' else 'Timed out: '+b.kind+' '+b.target)
         elif b.kind=='look':
             if condition:self.advance()
@@ -479,6 +504,7 @@ class Runner:
                 if self.corrections:self.advance()
                 elif off:self.reapproach(off)
                 elif self.reaches_for(b) and self.regrasp('Blocked reaching down: looking again',rise=True):pass
+                elif self.reaches_for(b) and self.recovery=='ignore':self.advance()
                 else:self.fail('Timed out: pose did not settle')
         elif self.elapsed+1e-9>=b.duration:self.advance()
         return output

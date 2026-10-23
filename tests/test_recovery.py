@@ -29,9 +29,9 @@ def moved_once():
     return cube, holds
 
 
-def test_a_recovery_is_one_of_the_four():
+def test_a_recovery_is_one_of_five():
     assert Runner().recovery == 'look'
-    with pytest.raises(ValueError, match='look, retreat, guess, none'):
+    with pytest.raises(ValueError, match='look, retreat, guess, none, ignore'):
         Runner(recovery='pray')
 
 
