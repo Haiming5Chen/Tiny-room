@@ -21,6 +21,7 @@ class Demo:
     watch: str          # what the status line says to watch for
     disturbance: str    # the Fetch field's disturbance armed for the run, '' for none
     adr: str
+    where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'factory': Real's cell
 
 
 DEMOS = (
@@ -44,6 +45,12 @@ DEMOS = (
          'Program panel: it opens its jaws, rises, looks again and carries on.',
          'press Look again in the Program panel while the arm reaches for the cube',
          '', 'ADR 0052'),
+    Demo('factory', 'Six parts, measured',
+         'In Real mode the Panda in the factory cell puts six parts in their slots, one after another. '
+         'Under the cell a line says how far from its slot each part landed, against the room it had '
+         'before it would touch the next, and how long each took.',
+         'the line under the cell says how far from its slot each part landed and how long it took',
+         '', 'ADR 0019, 0056', where='factory'),
 )
 BY_ID = {d.id: d for d in DEMOS}
 
@@ -61,9 +68,12 @@ class WhatsNew:
 
     def start_demo(self, demo_id):
         """Load the arm on its cart, put it on the Fetch field, solve the Fetch program, arm the
-        demonstration's disturbance and run it."""
+        demonstration's disturbance and run it - or, for the factory's, start Real's cell."""
         from little_world.robots.mobile_manipulator import mobile_manipulator_blueprint
         demo = BY_ID[demo_id]
+        if demo.where == 'factory':
+            self.start_factory_demo(demo)
+            return
         if not self.building:
             self.simulate()             # back to build: the demonstration sets up its own machine
         self.close_bench()
@@ -79,6 +89,22 @@ class WhatsNew:
         self.demo = demo.id
         self.status = f'{demo.title}: {demo.watch}.'
 
+    def start_factory_demo(self, demo):
+        """Over to Real: the Panda's pick-and-place cell, reset, and a production run started
+        (ADR 0019); the factory panel's lines say how it went (ADR 0056)."""
+        self.demo = demo.id
+        self._switch_view('Real')
+        real = self.workspace_host.active_workspace
+        if real.robot_asset != 'franka_panda':
+            real.select_robot('franka_panda')
+        if real.experiment != 'Pick and place':
+            real.select_experiment('Pick and place')
+        real.reset_cell()
+        if real.product != 'Small block':
+            real.select_product('Small block')     # the cell's own part: a tall one tips in the hand (ADR 0056)
+        real.start_run()
+        real.status = f'{demo.title}: {demo.watch}.'
+
     def watch_the_table(self):
         """Look at the table where the demonstration happens (TABLE_VIEW), in a free view."""
         self.home()                     # a free camera, which the chase view leaves alone
@@ -87,17 +113,26 @@ class WhatsNew:
         self.camera.distance, self.camera.azimuth, self.camera.elevation = distance, azimuth, elevation
 
     def draw_whats_new(self, ui, button, text, section, ww, wh):
-        section('WHAT\'S NEW  /  watch it work', 122)
+        section('WHAT\'S NEW  /  one press runs it', 122)
         y = 146
         for demo in DEMOS:
             button(demo.title, 12, y, 264, lambda n=demo.id: self.start_demo(n), h=30,
                    active=getattr(self, 'demo', None) == demo.id)
             y += 36
-            for line in textwrap.wrap(demo.shows, 40)[:4]:
-                text(line, 16, y, 11, MUTED, 256)
-                y += 15
-            text(demo.adr, 16, y, 10, ACCENT, 256)
-            y += 24
+        shown = BY_ID.get(getattr(self, 'demo', None), DEMOS[0])
+        section('WHAT IT SHOWS', y + 10)
+        y += 34
+        text(shown.title, 16, y, 13, ACCENT, 256)
+        y += 21
+        for line in textwrap.wrap(shown.shows, 40)[:6]:
+            text(line, 16, y, 11, MUTED, 256)
+            y += 15
+        y += 6
+        for line in textwrap.wrap('Watch for: ' + shown.watch, 40)[:3]:
+            text(line, 16, y, 11, (.8, .87, .9), 256)
+            y += 15
+        text(shown.adr, 16, y + 4, 10, ACCENT, 256)
+        y += 26
         armed = getattr(self, 'live_disturbance', None)
         if armed is not None and y + 40 < wh - 160:
             text('Every run now: ' + armed.label, 16, y, 11, ACCENT, 256)

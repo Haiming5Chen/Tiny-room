@@ -19,7 +19,8 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch']}
-    assert [d.id for d in DEMOS] == ['look_again', 'frozen', 'shove', 'alarm'] and set(BY_ID) == {d.id for d in DEMOS}
+    assert [d.id for d in DEMOS] == ['look_again', 'frozen', 'shove', 'alarm', 'factory'] and set(BY_ID) == {d.id for d in DEMOS}
+    assert [d.where for d in DEMOS] == ['fetch'] * 4 + ['factory']
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -274,3 +275,49 @@ def test_the_cart_shoved_off_its_stop_goes_back_to_it_and_fetches_the_cube(tmp_p
     app.run(seconds=600)
     assert step['n'] == 3 and app.live_note.startswith('shoved 6 N s at the table - at ')
     assert len(went_back) == 1 and went_back[0].startswith('Pushed ') and went_back[0].endswith('off its stop: going back')
+
+
+@WINDOW
+def test_the_factory_demonstration_runs_reals_cell_and_says_where_each_part_landed(tmp_path, monkeypatch):
+    import glfw
+    from little_world.factory.controller import SLOTS
+    from little_world.factory.process import judge, slot_room
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    cell = {}
+
+    def in_the_cell():
+        real = app.active_workspace
+        cell['draw']()
+        n = step['n']
+        if n == 2:
+            assert real.app_mode == 'Real' and real.experiment == 'Pick and place' and real.product == 'Small block'
+            assert real.cycle.run is not None and real.cycle.state == 'running' and app.demo == 'factory'
+        elif n == 3:
+            placed = real.cycle.run['placements']
+            if len(placed) < 2:
+                assert real.state.time < 60 and real.cycle.state == 'running', real.cycle.message
+                return
+            zx, zy, turn = slot_room(SLOTS, 32.)
+            w = judge(placed, (zx, zy), turn)
+            assert w.inside == 2 and w.worst < zx and 11. < w.slowest < 15., w
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            button = next(b for b in app.active_workspace.buttons if b.label == 'Six parts, measured')
+            button.action()                       # Real's cell draws from here on
+            real = app.active_workspace
+            cell['draw'] = real.draw
+            monkeypatch.setattr(real, 'draw', in_the_cell)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    assert step['n'] == 4

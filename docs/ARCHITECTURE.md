@@ -553,6 +553,13 @@ Grasps use physical finger contact, never welds or object teleportation. A fixed
 workcell demo launches separately so the builder's unsaved design is preserved.
 It is not yet a general collision-avoiding planner, editable line, or conveyor system.
 
+`factory/process.py` (standard library, ADR 0056) judges a cell as a factory does: a run's
+`Placement`s - each part from its slot's centre, turned from square, and its cycle - against the
+room the destination tray's slots give a part (`slot_room`), with Cpk per axis and its interval
+(`capability`), the tightest zone held (`tightest`) and a takt. `FactoryCycle.left` reads each part
+once its placement is checked; `FactoryCycle.feeder` puts each part on the input tray off its centre
+for a study; the factory panel shows `process.line` under a production run.
+
 ## Guided factory authoring
 
 Create's Ponder inspires contextual explanations and visible cause/effect, not a

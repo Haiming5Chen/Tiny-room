@@ -164,6 +164,13 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
             if per is not None:line+=f'  /  {per:.1f} s per part'
             if rate is not None:line+=f'  /  {rate:.1f} parts per minute'
             text(line,self.PANEL+18,162,12,(.96,.72,.38) if failed else (.4,.85,.72),ww-self.PANEL-40)
+            if self.cycle.run.get('placements'):
+                # Where each part landed against the room its slot gives it, and how long it took (ADR 0056).
+                from little_world.factory.process import judge,line as window_line,slot_room
+                from little_world.factory.controller import SLOTS
+                zx,zy,turn=slot_room(SLOTS,1000*PRODUCTS[self.product][0])
+                window=judge(self.cycle.run['placements'],(zx,zy),turn)
+                text(window_line(window,(zx,zy)),self.PANEL+18,184,12,(.4,.85,.72) if window.inside==window.n else (.96,.72,.38),ww-self.PANEL-40)
         if self.guided:
             title,caption=self.guide_caption();width=min(540,ww-self.PANEL-36);top=wh-162
             ui.rect(self.PANEL+18,top,width,114,(.07,.14,.17))

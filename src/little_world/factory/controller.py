@@ -37,6 +37,8 @@ class FactoryCycle:
         self.object_id=self.model.body(self.product).id
         self.slot=(0.,0.)
         self.run=None   # a production run in progress, or None
+        self.feeder=None    # where the feeder puts part i: i -> (dx, dy in m, turn in deg) off the tray's centre, or None
+        self.placement=None # the last part placed, as it was left: a process.Placement (ADR 0056)
         self.trays={name:self.data.xpos[self.model.body('factory/'+name+'_base').id][:2].copy() for name in TRAYS}
         self.scratch=mj.MjData(self.model)
         self.state='idle';self.message='Select a product and output tray, then Preview path.'
@@ -113,9 +115,34 @@ class FactoryCycle:
         if self.state=='running':raise ValueError('Pause or reset before starting a run')
         parts=tuple(parts)
         if not parts or parts[0]!=self.product:raise ValueError('A run starts with the part on the input tray')
-        self.run=dict(parts=parts,done=0,failed=0,times=[],destination=destination,failure=None,started=float(self.data.time))
+        self.run=dict(parts=parts,done=0,failed=0,times=[],placements=[],destination=destination,failure=None,started=float(self.data.time))
         self.slot=SLOTS[0]
+        if self.feeder is not None:self.feed(self.product,0)
         self.plan(destination);self.start()
+
+    def feed(self,body,i):
+        """Put part `body` on the source tray where the feeder puts the i-th: its centre, or off it
+        by `feeder(i)` - the feeder, not simulated, as placed by a person or a chute."""
+        from math import cos,radians,sin
+        object_id=self.model.body(body).id
+        joint=self.model.body_jntadr[object_id];adr=self.model.jnt_qposadr[joint];dof=self.model.jnt_dofadr[joint]
+        size=self.model.geom_size[next(g for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==object_id)]
+        dx,dy,turn=self.feeder(i) if self.feeder is not None else (0.,0.,0.)
+        x,y=self.trays[self.source];a=radians(turn)/2
+        self.data.qpos[adr:adr+7]=(x+dx,y+dy,TABLE+.008+size[2]+.001,cos(a),0.,0.,sin(a))
+        self.data.qvel[dof:dof+6]=0.
+        mj.mj_forward(self.model,self.data)
+
+    def left(self):
+        """The part just placed as it was left (process.Placement): from its slot's centre, turned
+        from square, and its cycle."""
+        from math import atan2,degrees
+        from .process import Placement
+        x,y=self.trays[self.destination]+np.array(self.slot);pos=self.data.xpos[self.object_id]
+        w,qx,qy,qz=self.data.xquat[self.object_id]
+        yaw=(degrees(atan2(2*(w*qz+qx*qy),1-2*(qy*qy+qz*qz)))+45)%90-45
+        part=self.run['done'] if self.run is not None else 0
+        return Placement(part,1000*float(pos[0]-x),1000*float(pos[1]-y),float(yaw),float(self.total))
 
     def next_part(self):
         """The part just placed is counted; the next is fed onto the source tray, planned
@@ -129,12 +156,7 @@ class FactoryCycle:
             self.message=f"The {run['destination']} tray is full after {run['done']} parts.";return
         self.product='objects/'+run['parts'][run['done']].split('/')[-1]
         self.object_id=self.model.body(self.product).id
-        joint=self.model.body_jntadr[self.object_id];adr=self.model.jnt_qposadr[joint];dof=self.model.jnt_dofadr[joint]
-        size=self.model.geom_size[next(g for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==self.object_id)]
-        x,y=self.trays[self.source]
-        self.data.qpos[adr:adr+7]=(x,y,TABLE+.008+size[2]+.001,1.,0.,0.,0.)
-        self.data.qvel[dof:dof+6]=0.
-        mj.mj_forward(self.model,self.data)
+        self.feed(self.product,run['done'])
         self.slot=SLOTS[run['done']]
         self.state='idle'
         self.plan(run['destination']);self.start()
@@ -171,7 +193,9 @@ class FactoryCycle:
                 x,y=self.trays[self.destination]
                 if abs(pos[0]-x)<.08 and abs(pos[1]-y)<.07 and TABLE<pos[2]<TABLE+.12:
                     self.state='completed';self.message='Placed in the '+self.destination+' tray. Physical lift and placement verified.'
-                    if self.run is not None:self.next_part()
+                    self.placement=self.left()
+                    if self.run is not None:
+                        self.run['placements'].append(self.placement);self.next_part()
                 else:
                     self.fail('Placement failed: product is outside the selected tray.')
                     if self.run is not None:self.run['failed']+=1

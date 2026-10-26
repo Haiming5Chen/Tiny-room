@@ -1591,3 +1591,20 @@ met. Checked in `tests/test_whats_new.py` (9, three of them window tests). Suite
 Not claimed: anything the sweeps do not measure - the window shows their disturbances, the counts stay
 theirs; the same times in every run (the goals are checked once a frame, so a disturbance after a goal
 can come up to a frame's simulated time later); a reading of a robot model's own gripper servo.
+
+## The factory cell's process window — 2026-10-26
+
+ADR 0056 (FR-029, the weekly reading of 21 October). 38 production runs of the Panda's cell, six parts
+each, headless; each part read from its slot's centre once its placement was checked, against the room
+its slot gives it (6.5 mm along the table, 19 mm across, 38.9 deg turned). Small blocks: at the feeder's
+centre 6 of 6 within their room, 1.4 to 4.4 mm out along x and 1.0 to 2.2 mm short across, Cpk along x
+1.05; fed ±2 mm and ±5 deg off, 54 of 54, Cpk x 1.02 (95 %: 0.80 to 1.23); ±5 mm and ±15 deg, 51 of 54,
+Cpk x 0.57 (0.43 to 0.71); none left turned more than 3.8 deg; cycles 12.1 to 13.9 s. Tall blocks: every
+run failed at its fifth part, every part outside its room. Traced: the tool stops 4 mm short and low
+(no gravity compensation), the hand squeezes 1.6 N, the part creeps 3.3 mm in it. Previewed on copies:
+gravity compensation and a 20 or 70 N squeeze, 0.4 to 2.1 mm. Checked in `tests/test_process_window.py`
+(5) and a window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0: 1098 passed with a display, 1042 headless.
+
+Not claimed: a simulated feeder (its spreads are assumed draws); a real fixture's tolerance (the zone is
+the slots' clearance); that the fixes are right - they are previews, the owner's call (OPEN LW-036); why
+tall parts tip (OPEN LW-037).

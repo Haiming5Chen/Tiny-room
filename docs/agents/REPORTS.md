@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-26 · Claude (Cowork) · FR-029: the factory cell judged by its process window
+Did: ADR 0056 (`factory/process.py`: the room a part has in its slot, Cpk with its interval, the tightest
+zone held, a takt; `FactoryCycle.left` and `run['placements']`, `FactoryCycle.feeder`; a line under the
+factory's production run; What's new's "Six parts, measured").
+Measured: 38 runs, 214 parts. Small blocks land 1.4 to 4.4 mm off their slots - within the 6.5 mm room,
+Cpk 1.05 along the table - at 12.1 to 13.9 s a part (a 14 s takt held); with a feeder ±5 mm and ±15 deg
+off, 51 of 54 within. Tall blocks fail every run at the fifth part. The causes: the simulated Panda sags
+4 mm (no gravity compensation) and its hand squeezes 1.6 N (datasheet: 70 N), so the part creeps 3.3 mm
+in it. Previews of both fixes: 0.4 to 2.1 mm; tall runs then finish, two parts still 17-22 mm off.
+Unfinished: OPEN LW-036 (the two fixes), LW-037 (tall parts tip).
+For the owner: LW-036 - adopt gravity compensation and the datasheet's squeeze for the Panda? It changes
+the Panda in every Real experiment; with it, parts land within about 2 mm instead of 4.
+
 ## 2026-10-26 · Claude (Cowork) · Watch it work: recent work seen in the app
 Did: committed FR-025 (394a705, ADR 0054). ADR 0055, the owner's request of 26 October: a What's new
 button in the top bar opens four demonstrations (`ui/whats_new.py`), each one press - the cube moved

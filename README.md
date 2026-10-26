@@ -255,6 +255,13 @@ change the design, try again.** A desktop robotics sandbox on
   again*, a new button in the Program panel, makes a running program look again when you press it.
   While a program runs, the panel says what its camera last saw and what its jaw servos feel
   ([ADR 0055](docs/adr/0055-watch-it-work.md)).
+- **The factory cell judged as a factory judges one.** Under a production run, a line now says how
+  many parts landed within the room their slot gives them, the worst of them and the slowest part.
+  Measured over 214 parts: small blocks land 1.4 to 4.4 mm off their slots, barely capable of the
+  6.5 mm they have (Cpk 1.05), at 12 to 14 s a part; tall blocks fail the run. Why: the simulated Panda
+  sags 4 mm with no gravity compensation, and its hand squeezes 1.6 N where the real one's datasheet
+  gives 70 N - two fixes previewed for the owner to decide
+  ([ADR 0056](docs/adr/0056-the-factory-cell-judged-by-its-process-window.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
