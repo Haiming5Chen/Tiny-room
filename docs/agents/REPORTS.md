@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-23 · Claude (Cowork) · FR-025: searching for the failure
+Did: ADR 0054 (`inventory/falsify.py`: a run's margin - Fetch against what the tuning draws certified,
+the tilt table past its last hold - and a compass search over the variation box;
+`mobile_manipulator_blueprint(caster_gap)`), measured against drawn set-ups.
+Measured: Fetch - the search found no excursion in 40 runs where fresh draws had one at draw 19 (a
+real corner); on one measure it found a knife edge at run 27. The tilt table - the search found the
+plan's own corner (friction at its high end, 53.35 deg), better than 30 draws (55.03). Not adopted: the
+sweeps keep their plan. The rocking cart of before ADR 0041 no longer presses the cube (10 set-ups).
+Unfinished: OPEN LW-035.
+For the owner: LW-035 - ADR 0041 set the casters down to stop the presses and paid with curb climbing
+(LW-026); with today's program the rocking cart pressed none of the 10 set-ups tried. Revisiting ADR
+0041 (a full Fetch sweep and the curbs with the casters up) is your call.
+
 ## 2026-10-23 · Claude (Cowork) · FR-028: time passes while the program looks
 Did: ADR 0053 (`control/latency.py`: the bus's times from Protocol 2.0 packets, `Latency`, `sourced`,
 `Lag`; `MujocoBackend.kept`, `as_it_was`, `sight`; `perception.eye.Late`; `run`/`sweep`/`disturb`

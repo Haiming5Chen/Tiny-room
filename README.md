@@ -243,6 +243,11 @@ change the design, try again.** A desktop robotics sandbox on
   late, since it acts only on a cube that stands still; its limit is its grasp check's half second,
   which a command's trip to the jaws and the hold's trip back must fit in: 0.2 s each way held,
   0.3 s did not ([ADR 0053](docs/adr/0053-time-passes-while-the-program-looks.md)).
+- **Searching for the failure, measured.** A compass search over the variation box, following a
+  run's margin towards failing, was tried against the sweeps' own draws: on the tilt table it found
+  the worst corner the sweeps already run, and on the Fetch field - whose handling margins change by
+  chance at the millimetre scale - it found a knife edge where a random draw had found a real corner.
+  The sweeps keep their plan ([ADR 0054](docs/adr/0054-searching-for-the-failure.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

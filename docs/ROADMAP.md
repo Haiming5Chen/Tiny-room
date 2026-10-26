@@ -126,7 +126,8 @@ none of the face-on-face contacts the results rest on, only the casters' (ADR 00
 is tried against simpler recoveries and earns its keep where the cube moved after the look (ADR 0051).
 An alarm from outside makes a program look again; replayed runs show how late it may come, and what a
 false one costs (ADR 0052). Sweeps run with sourced latencies - the camera, the finder, the servo bus -
-and find the program's margin in its grasp check (ADR 0053).
+and find the program's margin in its grasp check (ADR 0053). A guided search for the failure did no
+better than the sweeps' corners and draws, and the sweeps keep their plan (ADR 0054).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its

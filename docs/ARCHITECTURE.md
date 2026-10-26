@@ -208,7 +208,9 @@ packets at its defaults - and `Lag`, which holds commands and readings back step
 with a `latency` hands the program the camera of `perception.eye.Late`, which shows the world as it
 was through `MujocoBackend.kept` and `as_it_was` (MuJoCo's ray casting on poses kept from then, on an
 MjData of its own). `inventory/margin.py` (ADR 0053) reads sweeps at each latency against the sweep
-without.
+without. `inventory/falsify.py` (ADR 0054) is a compass search over the variation box for a run's
+margin - for Fetch against what the tuning draws certified, for the tilt table degrees past its last
+hold; measured against the draws, it was not adopted, and only that study calls it.
 
 A field can have a camera of its own that programs look with (ADR 0032). `Field.camera`
 names a Blueprint camera in the field and its sensor, whose numbers are in

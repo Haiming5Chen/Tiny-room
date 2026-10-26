@@ -1561,3 +1561,19 @@ latency: 71 of 71, a median 0.03 s later. Checked in `tests/test_latency.py` (7)
 Not claimed: the camera's pipeline beyond its frame interval, a USB adapter's latency timer, retries
 or lost packets; the finder's time on the owner's Mac (it was measured on the cloud's CPU); latency
 in the interactive window; a certification (the tuning draws, ADR 0049).
+
+## Searching for the failure — 2026-10-23
+
+ADR 0054 (FR-025, the weekly reading of 19 October). A compass search over the variation box from the
+design as designed (`inventory/falsify.py`), against drawn set-ups. Fetch, a run's margin against what
+the 59 tuning draws certified (ADR 0049): the search found no excursion in 40 runs (lowest +0.03),
+where 59 fresh draws had one at draw 19 (the table's push 0.77 N in a step, 0.49 kg carried; 5 of 5
+micrometre repeats outside); the search on that measure alone found one at run 27 (0.65 N; 1 of 5
+repeats outside). The tilt table: the search's lowest tip 53.35 deg at run 15 of 30, 30 random draws
+55.03 deg, the plan's corner friction at its high end 53.32 deg. The cart rocking between its casters
+(before ADR 0041), as designed and on the 9 set-ups carrying 0.44 kg or more: no press, every goal met.
+162 runs. Checked in `tests/test_falsify.py` (6). Suites on MuJoCo 3.10.0: 1083 passed with a display, 1031 headless.
+
+Not claimed: a rate of finding (one realisation of each comparison); searches other than the compass
+search; a sourced limit on what the cube can bear (the margin is the tuning draws' envelope); why the
+rocking cart no longer presses (not traced).
