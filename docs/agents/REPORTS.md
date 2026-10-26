@@ -11,6 +11,21 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-26 · Claude (Cowork) · Watch it work: recent work seen in the app
+Did: committed FR-025 (394a705, ADR 0054). ADR 0055, the owner's request of 26 October: a What's new
+button in the top bar opens four demonstrations (`ui/whats_new.py`), each one press - the cube moved
+after the look, a camera that freezes, a shove at the table, Look again pressed by you; the sweeps'
+disturbances happen in the window during a run (`ui/live_disturbance.py`); a Look again button in the
+Program panel (`Runner.alarm`, ADR 0052); two lines there on what the running program's camera last
+saw and what its jaw servos feel.
+Measured: each demonstration, run in the window, does what its button says: the moved cube looked for
+again and fetched (done at 45.8 s), the frozen camera stopping the program at 14.8 s, the shoved cart
+going back and fetching (50.7 s), Look again pressed at 16.2 s and the cube fetched (42.4 s); every
+fetch with all four goals met.
+Unfinished: "Repeat with time passing" - the latency of ADR 0053 as a run-report button - not started.
+For the owner: to see it, double-click "Publish to GitHub.command", reopen Little World Builder and
+press What's new in the top bar.
+
 ## 2026-10-23 · Claude (Cowork) · FR-025: searching for the failure
 Did: ADR 0054 (`inventory/falsify.py`: a run's margin - Fetch against what the tuning draws certified,
 the tilt table past its last hold - and a compass search over the variation box;

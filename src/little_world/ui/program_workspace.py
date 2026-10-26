@@ -279,6 +279,13 @@ class ProgramWorkspace:
     def stop_program(self):
         self.runner.stop();self.program_keys.clear();self.program_drive=None;self.clear_keys();self.paused=False
 
+    def look_again(self):
+        """Tell the running program its reach is going wrong: at a stop where it looked, it opens
+        its jaws, rises, goes back and looks again, as its own recovery does (ADR 0052)."""
+        if not self.runner.alarm('You asked it to look again'):
+            raise ValueError('It looks again only at a stop where it looked, once a run')
+        self.status='Looking again: it opens its jaws, rises, goes back to its stop and looks.'
+
     def pause_program(self):
         if self.runner.state=='running':self.runner.state='paused';self.runner.message='Paused';self.paused=True;self.clear_keys()
         elif self.runner.state=='paused':self.start_program()
@@ -397,5 +404,32 @@ class ProgramWorkspace:
             field=getattr(self,'field_id',None)
             button(self.FIELD_TASKS.get(field,'Field task'),x+167,y,143,self.field_program,
                    editing and self.field_task_ready(field),h=28)
-        button('Step',x+16,wh-110,294,lambda:self.start_program(True),self.runner.state!='running' and bool(self.program.blocks),h=28)
-        text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)
+        button('Step',x+16,wh-110,143,lambda:self.start_program(True),self.runner.state!='running' and bool(self.program.blocks),h=28)
+        # Something outside the program says its reach is going wrong - you: it looks again (ADR 0052, 0055).
+        button('Look again',x+167,wh-110,143,self.look_again,self.runner.listening(),h=28)
+        if not self.building and self.runner.state!='stopped':
+            # What the program has to go on, as it runs (ADR 0055).
+            for i,line in enumerate(self.senses()):text(line,x+16,wh-76+14*i,10,(.6,.74,.77),294)
+        else:text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)
+
+    def senses(self):
+        """What a running program has to go on, said plainly, as two lines: its camera - what it
+        last saw where it looked (ADR 0032), or what is wrong with its pictures (ADR 0038) - and
+        what its jaw servos' registers say (ADR 0048)."""
+        from little_world.control.feel import CURRENT_UNIT,holding,read
+        from little_world.programming.program import TROUBLE
+        seen=self.runner.seen[-1] if self.runner.seen else None
+        faults=getattr(self.runner,'faults',())
+        if getattr(self,'eye',None) is None:sees='Camera: this program does not look'
+        elif faults:sees='Camera: '+TROUBLE[faults[-1]].replace("the camera's",'its')
+        elif seen is None:sees='Camera: it has not looked yet'
+        else:
+            off=100*sum((a-c)**2 for a,c in zip(seen[2][:2],seen[1][:2]))**.5
+            sees=f'Camera: saw the {seen[0].split("/")[-1]} {off:.1f} cm from the plan'
+        motion=getattr(self,'tool_motion',None)
+        jaws=read(self.backend,self.joint_control,motion.jaws) if motion is not None else None
+        if jaws is None:feels='Jaws: no servos to read'
+        elif holding(jaws):feels=f'Jaws: holding - stopped on it, pushing ({1000*CURRENT_UNIT*min(j.current for j in jaws):.0f} mA)'
+        elif any(j.moving for j in jaws):feels='Jaws: moving'
+        else:feels='Jaws: nothing between them'
+        return sees,feels

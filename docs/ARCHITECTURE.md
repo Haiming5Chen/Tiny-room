@@ -478,6 +478,18 @@ finishes every lesson whose check passes; one `Progress` lives on the window's h
 JSON file beside the robot library (`$LITTLE_WORLD_PROGRESS` in tests). A lesson's set-up uses
 only the actions a user has: loading a kit, choosing a field, simulating, opening a panel.
 
+## Recent work in the window
+
+`ui/whats_new.py` (ADR 0055) is the Guide's What's new: demonstrations as data - a title, what
+happens, what to watch for, the Fetch field's disturbance to arm - and `start_demo`, which loads the
+kit's mobile manipulator, chooses the Fetch field, solves the Fetch program, arms the disturbance,
+runs the program and turns the view to the table, through the window's own actions.
+`ui/live_disturbance.py` applies an armed disturbance during a run: the sweeps' `Disturbing`
+(ADR 0030), ticked each physics step from `field_commands` with the window's goal clock, a camera
+fault given to the program's own `Eye`; it is made afresh for each run. The Program panel's Look
+again calls `Runner.alarm` (ADR 0052), enabled while `Runner.listening`, and `senses` puts the
+runner's last sighting or camera fault and `control.feel.read`'s jaw registers into two lines.
+
 ## The grasp a program feels
 
 `control/feel.py` (standard library, ADR 0048) reads a kit gripper's jaws as ROBOTIS XH430-W350

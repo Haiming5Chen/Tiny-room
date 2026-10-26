@@ -248,6 +248,13 @@ change the design, try again.** A desktop robotics sandbox on
   the worst corner the sweeps already run, and on the Fetch field - whose handling margins change by
   chance at the millimetre scale - it found a knife edge where a random draw had found a real corner.
   The sweeps keep their plan ([ADR 0054](docs/adr/0054-searching-for-the-failure.md)).
+- **Watch it work.** A *What's new* button in the top bar opens four demonstrations of recent
+  work, one press each: the cube is moved 5 cm after the program looked, and the arm rises, looks
+  again and fetches it from where it went; the camera freezes, and the program sees its pictures are
+  old and stops; the cart is shoved at the table, drives back to its stop and carries on; and *Look
+  again*, a new button in the Program panel, makes a running program look again when you press it.
+  While a program runs, the panel says what its camera last saw and what its jaw servos feel
+  ([ADR 0055](docs/adr/0055-watch-it-work.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

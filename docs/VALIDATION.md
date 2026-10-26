@@ -1577,3 +1577,17 @@ repeats outside). The tilt table: the search's lowest tip 53.35 deg at run 15 of
 Not claimed: a rate of finding (one realisation of each comparison); searches other than the compass
 search; a sourced limit on what the cube can bear (the margin is the tuning draws' envelope); why the
 rocking cart no longer presses (not traced).
+
+## Watch it work — 2026-10-26
+
+ADR 0055 (the owner's request of 26 October). Each of What's new's four demonstrations, started by its
+button in a hidden window under Xvfb, does what the button says, on the run's clock: the cube moved 5
+cm at 16.5 s, the program blocked reaching down at 19.9 s, looked again and lifted the cube at 27.1 s,
+done at 45.8 s with all four goals met; the camera frozen at 14.5 s, the program stopped at 14.8 s with
+"the camera's picture is not new" and the cube not lifted; shoved at 14.5 s, going back at 16.3 s, done
+at 50.7 s, all goals met; Look again pressable from 15.2 s, pressed at 16.2 s, done at 42.4 s, all goals
+met. Checked in `tests/test_whats_new.py` (9, three of them window tests). Suites on MuJoCo 3.10.0: 1092 passed with a display, 1037 headless.
+
+Not claimed: anything the sweeps do not measure - the window shows their disturbances, the counts stay
+theirs; the same times in every run (the goals are checked once a frame, so a disturbance after a goal
+can come up to a frame's simulated time later); a reading of a robot model's own gripper servo.

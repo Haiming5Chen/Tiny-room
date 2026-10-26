@@ -152,6 +152,8 @@ class TestDrive:
         self.build_camera = None
         self.drive_view = None
         self.telemetry = self.run_log = self.goal_tracker = None
+        if hasattr(self, 'end_live_disturbance'):
+            self.end_live_disturbance()
 
     def sample_drive(self):
         if self.telemetry is None:
@@ -214,9 +216,14 @@ class TestDrive:
         return FIELDS[self.field_id].title
 
     def field_commands(self):
-        """The field's own motors, for a field that moves - a tilt table (ADR 0020)."""
+        """The field's own motors, for a field that moves - a tilt table (ADR 0020) - and, each
+        step of a run, a disturbance armed for it (ADR 0055)."""
         field = FIELDS.get(getattr(self, 'field_id', 'workshop'))
-        return field.commands(self.state) if field is not None and not self.building else {}
+        if field is None or self.building:
+            return {}
+        if getattr(self, 'live_disturbance', None) is not None:
+            self.tick_live_disturbance()
+        return field.commands(self.state)
 
     def choose_field(self):
         if not self.building:

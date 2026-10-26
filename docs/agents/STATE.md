@@ -7,14 +7,14 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0054. The newest: 0054 searching for the failure (FR-025, measured,
-  not adopted), 0053 time passes while the program looks (FR-028), 0052 how late is too late (FR-022), 0051 what looking again earns (FR-023), 0050 a contact census (FR-030), 0049 tuning draws and held-out
+- **Decision records** 0001 to 0055. The newest: 0055 watch it work (the owner's request of 26
+  October: recent work seen in the app), 0054 searching for the failure (FR-025, measured, not adopted), 0053 time passes while the program looks (FR-028), 0052 how late is too late (FR-022), 0051 what looking again earns (FR-023), 0050 a contact census (FR-030), 0049 tuning draws and held-out
   draws (FR-027), 0048 a grasp the program feels (FR-026), all by the weekly readings' ranking; 0047 a gripper from its file (OPEN LW-030, FR-031's loose end); 0046
   the first hour, checked by the app (FR-033); 0045 the tool travels its line (FR-032), both by
   the focused reading's ranking; 0044 robots from their own files (FR-031, the owner's request of
   21 Oct).
-- **Tests**: on MuJoCo 3.10.0, 1083 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 1031 headless; each test runs with an empty robot library of its own.
+- **Tests**: on MuJoCo 3.10.0, 1092 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 1037 headless; each test runs with an empty robot library of its own.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac; multiccd off. The owner's Mac reinstalls after publishing.
 - **Proposals**: `docs/agents/FRONTIER.md`; FR-001 to FR-003, FR-006, FR-011, FR-015 to

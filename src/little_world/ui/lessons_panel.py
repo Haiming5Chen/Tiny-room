@@ -152,5 +152,6 @@ class LessonsPanel:
             for line in textwrap.wrap(missing, 38)[:2]:
                 text(line, 16, y, 11, WARN, 254)
                 y += 16
-        button('Start this lesson', 12, wh - 160, 264, lambda: self.start_lesson(lesson.id), h=34, tone='primary')
+        button('Start this lesson', 12, wh - 196, 264, lambda: self.start_lesson(lesson.id), h=34, tone='primary')
+        button("What's new: watch it work", 12, wh - 154, 264, lambda: setattr(self, 'guide_view', 'New'), h=30)
         button('Build help: starter kits and checks', 12, wh - 118, 264, lambda: setattr(self, 'guide_view', 'Build'), h=30)

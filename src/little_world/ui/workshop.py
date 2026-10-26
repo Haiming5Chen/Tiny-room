@@ -45,9 +45,11 @@ from .app_modes import AppModes
 from .test_drive import TestDrive
 from .varied_runs import VariedRuns
 from .disturbed_runs import DisturbedRuns
+from .live_disturbance import LiveDisturbance
+from .whats_new import WhatsNew
 
 
-class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, LessonsPanel, TestWorkspace, InventoryWorkspace, TestDrive, VariedRuns, DisturbedRuns):
+class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, KeyBindings, ProgramWorkspace, GuidedBuild, LessonsPanel, WhatsNew, TestWorkspace, InventoryWorkspace, TestDrive, VariedRuns, DisturbedRuns, LiveDisturbance):
     PANEL = 288
 
     def __init__(self, path, blueprint=None):
@@ -91,6 +93,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.init_test_drive()
         self.init_varied_runs()
         self.init_disturbed_runs()
+        self.init_live_disturbance()
 
     def _scene(self):
         from little_world.fields import field_scene
@@ -722,7 +725,11 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         button('Guide',self.PANEL+330,72,64,self.show_guide)
         self.draw_lesson_note(text,self.PANEL+16,108,ww-self.PANEL-36-(338 if self.control_panel else 0))
         field_label='Field: '+self.field_title()
-        button(field_label,self.PANEL+400,72,min(200,ww-self.PANEL-576),self.choose_field,self.building)
+        field_width=min(200,ww-self.PANEL-576)
+        button(field_label,self.PANEL+400,72,field_width,self.choose_field,self.building)
+        if ww-self.PANEL-576-field_width>=104:      # recent work, run in the window (ADR 0055)
+            button("What's new",self.PANEL+406+field_width,72,92,self.show_whats_new,
+                   active=self.active_tab=='Guide' and getattr(self,'guide_view','')=='New')
         button('Undo',ww-166,72,68,lambda:self.edit(self.editor.undo),self.building and bool(self.editor.past),h=26)
         button('Redo',ww-92,72,68,lambda:self.edit(self.editor.redo),self.building and bool(self.editor.future),h=26)
         help_text=('Click a part to select. Drag to orbit. Right-drag to pan. Scroll to zoom.' if self.building else
