@@ -183,6 +183,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Note (weekly run, 2026-10-19): nothing new - no conveyor paper in what was read; `geom/surfacevel` still needs 3.11.
 - Note (weekly run, 2026-10-21): [LIBERO-Industry](https://huggingface.co/papers/2610.16782) (`arxiv:2610.16782`) grades conveyor work by three task kinds (loading onto, unloading from, transfer between moving surfaces) and by conveyor speed and interaction window. When the feeder becomes a conveyor, these are the factors to sweep; FR-029 supplies the metrics first. `geom/surfacevel` still needs 3.11.
 
+- Note (Claude (Cowork), 2026-10-26): the cell's parts are too short for rollers. Interroll's planning guide ("Conveyor rollers: planning", read 26 Oct): "the roller pitch must be selected so that the conveying good is carried by three conveyor rollers at any given time"; the smallest rollers it names are 20 mm. The cell's parts are 32 mm square, so a roller line could carry them only on carriers (pallets) or not at all; a belt - MuJoCo 3.11's `geom/surfacevel`, past the 3.10 pin - or a shuttle on a slide would. Which, if any, is the owner's call.
 ### FR-008 · Agents write block programs, graded by the fields
 - Status: proposed
 - From: [CaP-X](https://arxiv.org/abs/2603.22435) (`arxiv:2603.22435`, radar: learn);

@@ -558,7 +558,9 @@ It is not yet a general collision-avoiding planner, editable line, or conveyor s
 room the destination tray's slots give a part (`slot_room`), with Cpk per axis and its interval
 (`capability`), the tightest zone held (`tightest`) and a takt. `FactoryCycle.left` reads each part
 once its placement is checked; `FactoryCycle.feeder` puts each part on the input tray off its centre
-for a study; the factory panel shows `process.line` under a production run.
+for a study; the factory panel shows `process.line` under a production run. The cell's vertical
+stages carry joint solutions a centimetre apart along their line (`Stage.path`, `FactoryCycle.along`,
+ADR 0057) and the hand opens 8 mm past the part to let go (`release_grip`).
 
 ## Guided factory authoring
 

@@ -16,6 +16,17 @@ class Stage:
     grip:float
     duration:float
     point:np.ndarray
+    path:np.ndarray|None=None   # joint solutions STEP apart along the straight line to `point` (ADR 0057)
+
+# The stages that move the tool straight up or down. Moved joint by joint the tool swings off the
+# vertical - lowering into the destination tray up to 15 mm halfway down - and a tall part's
+# bottom caught the part beside it (ADR 0056, OPEN LW-037); along their line, joint solutions a
+# centimetre apart keep it on the vertical.
+LINES=('Lower to grasp','Lift and check grasp','Lower into bin','Retract')
+STEP=.01        # m between joint solutions along a line
+HAND_OPEN=.04   # m each Panda finger travels at the hand's widest, control 255 (Menagerie's hand)
+CLEAR=.008      # m each finger opens past a part to let it go: fully open (80 mm), a finger
+                # reached the next tall part's top (ADR 0056)
 
 # Where successive parts go in the destination tray: two rows along the fingers' closing
 # direction, so an open hand lowering a part clears the parts already there (ADR 0019).
@@ -75,25 +86,46 @@ class FactoryCycle:
         pick[2]+=.001
         drop=np.array((*(self.trays[destination]+np.array(self.slot)),pick[2]+.009))
         above=pick+np.array((0,0,.16));over_bin=drop+np.array((0,0,.16))
+        release=self.release_grip()
         points=(('Approach product',above,255),('Lower to grasp',pick,255),('Close gripper',pick,0),
                 ('Lift and check grasp',above,0),('Transfer to '+destination,over_bin,0),
-                ('Lower into bin',drop,0),('Release product',drop,255),('Retract',over_bin,255))
-        stages=[];seed=self.data.qpos[self.qids].copy()
+                ('Lower into bin',drop,0),('Release product',drop,release),('Retract',over_bin,release))
+        stages=[];seed=self.data.qpos[self.qids].copy();last=None
         for label,point,grip in points:
-            q=self.solve(point,seed)
+            path=None
+            if label in LINES and last is not None:
+                # Solved a centimetre at a time along the line, each from the one before.
+                n=max(1,int(np.ceil(np.linalg.norm(point-last)/STEP-1e-9)));q=seed;path=[seed]
+                for f in np.linspace(0,1,n+1)[1:]:
+                    q=self.solve(last+(point-last)*f,q);path.append(q)
+                path=np.array(path)
+            else:q=self.solve(point,seed)
             duration=max(1.2,float(np.max(np.abs(q-seed)))/.5)
             if label in ('Close gripper','Release product'):duration=1.
-            stages.append(Stage(label,q,grip,duration,point.copy()));seed=q
+            stages.append(Stage(label,q,grip,duration,point.copy(),path));seed=q;last=point
         self.preview_points=[self.tool(self.data).copy()]
         seed=self.data.qpos[self.qids].copy()
         for stage in stages:
             for t in np.linspace(0,1,16)[1:]:
-                self.scratch.qpos[self.qids]=seed+(stage.target-seed)*t
+                self.scratch.qpos[self.qids]=self.along(stage,seed,t)
                 mj.mj_forward(self.model,self.scratch)
                 self.preview_points.append(self.tool(self.scratch).copy())
             seed=stage.target
         self.stages=stages;self.state='planned';self.message='Path ready. Known-object sensing; fixed-cell waypoints.'
         self.index=0;self.total=0.;self.lift_verified=False
+
+    @staticmethod
+    def along(stage,start,blend):
+        """The joints `blend` (0 to 1) of the way through `stage` from `start`: along its line's
+        solutions, or straight from joint to joint."""
+        if stage.path is None:return start+(stage.target-start)*blend
+        k=len(stage.path)-1;x=blend*k;i=min(int(x),k-1)
+        return stage.path[i]+(stage.path[i+1]-stage.path[i])*(x-i)
+
+    def release_grip(self):
+        """The hand's control that opens it CLEAR past the part on each side, to let it go."""
+        size=self.model.geom_size[next(g for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==self.object_id)]
+        return float(min(255.,(size[1]+CLEAR)/HAND_OPEN*255))
 
     def start(self):
         if self.state!='planned':raise ValueError('Preview a path first')
@@ -175,7 +207,7 @@ class FactoryCycle:
         if self.state!='running':return {}
         stage=self.stages[self.index];self.elapsed+=dt;self.total+=dt
         t=min(1.,self.elapsed/stage.duration);blend=t*t*(3-2*t)
-        target=self.start_q+(stage.target-self.start_q)*blend
+        target=self.along(stage,self.start_q,blend)
         result={'machine/servo_'+str(i+1):float(v) for i,v in enumerate(target)}
         result['machine/servo_8']=stage.grip
         if self.elapsed>=stage.duration+.35:

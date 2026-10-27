@@ -1608,3 +1608,16 @@ gravity compensation and a 20 or 70 N squeeze, 0.4 to 2.1 mm. Checked in `tests/
 Not claimed: a simulated feeder (its spreads are assumed draws); a real fixture's tolerance (the zone is
 the slots' clearance); that the fixes are right - they are previews, the owner's call (OPEN LW-036); why
 tall parts tip (OPEN LW-037).
+
+## The cell lowers its parts straight down — 2026-10-26
+
+ADR 0057 (OPEN LW-037). The factory cell's vertical stages solved a centimetre at a time along their
+line, the hand opened 8 mm past the part to let it go. The 38 production runs of ADR 0056 again: every
+run finished, small and tall alike; 228 of 228 parts within their room (225 before, the tall ones
+none); worst 6.3 mm; Cpk along the table 1.25 and 1.08 at the feeder's centre, 0.90 and 0.85 with the
+feeder ±5 mm and ±15 deg off (small, tall); lowered, the tool within 5.0 mm of the vertical (it had
+swung 7 to 15 mm); 12.4 s a part on average. Checked in `tests/test_straight_descent.py` (3). Suites
+on MuJoCo 3.10.0: 1101 passed with a display, 1045 headless.
+
+Not claimed: straight transfers (only the vertical moves are lines); collision checking along any
+path; that the 2 to 6 mm out along the table is the real arm's (OPEN LW-036).

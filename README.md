@@ -262,6 +262,11 @@ change the design, try again.** A desktop robotics sandbox on
   sags 4 mm with no gravity compensation, and its hand squeezes 1.6 N where the real one's datasheet
   gives 70 N - two fixes previewed for the owner to decide
   ([ADR 0056](docs/adr/0056-the-factory-cell-judged-by-its-process-window.md)).
+- **Tall parts, placed.** The factory cell now lowers each part straight down into its slot and opens
+  its hand only 8 mm past the part to let go. Moved joint by joint, the descent had swung the tool up to
+  15 mm off the vertical, and a tall part caught the one beside it: every production run of tall blocks
+  failed. Now every one of 114 tall parts lands within its room, and small ones do too, at the wider
+  feeder spread as well ([ADR 0057](docs/adr/0057-the-cell-lowers-its-parts-straight-down.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

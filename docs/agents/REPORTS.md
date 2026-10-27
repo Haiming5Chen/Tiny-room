@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-26 · Claude (Cowork) · LW-037: the cell lowers its parts straight down
+Did: ADR 0057 (`factory/controller.py`: the four vertical stages carry joint solutions a centimetre
+apart along their line, `Stage.path`, `FactoryCycle.along`; the hand opens 8 mm past the part to let
+go, `release_grip`).
+Measured: the same 38 runs as ADR 0056 - every run finishes, tall blocks too; 228 of 228 parts within
+their room (tall: none before); lowered, the tool keeps within 5 mm of the vertical (it swung 7 to 15
+mm); 12.4 s a part.
+Unfinished: LW-036 (the Panda's sag and squeeze, the owner's call).
+For the owner: nothing new to decide; LW-036 still waits.
+
 ## 2026-10-26 · Claude (Cowork) · FR-029: the factory cell judged by its process window
 Did: ADR 0056 (`factory/process.py`: the room a part has in its slot, Cpk with its interval, the tightest
 zone held, a takt; `FactoryCycle.left` and `run['placements']`, `FactoryCycle.feeder`; a line under the

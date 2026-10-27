@@ -52,6 +52,26 @@ next to a tall part a finger reaches its top (a finger's mesh, 2.7 N), which pus
 mm - 29 mm with the stiffer hand of the previews. Opening only to 48 mm let the first two land as
 small ones do; the third and fourth still met the arc.
 
+## Lowered straight down, let go with a narrow hand (ADR 0057)
+
+The cell's four vertical stages now move along their line - joint solutions a centimetre apart - and
+the hand opens 8 mm past the part to let it go (48 mm, not 80). The same 38 runs again: lowered into
+the tray, the tool keeps within 5.0 mm of the slot's vertical all the way down (the arm's sag), where
+it had swung 7 to 15 mm.
+
+| | Feeder | Parts within their room | Off along x | Off across | Cpk x | Worst |
+| --- | --- | --- | --- | --- | --- | --- |
+| Small | at the centre | 6 of 6 | +2.6 to +4.5 mm | -1.4 to -2.3 mm | 1.25 | 4.8 mm |
+| Small | ±2 mm, ±5 deg | 54 of 54 | +2.6 to +4.9 | -1.3 to -2.5 | 1.27 (1.01-1.52) | 5.2 mm |
+| Small | ±5 mm, ±15 deg | 54 of 54 | +2.5 to +5.9 | -1.3 to -2.5 | 0.90 (0.71-1.09) | 6.3 mm |
+| Tall | at the centre | 6 of 6 | +2.4 to +5.0 | -1.5 to -2.3 | 1.08 | 5.4 mm |
+| Tall | ±2 mm, ±5 deg | 54 of 54 | +2.2 to +5.3 | -1.1 to -2.3 | 1.04 (0.82-1.25) | 5.7 mm |
+| Tall | ±5 mm, ±15 deg | 54 of 54 | +2.2 to +6.0 | -1.1 to -2.4 | 0.85 (0.67-1.04) | 6.3 mm |
+
+Every run finished. No part left turned more than 2.5 deg. Cycles 12.0 to 13.9 s, 12.4 s on average
+(12.8 s before). With both previewed Panda fixes on top, a run of each product: 1.5 to 2.5 mm out along
+the table, within 0.4 mm across.
+
 ## The two fixes, previewed (not adopted)
 
 The same runs on copies of the model: the arm's links gravity-compensated (`gravcomp` 1), as the
