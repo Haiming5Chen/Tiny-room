@@ -208,6 +208,7 @@ class MujocoBackend:
         self._past = None           # the MjData that moment is laid out in, made once
         self._static_states = {}
         self._motor_profiles = {}
+        self._motor_original = {}   # a weakened motor's profile as compiled (ADR 0058)
         self._geom_surface = None
         self._pair_mu = None
         self._any_sourced = False
@@ -446,7 +447,7 @@ class MujocoBackend:
             for i in range(1,model.nbody):
                 if model.body(i).name.startswith(native_prefix):
                     self.robot_owners[model.body(i).name]=native_prefix.split(name+'__robot_')[0]+name
-        self._motor_profiles={}
+        self._motor_profiles={};self._motor_original={}
         for n,p in profiles.items():
             dof=int(model.jnt_dofadr[model.actuator_trnid[self._motor_ids[n],0]])
             # The most one step of this motor alone can add to its joint's speed, per
@@ -614,6 +615,21 @@ class MujocoBackend:
         mj.mj_comVel(self.model, self.data)
         return self.snapshot()
 
+    def weaken(self, motor, torque=1., speed=1.):
+        """From now on the motor called `motor` follows its speed-torque line scaled by these
+        factors (`MotorProfile.weakened`): a winding grown hot, a sagging supply (ADR 0058). Only
+        a motor with a sourced profile has a line to scale; any other fails, as does a name
+        that is not a motor's."""
+        self._ready()
+        if motor not in self._motor_ids:
+            raise ValueError(f'no motor called {motor!r}')
+        idx = self._motor_ids[motor]
+        if idx not in self._motor_profiles:
+            raise ValueError(f'{motor} has no sourced profile to weaken')
+        profile, dof, per_newton_metre = self._motor_profiles[idx]
+        original = self._motor_original.setdefault(idx, profile)
+        self._motor_profiles[idx] = (original.weakened(torque, speed), dof, per_newton_metre)
+
     def push(self, body, force=(0., 0., 0.)):
         """Hold a force on a body's centre of mass, world frame, newtons, until pushed again
         (a zero force ends it): how a test field shoves a machine partway through a run (ADR
@@ -692,6 +708,9 @@ class MujocoBackend:
         self.data.ctrl[:]=self._initial_ctrl
         self.model.dof_frictionloss[:] = self._base_frictionloss
         self.model.actuator_biasprm[self._affine] = 0.
+        for idx, profile in self._motor_original.items():     # a weakened motor is itself again
+            self._motor_profiles[idx] = (profile, *self._motor_profiles[idx][1:])
+        self._motor_original = {}
         staged_forward(self.model, self.data, self._contact_policy, self._energy_sensor)
         return self.snapshot()
 
@@ -812,5 +831,6 @@ class MujocoBackend:
         self._body_ids, self._motor_ids, self._camera_ids = {}, {}, {}
         self._static_states = {}
         self._motor_profiles = {}
+        self._motor_original = {}   # a weakened motor's profile as compiled (ADR 0058)
         self._motor_dofs = {}
         self._affine = np.zeros(0, dtype=np.intp)

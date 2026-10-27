@@ -41,6 +41,28 @@ class MotorProfile:
         if self.envelope!='dc_friction_v1':return 0.
         return self.stall_torque*self.no_load_current/(self.stall_current-self.no_load_current)
 
+    def weakened(self,torque=1.,speed=1.):
+        """This motor with its own speed-torque line scaled - its stall torque by `torque`, its
+        free speed by `speed` - and its friction as it was (ADR 0058): a winding grown hot has
+        more resistance, so less stall current and torque at the same free speed; a sagging
+        supply scales both. The returned profile's net endpoints are what the motor then
+        delivers past its unchanged friction."""
+        from dataclasses import replace
+        for value in (torque,speed):
+            if not isfinite(value) or not 0<value<=1:raise ValueError('A weakened motor keeps 0 to 1 of its torque and speed')
+        if torque==1 and speed==1:return self
+        stall,free=self.line()
+        friction=self.friction_torque
+        stall2,free2=stall*torque,free*speed
+        net=stall2-friction
+        if net<=0:raise ValueError('So weak a motor cannot turn past its own friction')
+        rpm=free2*net/stall2*60/(2*pi)
+        if self.envelope!='dc_friction_v1':
+            return replace(self,stall_torque=stall2,no_load_rpm=free2*60/(2*pi))
+        # The same no-load current and friction; the stall current the net stall torque implies.
+        current=self.no_load_current+net*self.no_load_current/friction
+        return replace(self,stall_torque=net,no_load_rpm=rpm,stall_current=current)
+
     def line(self):
         """The motor's own speed-torque line as (stall torque N m, free speed rad/s).
 

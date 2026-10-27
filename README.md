@@ -267,6 +267,12 @@ change the design, try again.** A desktop robotics sandbox on
   15 mm off the vertical, and a tall part caught the one beside it: every production run of tall blocks
   failed. Now every one of 114 tall parts lands within its room, and small ones do too, at the wider
   feeder spread as well ([ADR 0057](docs/adr/0057-the-cell-lowers-its-parts-straight-down.md)).
+- **A motor run hot - and a cart that does not notice.** A run can now have one of its motors
+  weakened partway, as physics says: a winding 50 K hot keeps 84 % of its stall torque (copper's
+  0.393 %/K) at the same free speed. The kit cart drives exactly as before - on the sprint, the ramps,
+  the push, the curbs and the Fetch - because its drive never asks a motor for more than its 0.5 N m
+  operating cap; on the sprint a motor can drop to 30 % before anything changes
+  ([ADR 0058](docs/adr/0058-a-motor-run-hot.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-27 · Claude (Cowork) · FR-019: a motor run hot
+Did: ADR 0058 (`MotorProfile.weakened`, `MujocoBackend.weaken`, the 'motor' disturbance kind with
+`hot()` from copper's coefficient and `WEAK`, offered in the window's disturbances).
+Measured: the kit cart with its left motor 50 K hot (84 % of its torque) runs every drive field and the
+Fetch step for step as before; its drive never asks for more than the motors' 0.5 N m operating cap;
+on the Sprint nothing changes down to 30 %. FR-019's predicted curve was not seen.
+Unfinished: nothing new; LW-036 still waits on the owner; FR-007 (rollers too long for the cell's
+parts, noted) waits on the owner.
+For the owner: nothing to decide here.
+
 ## 2026-10-26 · Claude (Cowork) · LW-037: the cell lowers its parts straight down
 Did: ADR 0057 (`factory/controller.py`: the four vertical stages carry joint solutions a centimetre
 apart along their line, `Stage.path`, `FactoryCycle.along`; the hand opens 8 mm past the part to let

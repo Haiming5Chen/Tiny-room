@@ -562,6 +562,10 @@ for a study; the factory panel shows `process.line` under a production run. The 
 stages carry joint solutions a centimetre apart along their line (`Stage.path`, `FactoryCycle.along`,
 ADR 0057) and the hand opens 8 mm past the part to let go (`release_grip`).
 
+A motor can be weakened during a run (ADR 0058): `MotorProfile.weakened` (core) scales a motor's
+own speed-torque line and keeps its friction; `MujocoBackend.weaken` swaps a motor's profile until
+the world resets; `fields/disturbance.py`'s 'motor' kind does it on a disturbance's trigger.
+
 ## Guided factory authoring
 
 Create's Ponder inspires contextual explanations and visible cause/effect, not a

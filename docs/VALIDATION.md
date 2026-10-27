@@ -1621,3 +1621,18 @@ on MuJoCo 3.10.0: 1101 passed with a display, 1045 headless.
 
 Not claimed: straight transfers (only the vertical moves are lines); collision checking along any
 path; that the 2 to 6 mm out along the table is the real arm's (OPEN LW-036).
+
+## A motor run hot — 2026-10-27
+
+ADR 0058 (FR-019). A 'motor' disturbance scales a motor's own speed-torque line from its trigger on,
+its friction kept; copper's 0.00393 per C at 20 C (NBS Circular 31) gives a winding 50 K hot 84 % of
+its stall torque at the same free speed. The kit cart with its left motor 50 K hot from the start: the
+Sprint, the ramps, the push and the curb run step for step the same as undisturbed (their traces
+equal), and the Fetch too, also with the motor at 25 %. The drive never asks a motor for more than its
+0.5 N m operating cap, at most 48 % of the line at the speed it turns, on the flat 23 to 34 %. On the
+Sprint the left motor kept 84 down to 30 % with nothing changed; at 25 % the drift to the right was
+17 mm less (338 mm as designed). Checked in `tests/test_weak_motor.py` (4). Suites on MuJoCo 3.10.0:
+1105 passed with a display, 1049 headless.
+
+Not claimed: the winding's temperature (50 K is assumed); the magnets' weakening with heat; a machine
+built nearer its motors' limits; the curve FR-019 predicted, which was not seen.

@@ -6,7 +6,7 @@ happens in the window while the user watches, on the same trigger: after a goal 
 the machine has stood still that long, after its delay. Armed for the next run, it stays armed
 until cleared, and the window says when it happened. A workshop mixin.
 """
-from little_world.fields.disturbance import DEFAULTS, Disturbing
+from little_world.fields.disturbance import DEFAULTS, WEAK, Disturbing
 
 
 class LiveDisturbance:
@@ -16,8 +16,9 @@ class LiveDisturbance:
         self.live_note = ''             # what happened, said in the run panel
 
     def live_choices(self):
-        """The field's own disturbances, the ones its sweeps try."""
-        return tuple(DEFAULTS.get(getattr(self, 'field_id', ''), ()))
+        """The field's own disturbances, the ones its sweeps try, and a motor run hot (ADR 0058)."""
+        field = getattr(self, 'field_id', '')
+        return tuple(DEFAULTS.get(field, ())) + tuple(WEAK.get(field, ()))
 
     def arm_disturbance(self, label):
         """Disturb the coming runs with the field's disturbance called `label`; None clears it."""

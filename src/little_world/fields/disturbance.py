@@ -1,20 +1,30 @@
-"""Things that happen to a run partway through: a shove, a part moved, a camera that fails
-(ADR 0030, 0038).
+"""Things that happen to a run partway through: a shove, a part moved, a camera that fails, a
+motor that weakens (ADR 0030, 0038, 0058).
 
 ADR 0024 varies the conditions a run starts in. A lab also does things to a robot while it
 works: someone bumps the cart, a part is moved after the robot looked, a camera's stream
 stops or goes dark. A disturbance says what happens and when - so many seconds after a goal
 is met, or after the start - and a `Disturbing` applies it to a running world through the
-adapter (`push`, `shift`) or to the field's camera (`fail`) and notes what it did. Standard
-library only.
+adapter (`push`, `shift`, `weaken`) or to the field's camera (`fail`) and notes what it did.
+Standard library only.
 """
 from dataclasses import dataclass
 from math import atan2, cos, radians, sin
 
-KINDS = ('push', 'move', 'camera')
+KINDS = ('push', 'move', 'camera', 'motor')
 FAULTS = ('freeze', 'dark')   # a camera that keeps sending its last picture; one whose pictures have no depth
 SETTLED = 1.0   # s after a push ends, when how far it moved the machine is read
 STILL = .01     # m/s: below this the machine's base counts as standing still
+# A motor run hot (ADR 0058): its winding's resistance rises with its temperature, so at the same
+# voltage it draws less current at stall and makes less torque, at the same free speed.
+COPPER = .00393     # 1/K: annealed copper's temperature coefficient of resistance at 20 C
+HOT = 50.           # K a drive motor's winding is taken to have warmed: assumed, Pololu gives none
+LEFT = 'gearmotor_37_1_output_shaft_motor'   # the kit cart's left drive motor (+y of its heading)
+
+
+def hot(kelvin=HOT):
+    """The share of its stall torque a motor keeps with its winding `kelvin` above 20 C."""
+    return 1 / (1 + COPPER * kelvin)
 
 
 @dataclass(frozen=True)
@@ -37,6 +47,9 @@ class Disturbance:
     offset: tuple = (0., 0.)
     turn: float = 0.
     camera: str = ''                 # '', or one of FAULTS: the field's camera fails as it happens
+    motor: str = ''                  # a 'motor' disturbance: the machine's motor it weakens
+    torque: float = 1.               # the share of its stall torque it keeps
+    speed: float = 1.                # the share of its free speed it keeps
 
     def __post_init__(self):
         object.__setattr__(self, 'offset', tuple(float(v) for v in self.offset))
@@ -52,6 +65,10 @@ class Disturbance:
             raise ValueError(f'a camera fails in one of {FAULTS}, not {self.camera!r}')
         if self.kind == 'camera' and not self.camera:
             raise ValueError('a camera disturbance needs a fault')
+        if not (0 < self.torque <= 1 and 0 < self.speed <= 1):
+            raise ValueError('a weakened motor keeps 0 to 1 of its torque and speed')
+        if self.kind == 'motor' and not (self.motor and (self.torque < 1 or self.speed < 1)):
+            raise ValueError('a motor disturbance needs a motor and less torque or speed')
 
     def describe(self):
         when = [f'after "{self.after}"' if self.after else 'from the start']
@@ -65,6 +82,10 @@ class Disturbance:
                     + ', '.join(when) + (f'; {fault}' if fault else ''))
         if self.kind == 'camera':
             return fault + ', ' + ', '.join(when)
+        if self.kind == 'motor':
+            name = 'the left drive motor' if self.motor == LEFT else self.motor
+            kept = [f'{100 * self.torque:.0f} % of its torque'] + ([f'{100 * self.speed:.0f} % of its speed'] if self.speed < 1 else [])
+            return f'{name} at ' + ' and '.join(kept) + ', ' + ', '.join(when)
         return (f'{self.part.split("/")[-1]} moved {100 * self.offset[0]:+.1f} cm, {100 * self.offset[1]:+.1f} cm'
                 + (f', turned {self.turn:+g} deg' if self.turn else '') + ', ' + ', '.join(when)
                 + (f'; {fault} just before' if fault else ''))
@@ -127,6 +148,10 @@ class Disturbing:
                 backend.shift(d.part, d.offset, d.turn)
                 self.done = True
                 return
+            if d.kind == 'motor':
+                backend.weaken(self.root.split('/')[0] + '/' + d.motor, d.torque, d.speed)
+                self.done = True
+                return
             pose = state.bodies[self.root].pose
             self.start = pose.position[:2]
             angle = _yaw(pose.quaternion) + radians(d.toward)
@@ -181,4 +206,7 @@ DEFAULTS = {
     'sprint': (_push('shoved 4 N s after the start', 'start', 4., delay=1.),
                _push('shoved 8 N s after the start', 'start', 8., delay=1.)),
 }
+# A motor run hot from the start (ADR 0058), apart from each field's disturbances above, which come
+# once a goal is met: the kit cart's left drive motor, its winding 50 K over 20 C.
+WEAK = {field: (Disturbance('left motor 50 K hot', 'motor', motor=LEFT, torque=hot()),) for field in ('sprint', 'fetch')}
 
