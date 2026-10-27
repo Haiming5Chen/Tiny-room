@@ -7,6 +7,7 @@ machine, field and program up, arms the disturbance the sweeps tried and runs it
 each does what a user does and checks the machine does what the button says it will.
 """
 import os
+import textwrap
 from types import SimpleNamespace
 
 import pytest
@@ -19,11 +20,13 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch']}
-    assert [d.id for d in DEMOS] == ['look_again', 'frozen', 'shove', 'alarm', 'factory'] and set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['fetch'] * 4 + ['factory']
+    assert [d.id for d in DEMOS] == ['look_again', 'frozen', 'shove', 'alarm', 'tipping', 'factory']
+    assert set(BY_ID) == {d.id for d in DEMOS} and [d.where for d in DEMOS] == ['fetch'] * 4 + ['tilt', 'factory']
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
+        assert len(textwrap.wrap(demo.shows, 40)) <= 8 and len(textwrap.wrap('Watch for: ' + demo.watch, 40)) <= 4, \
+            "the Guide shows all of it"
 
 
 class Bench(LiveDisturbance):
@@ -154,6 +157,20 @@ FETCHED = {'reached': 'met', 'lifted': 'met', 'delivered': 'met', 'upright': 'ke
 
 def goals(app):
     return {g.id: g.status for g in app.goal_tracker.results()}
+
+
+def said(app, monkeypatch, panel):
+    """What the window's `panel` (one of its drawing methods) writes, frame after frame."""
+    words = []
+    draw = getattr(app, panel)
+
+    def spy(ui, button, text, *rest):
+        def written(w, *a, **k):
+            words.append(w)
+            return text(w, *a, **k)
+        return draw(ui, button, written, *rest)
+    monkeypatch.setattr(app, panel, spy)
+    return words
 
 
 @WINDOW
@@ -321,3 +338,38 @@ def test_the_factory_demonstration_runs_reals_cell_and_says_where_each_part_land
     monkeypatch.setattr(app, 'draw', exercise)
     app.run(seconds=600)
     assert step['n'] == 4
+
+
+@WINDOW
+def test_the_tipping_demonstration_counts_down_the_degrees_left_as_the_table_tilts(tmp_path, monkeypatch):
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = []
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'How near it is to tipping')
+        elif n == 2:
+            assert app.field_id == 'tilt' and not app.building and app.active_tab == 'Edit' and app.demo == 'tipping'
+        elif n == 3:
+            sample = app.drive_sample
+            if sample is not None and sample.tip is not None:
+                seen.append((app.state.time, sample.tip))
+            if app.state.time < 8.:
+                return
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    words = said(app, monkeypatch, 'draw_static_test_panel')
+    app.run(seconds=600)
+    assert step['n'] == 4 and seen
+    assert seen[0][1] > 40. and seen[-1][1] < seen[0][1] - 3., (seen[0], seen[-1])
+    counts = [float(w.split()[0]) for w in words if w.endswith(' deg from tipping')]
+    assert counts and counts[0] > 40. and counts[-1] < counts[0] - 3., "the panel counts it down"

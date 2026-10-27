@@ -1636,3 +1636,18 @@ Sprint the left motor kept 84 down to 30 % with nothing changed; at 25 % the dri
 
 Not claimed: the winding's temperature (50 K is assumed); the magnets' weakening with heat; a machine
 built nearer its motors' limits; the curve FR-019 predicted, which was not seen.
+
+## How near it is to tipping — 2026-10-27
+
+ADR 0059 (FR-005). The force-angle measure (Papadopoulos and Rey) against its closed forms: atan(reach /
+height) per edge on the flat; the downhill edge running out at the static tip angle on a slope; braking
+taking atan(a / g) from the front edge. On the solver: the arm on its cart on the tilt table, 44 deg left
+standing level, falling three quarters of a degree for each degree of table, running out at 53.5 deg - its stance's static prediction 54.2
+(55.6 with the rail), the field reading it over at 54.6, an uphill wheel 2 mm up at 53.0; the cart alone
+11.9 deg left at the table's 60 deg (it would run out at 71.9; predicted with the rail 72.0). Hard stops
+from 0.42 m/s: the least angle 54 deg (cart), 47 (cart, 1 kg on the deck), 40 (arm cart), 37 (arm cart,
+0.5 kg), each 3 to 4 deg below its cruise. Checked in `tests/test_tipping.py` (8) and a window test in `tests/test_whats_new.py`. Suites on
+MuJoCo 3.10.0: 1114 passed with a display, 1057 headless.
+
+Not claimed: the 20 ms check against a lifting wheel when braking tips a machine (none tips, OPEN
+LW-038); supports that are not flat; impulses shorter than the 50 ms the accelerations are taken over.

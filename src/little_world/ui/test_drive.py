@@ -404,6 +404,12 @@ class TestDrive:
                            f'stance margin {100 * stance:.1f} cm' + ('  (tipping)' if stance < 0 else ''))
             text(f'{summary.distance:.2f} m  /  ' + stance_text, 16, y + 20, 12,
                  WARN if stance is not None and stance < .01 else LIGHT, 256)
+            # Its accelerations counted: degrees before it tips (ADR 0059).
+            tip = None if s is None else s.tip
+            if tip is not None:
+                text(f'{tip:.0f} deg from tipping' + ('  (tipping)' if tip <= 0 else '  (close)' if tip < 10 else ''),
+                     16, y + 40, 12, WARN if tip < 10 else LIGHT, 256)
+                y += 20
             y += 40
         # What the gripper holds is not a collision: name it apart from what is touched.
         observations = getattr(self, 'observations', None)
@@ -523,6 +529,10 @@ class TestDrive:
                 text(f'lowest stance margin {100 * r.min_margin:.1f} cm' + ('  (near tipping)' if r.min_margin < .01 else ''),
                      16, y, 12, WARN if r.min_margin < .01 else (.86, .90, .93), 256)
                 y += 20
+            if r.min_tip is not None:
+                text(f'closest to tipping: {r.min_tip:.0f} deg left' + ('  (it tipped)' if r.min_tip <= 0 else ''),
+                     16, y, 12, WARN if r.min_tip < 10 else (.86, .90, .93), 256)
+                y += 20
         touched = ', '.join(r.touched)
         text('touched: ' + touched if touched else 'touched nothing', 16, y, 12,
              WARN if touched and not record.anchored else (.86, .90, .93) if touched else MUTED, 256)
@@ -634,6 +644,12 @@ class TestDrive:
         text('deg, table angle', 22 + ui.width(number, 30), 170, 14, MUTED)
         over = self.goal_tracker.tipped_at if self.goal_tracker is not None else None
         y = self.draw_gauge(ui, text, 206, angle, field.gauge_top, at_rail, over)
+        # How near it is to tipping, its accelerations counted (ADR 0059): down to 0 as it goes over.
+        tip = None if s is None else s.tip
+        if tip is not None:
+            text(f'{tip:.0f} deg from tipping' + ('  (tipping)' if tip <= 0 else '  (close)' if tip < 10 else ''),
+                 16, y, 13, WARN if tip < 10 else LIGHT, 256)
+            y += 22
         table = next((g.table for g in field.goals if isinstance(g, TiltHold)), None)
         root = self.telemetry.root if self.telemetry is not None else -1
         if table is not None and root >= 0 and self.state is not None:

@@ -273,6 +273,11 @@ change the design, try again.** A desktop robotics sandbox on
   the push, the curbs and the Fetch - because its drive never asks a motor for more than its 0.5 N m
   operating cap; on the sprint a motor can drop to 30 % before anything changes
   ([ADR 0058](docs/adr/0058-a-motor-run-hot.md)).
+- **How near it is to tipping.** While a machine drives, the panel now says how many degrees it has
+  left before it tips - its weight and its accelerations both, by Papadopoulos and Rey's force-angle
+  measure - and the run report the fewest. On the tilt table the arm on its cart counts down about three
+  quarters of a degree for each degree of table and runs out at 53.5, as it goes over; a hard stop from
+  full speed takes 3 to 4 degrees from it. What's new shows it ([ADR 0059](docs/adr/0059-how-near-it-is-to-tipping.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

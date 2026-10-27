@@ -11,6 +11,15 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-27 · Claude (Cowork) · FR-005: how near it is to tipping
+Did: ADR 0059 (`control/tipping.py`: the force-angle measure and its `Watch` on the solver's state; the
+drive panel's line and the run report's least; What's new's "How near it is to tipping").
+Measured: on the tilt table the arm cart's angle runs out at 53.5 deg, 0.7 before its static prediction
+and 1.1 before the field reads it over; the cart alone keeps 11.9 deg at the table's 60; a hard stop from
+full speed takes 3 to 4 deg from each kit cart and tips none.
+Unfinished: OPEN LW-038 (the dynamic check needs a machine that tips on braking).
+For the owner: nothing to decide here; LW-036 still waits.
+
 ## 2026-10-27 · Claude (Cowork) · FR-019: a motor run hot
 Did: ADR 0058 (`MotorProfile.weakened`, `MujocoBackend.weaken`, the 'motor' disturbance kind with
 `hot()` from copper's coefficient and `WEAK`, offered in the window's disturbances).

@@ -134,7 +134,8 @@ against their slots' room and how long each takes: small blocks barely capable, 
 the simulated Panda's sag and soft squeeze the causes, the fixes the owner's call (ADR 0056). The cell
 lowers its parts straight down and lets go with a narrow hand, and tall blocks run (ADR 0057). A
 motor can be run hot partway through a run; the kit cart's drive leaves so much margin that it
-does not notice (ADR 0058).
+does not notice (ADR 0058). The drive panel says how many degrees a machine has left before it tips,
+its accelerations counted (ADR 0059).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its

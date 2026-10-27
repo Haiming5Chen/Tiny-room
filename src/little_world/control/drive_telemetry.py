@@ -22,9 +22,10 @@ def display_name(body_name):
 TOUCHING = .0015   # m: a geom's points within this of its lowest along the support's normal carry load
 
 
-def lowest_points(m, d, geom, down):
+def lowest_points(m, d, geom, down, full=False):
     """[(x, y)] of a geom's points that reach furthest along `down` (a unit vector into what
-    holds it up), within TOUCHING: its share of the support polygon, from its shape."""
+    holds it up), within TOUCHING: its share of the support polygon, from its shape; with
+    `full`, the points themselves, (x, y, z) (ADR 0059)."""
     centre, axes = d.geom_xpos[geom], d.geom_xmat[geom].reshape(3, 3)
     size, kind = m.geom_size[geom], m.geom_type[geom]
     if kind == mj.mjtGeom.mjGEOM_CYLINDER:
@@ -46,11 +47,11 @@ def lowest_points(m, d, geom, down):
     elif kind == mj.mjtGeom.mjGEOM_CAPSULE:
         candidates = [centre + side * float(size[1]) * axes[:, 2] + float(size[0]) * down for side in (-1., 1.)]
     else:                                    # a mesh or another shape: its contacts' own points
-        return [(float(d.contact[i].pos[0]), float(d.contact[i].pos[1])) for i in range(d.ncon)
+        return [tuple(float(v) for v in d.contact[i].pos[:3 if full else 2]) for i in range(d.ncon)
                 if geom in (d.contact[i].geom1, d.contact[i].geom2)]
     depth = [float(p @ down) for p in candidates]
     deepest = max(depth)
-    return [(float(p[0]), float(p[1])) for p, k in zip(candidates, depth) if k >= deepest - TOUCHING]
+    return [tuple(float(v) for v in p[:3 if full else 2]) for p, k in zip(candidates, depth) if k >= deepest - TOUCHING]
 
 
 class DriveTelemetry:
@@ -86,6 +87,9 @@ class DriveTelemetry:
         # What the machine stands on is not news: the floor, and a field's own ground such
         # as the top of a tilt table (ADR 0020).
         self._ground = {i for i in range(m.nbody) if m.body(i).name in set(ground)}
+        # How near it is to tipping with its accelerations: the force-angle measure (ADR 0059).
+        from .tipping import Watch
+        self.tipping = Watch(backend, self.root, prefix, ground) if self._free else None
 
     def sample(self):
         m, d = self.backend.model, self.backend.data
@@ -118,8 +122,9 @@ class DriveTelemetry:
                                       None if profile is None else profile.no_load_rpm,
                                       torque, available, saturated,
                                       abs(speed * radius) - abs(ground)))
+        tip = self.tipping() if self.tipping is not None else None
         return DriveSample(float(d.time), tuple(float(v) for v in centre), forward, tilt, tuple(motors),
-                           self.margin(centre))
+                           self.margin(centre), None if tip is None else tip[0])
 
     @property
     def anchored(self):

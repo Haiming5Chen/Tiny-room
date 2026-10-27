@@ -566,6 +566,12 @@ A motor can be weakened during a run (ADR 0058): `MotorProfile.weakened` (core) 
 own speed-torque line and keeps its friction; `MujocoBackend.weaken` swaps a motor's profile until
 the world resets; `fields/disturbance.py`'s 'motor' kind does it on a disturbance's trigger.
 
+`control/tipping.py` (ADR 0059) is the force-angle measure: `force_angles`, `measure` and `ordered`
+over a support polygon, numpy only, and `Watch`, which reads a machine's mass, centre of mass,
+acceleration and rate of change of angular momentum (over 50 ms) and its support - its geoms within
+1 cm of what it stands on - from the solver. `DriveTelemetry` keeps one; `DriveSample.tip` and
+`RunSummary.min_tip` carry it to the drive panel and the run report.
+
 ## Guided factory authoring
 
 Create's Ponder inspires contextual explanations and visible cause/effect, not a

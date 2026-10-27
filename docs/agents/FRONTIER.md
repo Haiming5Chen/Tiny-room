@@ -118,7 +118,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Note (weekly run, 2026-10-19): MuJoCo 3.16.0 changed how shortcut actuators inherit parameters - only from a default of the same shortcut or `general`; motors in position-default classes are no longer position servos (issue #3561) - and fixed or affine actuators may now declare their input as pos, vel or pressure (no effect on simulation). When the pin lifts, a test that the compiled gains of every kit actuator equal its profile (Pololu 37D, XH430) should run before anything else, together with the dcmotor input change of 3.12 noted on 5 October.
 
 ### FR-005 · Tip-over margin while moving: the force-angle measure
-- Status: proposed
+- Status: done (ADR 0059, 2026-10-27: the force-angle measure on the solver's state, in the drive panel and the run report; on the tilt table the arm cart's angle runs out at 53.5 deg, 0.7 deg before its static prediction, as it goes over; a hard stop from full speed takes 3 to 4 deg from the kit carts and tips none; the 20 ms check against a lifting wheel needs a machine that tips on braking, OPEN LW-038; taken by the weekly reading's ranking)
 - From: E. G. Papadopoulos and D. A. Rey, "A new measure of tipover stability margin for
   mobile manipulators", ICRA 1996; [Analytic solutions for wheeled mobile manipulator
   supporting forces](https://arxiv.org/abs/2202.10186) (title only, not yet read)

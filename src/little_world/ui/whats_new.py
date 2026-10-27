@@ -45,6 +45,12 @@ DEMOS = (
          'Program panel: it opens its jaws, rises, looks again and carries on.',
          'press Look again in the Program panel while the arm reaches for the cube',
          '', 'ADR 0052'),
+    Demo('tipping', 'How near it is to tipping',
+         'The arm on its cart stands on a table that tilts 2 degrees a second. On the left, under the '
+         "table's angle, a line counts the degrees it has left before it tips - its weight and its "
+         'accelerations both - down to nothing as it goes over, at about 54.',
+         "on the left, under the table's angle, the degrees left before it tips count down; at about 54 it tips",
+         '', 'ADR 0059', where='tilt'),
     Demo('factory', 'Six parts, measured',
          'In Real mode the Panda in the factory cell puts six parts in their slots, one after another. '
          'Under the cell a line says how far from its slot each part landed, against the room it had '
@@ -74,6 +80,9 @@ class WhatsNew:
         if demo.where == 'factory':
             self.start_factory_demo(demo)
             return
+        if demo.where == 'tilt':
+            self.start_tilt_demo(demo)
+            return
         if not self.building:
             self.simulate()             # back to build: the demonstration sets up its own machine
         self.close_bench()
@@ -86,6 +95,23 @@ class WhatsNew:
         self.show_program()
         self.start_program()
         self.watch_the_table()
+        self.demo = demo.id
+        self.status = f'{demo.title}: {demo.watch}.'
+
+    def start_tilt_demo(self, demo):
+        """The arm on its cart on the tilt table, run, the drive panel open (ADR 0059)."""
+        from little_world.robots.mobile_manipulator import mobile_manipulator_blueprint
+        if not self.building:
+            self.simulate()
+        self.close_bench()
+        self.stop_program()
+        self.edit(lambda: self.editor.load(mobile_manipulator_blueprint()))
+        self.program_edit(type(self.program)())
+        self.set_field('tilt')
+        self.arm_disturbance(None)
+        self.simulate()
+        self.home(True)
+        self.active_tab = 'Edit'            # the drive panel: speed, stance, degrees from tipping
         self.demo = demo.id
         self.status = f'{demo.title}: {demo.watch}.'
 
@@ -124,11 +150,11 @@ class WhatsNew:
         y += 34
         text(shown.title, 16, y, 13, ACCENT, 256)
         y += 21
-        for line in textwrap.wrap(shown.shows, 40)[:6]:
+        for line in textwrap.wrap(shown.shows, 40)[:8]:
             text(line, 16, y, 11, MUTED, 256)
             y += 15
         y += 6
-        for line in textwrap.wrap('Watch for: ' + shown.watch, 40)[:3]:
+        for line in textwrap.wrap('Watch for: ' + shown.watch, 40)[:4]:
             text(line, 16, y, 11, (.8, .87, .9), 256)
             y += 15
         text(shown.adr, 16, y + 4, 10, ACCENT, 256)
