@@ -113,6 +113,13 @@ class DriveTelemetry:
             # forward speed less its yaw rate times the wheel's sideways offset.
             ground = float(velocity[3] - velocity[2] * lateral)
             torque = float(d.actuator_force[actuator])
+            # The line the motor follows now: weakened by a disturbance, perhaps (ADR 0058).
+            line = self.backend.motor_line(actuator) if hasattr(self.backend, 'motor_line') else None
+            kept = None
+            if line is not None:
+                profile, built = line
+                if profile is not built:
+                    kept = profile.line()[0] / built.line()[0]
             if profile is None:
                 available = limit
             else:
@@ -121,7 +128,7 @@ class DriveTelemetry:
             motors.append(MotorSample(label, speed * 60 / (2 * pi),
                                       None if profile is None else profile.no_load_rpm,
                                       torque, available, saturated,
-                                      abs(speed * radius) - abs(ground)))
+                                      abs(speed * radius) - abs(ground), kept))
         tip = self.tipping() if self.tipping is not None else None
         return DriveSample(float(d.time), tuple(float(v) for v in centre), forward, tilt, tuple(motors),
                            self.margin(centre), None if tip is None else tip[0])

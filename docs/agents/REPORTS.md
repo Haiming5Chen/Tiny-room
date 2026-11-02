@@ -11,6 +11,14 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-27 · Claude (Cowork) · ADR 0058 seen in the window: a motor run hot
+Did: What's new's "A motor run hot" (the arm on its cart fetching with its left motor 50 K hot) and the
+drive panel's mark on a weakened motor (`MujocoBackend.motor_line`, `MotorSample.kept`); What's new
+newest first, its texts whole. ADR 0058 had said the window offered it; no button did.
+Measured: in the window the cube is in the bin at 37.5 s with the motor hot, as without it.
+Unfinished: nothing new; LW-036 still waits.
+For the owner: nothing to decide here.
+
 ## 2026-10-27 · Claude (Cowork) · FR-005: how near it is to tipping
 Did: ADR 0059 (`control/tipping.py`: the force-angle measure and its `Watch` on the solver's state; the
 drive panel's line and the run report's least; What's new's "How near it is to tipping").

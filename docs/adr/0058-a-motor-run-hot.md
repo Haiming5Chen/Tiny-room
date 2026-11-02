@@ -22,8 +22,12 @@ line is the project's own, so a weakened motor is that line scaled.
 - *A disturbance kind* (`fields/disturbance.py`): 'motor', with the motor and the shares it keeps,
   on the same triggers as the others; `hot(kelvin)` from copper's coefficient; `WEAK`, the kit cart's
   left drive motor 50 K hot from the start, for the Sprint and the Fetch - apart from the fields'
-  own disturbances (ADR 0030), which come once a goal is met. The window offers it among the
-  disturbances a run can be given (ADR 0055).
+  own disturbances (ADR 0030), which come once a goal is met.
+- *In the window* (`ui/whats_new.py`, `ui/test_drive.py`): What's new runs it - "A motor run hot",
+  the arm on its cart fetching the cube with its left motor 50 K hot - and the drive panel marks a
+  weakened motor with the share of its stall torque it keeps, its speed and torque read against the
+  line it follows now (`MujocoBackend.motor_line`, `MotorSample.kept`). What's new lists its
+  demonstrations newest first, and shows all of each one's text: the factory's lost its last line.
 
 **Blueprint and builder.** Untouched: no design changes; the motor is weakened during a run only.
 
@@ -40,12 +44,17 @@ line is the project's own, so a weakened motor is that line scaled.
   once its motor cannot turn it at that speed - none of the weakenings a motor runs into.
 - *The Fetch*: with the left motor 50 K hot, and with it keeping only 25 % of its torque, the run was
   bit for bit the one undisturbed - the cube in the bin at 36.9 s: its drives to a point ask still less.
+- *In the window*: What's new's demonstration weakened the left motor 0.6 s into the run, as the
+  program started, and the cube was in the bin at 37.5 s, as it was in the window undisturbed; the
+  drive asked a motor for at most 56 % of what it could then give.
 
-Held by `tests/test_weak_motor.py` (4): the hot winding's line, pivoting about its free speed,
+Held by `tests/test_weak_motor.py` (5): the hot winding's line, pivoting about its free speed,
 its friction kept, a supply's sag taking both ends, impossible shares refused; a backend that
 weakens a motor until it is reset, and refuses a motor without a profile; the disturbance on its
-trigger, said as it happened; and the Sprint run for run the same with the left motor hot. Suites on
-MuJoCo 3.10.0: 1105 passed with a display, 1049 headless.
+trigger, said as it happened; the Sprint run for run the same with the left motor hot; and the drive
+panel marking the weakened motor and reading its weakened line. In `tests/test_whats_new.py`, a window
+test of the demonstration. Suites on MuJoCo 3.10.0: 1105 passed with a display, 1049 headless; with
+the window's part, 1116 passed with a display, 1058 headless.
 
 **Boundaries.** Copper's coefficient is sourced; the 50 K is assumed - Pololu gives no winding
 temperature - and the magnets' own weakening with heat is not modelled. Only motors with a sourced

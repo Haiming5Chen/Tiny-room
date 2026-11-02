@@ -1651,3 +1651,14 @@ MuJoCo 3.10.0: 1114 passed with a display, 1057 headless.
 
 Not claimed: the 20 ms check against a lifting wheel when braking tips a machine (none tips, OPEN
 LW-038); supports that are not flat; impulses shorter than the 50 ms the accelerations are taken over.
+
+## A motor run hot, seen in the window — 2026-10-27
+
+ADR 0058, its window part. What's new's "A motor run hot": the arm on its cart on the Fetch field, its
+left motor 50 K hot from 0.6 s into the run, as the program started; the drive panel marks it weakened,
+84 % of its torque, the right motor not; the cube in the bin at 37.5 s, as in the window undisturbed.
+Checked in `tests/test_weak_motor.py` (5: the panel's reading of a weakened line, the reset world's
+motor as built) and a window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0: 1116 passed with a display, 1058 headless.
+
+Not claimed: what the panel's share means for heat - it is the share of the motor's own stall torque,
+whatever weakened it.

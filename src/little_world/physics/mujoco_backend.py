@@ -630,6 +630,15 @@ class MujocoBackend:
         original = self._motor_original.setdefault(idx, profile)
         self._motor_profiles[idx] = (original.weakened(torque, speed), dof, per_newton_metre)
 
+    def motor_line(self, actuator):
+        """(the profile the motor at actuator index `actuator` follows now, the one it was
+        compiled with) - the same twice unless it has been weakened (ADR 0058) - or None for a
+        motor without a sourced profile: what a window says of it."""
+        if self.model is None or actuator not in self._motor_profiles:
+            return None
+        now = self._motor_profiles[actuator][0]
+        return now, self._motor_original.get(actuator, now)
+
     def push(self, body, force=(0., 0., 0.)):
         """Hold a force on a body's centre of mass, world frame, newtons, until pushed again
         (a zero force ends it): how a test field shoves a machine partway through a run (ADR

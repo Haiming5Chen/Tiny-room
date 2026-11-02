@@ -12,16 +12,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from little_world.fields.disturbance import DEFAULTS
+from little_world.fields.disturbance import DEFAULTS, WEAK
 from little_world.ui.live_disturbance import LiveDisturbance
 from little_world.ui.program_workspace import ProgramWorkspace
 from little_world.ui.whats_new import BY_ID, DEMOS
 
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
-    labels = {d.label for d in DEFAULTS['fetch']}
-    assert [d.id for d in DEMOS] == ['look_again', 'frozen', 'shove', 'alarm', 'tipping', 'factory']
-    assert set(BY_ID) == {d.id for d in DEMOS} and [d.where for d in DEMOS] == ['fetch'] * 4 + ['tilt', 'factory']
+    labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
+    assert [d.id for d in DEMOS] == ['tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
+    assert set(BY_ID) == {d.id for d in DEMOS}
+    assert [d.where for d in DEMOS] == ['tilt', 'fetch', 'factory'] + ['fetch'] * 4
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -373,3 +374,44 @@ def test_the_tipping_demonstration_counts_down_the_degrees_left_as_the_table_til
     assert seen[0][1] > 40. and seen[-1][1] < seen[0][1] - 3., (seen[0], seen[-1])
     counts = [float(w.split()[0]) for w in words if w.endswith(' deg from tipping')]
     assert counts and counts[0] > 40. and counts[-1] < counts[0] - 3., "the panel counts it down"
+
+
+@WINDOW
+def test_a_motor_run_hot_is_marked_in_the_drive_panel_and_the_cube_is_fetched_as_cool(tmp_path, monkeypatch):
+    import glfw
+    from little_world.fields.disturbance import hot
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    kept = []
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'A motor run hot')
+        elif n == 2:
+            assert app.field_id == 'fetch' and not app.building and app.active_tab == 'Edit' and app.demo == 'hot_motor'
+            assert app.live_disturbance.label == 'left motor 50 K hot' and app.runner.state == 'running'
+        elif n == 3:
+            s = app.drive_sample
+            if s is not None and s.motors:
+                kept.append({m.name: m.kept for m in s.motors})
+            r = app.runner
+            if r.state == 'running':
+                assert app.state.time < 80, r.message
+                return
+            assert r.state == 'completed' and goals(app) == FETCHED, (r.message, goals(app))
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    words = said(app, monkeypatch, 'draw_test_drive_panel')
+    app.run(seconds=600)
+    assert step['n'] == 4 and app.live_note.startswith('left motor 50 K hot - at 0.')
+    assert 'Left motor weakened: 84 % of its torque' in words and not any(w.startswith('Right motor') for w in words)
+    assert kept and kept[-1]['left'] == pytest.approx(hot()) and kept[-1]['right'] is None, kept[-1:]
+    delivered = app.goal_tracker.met['delivered']
+    assert abs(delivered - 37.5) < 1., "the cube in the bin when it is undisturbed, 37.5 s"

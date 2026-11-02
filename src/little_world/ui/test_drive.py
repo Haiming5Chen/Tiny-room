@@ -433,7 +433,7 @@ class TestDrive:
                 if y + (30 if compact else 36) > bottom:
                     break
                 rpm = abs(motor.rpm)
-                limit = f' of {motor.no_load_rpm:g}' if motor.no_load_rpm else ''
+                limit = f' of {motor.no_load_rpm:.0f}' if motor.no_load_rpm else ''   # a weakened one's is not round
                 text(f'{motor.name.title()}  {rpm:.0f}{limit} rpm', 16, y, 12 if compact else 13, max_width=150)
                 torque = f'{abs(motor.torque):.2f} of {motor.available:.2f} Nm'
                 text(torque, 272 - ui.width(torque, 11), y + 2, 11, WARN if motor.saturated else MUTED)
@@ -449,6 +449,11 @@ class TestDrive:
                                   ('Wheels slipping: the treads outrun the floor.', any(m.slipping for m in s.motors))):
                 if show and y + 16 <= bottom:
                     text(warning, 16, y, 11, WARN, 256)
+                    y += 16
+            # A motor a disturbance weakened: a winding run hot, a sagging supply (ADR 0058).
+            for motor in s.motors:
+                if motor.kept is not None and y + 16 <= bottom:
+                    text(f'{motor.name.title()} motor weakened: {100 * motor.kept:.0f} % of its torque', 16, y, 11, WARN, 256)
                     y += 16
             y += 8
         if arm and y + 20 + 18 <= bottom:

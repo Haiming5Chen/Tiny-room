@@ -271,8 +271,9 @@ change the design, try again.** A desktop robotics sandbox on
   weakened partway, as physics says: a winding 50 K hot keeps 84 % of its stall torque (copper's
   0.393 %/K) at the same free speed. The kit cart drives exactly as before - on the sprint, the ramps,
   the push, the curbs and the Fetch - because its drive never asks a motor for more than its 0.5 N m
-  operating cap; on the sprint a motor can drop to 30 % before anything changes
-  ([ADR 0058](docs/adr/0058-a-motor-run-hot.md)).
+  operating cap; on the sprint a motor can drop to 30 % before anything changes. What's new - its
+  demonstrations now newest first - runs it: the arm on its cart fetches the cube with its left motor
+  hot, the drive panel marking the motor weakened ([ADR 0058](docs/adr/0058-a-motor-run-hot.md)).
 - **How near it is to tipping.** While a machine drives, the panel now says how many degrees it has
   left before it tips - its weight and its accelerations both, by Papadopoulos and Rey's force-angle
   measure - and the run report the fewest. On the tilt table the arm on its cart counts down about three

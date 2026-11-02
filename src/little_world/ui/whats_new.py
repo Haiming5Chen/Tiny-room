@@ -21,10 +21,32 @@ class Demo:
     watch: str          # what the status line says to watch for
     disturbance: str    # the Fetch field's disturbance armed for the run, '' for none
     adr: str
-    where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'factory': Real's cell
+    where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
+                            # 'factory': Real's cell
+    tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
 
 
+# Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('tipping', 'How near it is to tipping',
+         'The arm on its cart stands on a table that tilts 2 degrees a second. On the left, under the '
+         "table's angle, a line counts the degrees it has left before it tips - its weight and its "
+         'accelerations both - down to nothing as it goes over, at about 54.',
+         "on the left, under the table's angle, the degrees left before it tips count down; at about 54 it tips",
+         '', 'ADR 0059', where='tilt'),
+    Demo('hot_motor', 'A motor run hot',
+         'The left drive motor runs 50 degrees hot from the start, so it makes 84 % of its torque. The '
+         'arm on its cart fetches the cube just as it does cool: its drive never asks a motor for more '
+         'than about half of what it could give.',
+         'on the left, under MOTORS, the left motor is marked weakened; the cube is in the bin at '
+         'about 37 s, as cool',
+         'left motor 50 K hot', 'ADR 0058', tab='Edit'),
+    Demo('factory', 'Six parts, measured',
+         'In Real mode the Panda in the factory cell puts six parts in their slots, one after another. '
+         'Under the cell a line says how far from its slot each part landed, against the room it had '
+         'before it would touch the next, and how long each took.',
+         'the line under the cell says how far from its slot each part landed and how long it took',
+         '', 'ADR 0019, 0056', where='factory'),
     Demo('look_again', 'Watch it look again',
          'The cube is moved 5 cm just after the camera looked. The jaws come down beside it, rise, '
          'look again and fetch it from where it went.',
@@ -45,18 +67,6 @@ DEMOS = (
          'Program panel: it opens its jaws, rises, looks again and carries on.',
          'press Look again in the Program panel while the arm reaches for the cube',
          '', 'ADR 0052'),
-    Demo('tipping', 'How near it is to tipping',
-         'The arm on its cart stands on a table that tilts 2 degrees a second. On the left, under the '
-         "table's angle, a line counts the degrees it has left before it tips - its weight and its "
-         'accelerations both - down to nothing as it goes over, at about 54.',
-         "on the left, under the table's angle, the degrees left before it tips count down; at about 54 it tips",
-         '', 'ADR 0059', where='tilt'),
-    Demo('factory', 'Six parts, measured',
-         'In Real mode the Panda in the factory cell puts six parts in their slots, one after another. '
-         'Under the cell a line says how far from its slot each part landed, against the room it had '
-         'before it would touch the next, and how long each took.',
-         'the line under the cell says how far from its slot each part landed and how long it took',
-         '', 'ADR 0019, 0056', where='factory'),
 )
 BY_ID = {d.id: d for d in DEMOS}
 
@@ -95,6 +105,8 @@ class WhatsNew:
         self.show_program()
         self.start_program()
         self.watch_the_table()
+        if demo.tab:
+            self.active_tab = demo.tab      # the drive panel: its motors (ADR 0058)
         self.demo = demo.id
         self.status = f'{demo.title}: {demo.watch}.'
 
@@ -142,9 +154,9 @@ class WhatsNew:
         section('WHAT\'S NEW  /  one press runs it', 122)
         y = 146
         for demo in DEMOS:
-            button(demo.title, 12, y, 264, lambda n=demo.id: self.start_demo(n), h=30,
+            button(demo.title, 12, y, 264, lambda n=demo.id: self.start_demo(n), h=28,
                    active=getattr(self, 'demo', None) == demo.id)
-            y += 36
+            y += 32
         shown = BY_ID.get(getattr(self, 'demo', None), DEMOS[0])
         section('WHAT IT SHOWS', y + 10)
         y += 34

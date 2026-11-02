@@ -92,3 +92,37 @@ def test_the_kit_cart_does_not_notice_its_left_motor_run_hot():
     assert hot_run.disturbed == 'left motor 50 K hot at 0.0 s'
     assert [r.status for r in hot_run.results] == [r.status for r in as_designed.results] == ['met', 'met', 'kept']
     assert warm == plain, "the same run, step for step"
+
+
+def test_the_drive_panel_says_which_motor_is_weakened_and_reads_its_weakened_line():
+    """What the window shows of it (What's new, 'A motor run hot'): the motor marked with the share
+    of its own stall torque it keeps, its speed and torque read against the line it follows now."""
+    pytest.importorskip('mujoco')
+    from little_world import Entity, World
+    from little_world.control.drive_telemetry import DriveTelemetry
+    from little_world.control.mujoco_drive import MujocoDrive
+    from little_world.core.scene import Scene
+    from little_world.physics.mujoco_backend import MujocoBackend
+    from little_world.robots.mobile_platform import mobile_platform_blueprint
+    from little_world.scenes.room import room_entity
+    bp = mobile_platform_blueprint()
+    backend = MujocoBackend()
+    with World(backend, Scene((room_entity(), Entity('machine', bp)))) as world:
+        world.start()
+        control = MujocoDrive(backend, bp)
+        telemetry = DriveTelemetry(backend, bp, control)
+        assert {m.name: m.kept for m in telemetry.sample().motors} == {'left': None, 'right': None}
+        left = backend.model.actuator('machine/' + LEFT).id
+        now, built = backend.motor_line(left)
+        assert now is built, "as compiled"
+        backend.weaken('machine/' + LEFT, hot())
+        for _ in range(500):
+            world.step(control.step_commands((5., 5.), world.timestep))
+        motors = {m.name: m for m in telemetry.sample().motors}
+        now, built = backend.motor_line(left)
+        assert motors['left'].kept == pytest.approx(hot()) and motors['right'].kept is None
+        assert now.line()[0] == pytest.approx(built.line()[0] * hot()), "its own line, 84 % at stall"
+        assert motors['left'].no_load_rpm == pytest.approx(now.no_load_rpm) and now.no_load_rpm < built.no_load_rpm
+        assert 0 < abs(motors['left'].torque) <= motors['left'].available + 1e-9
+        backend.reset()
+        assert {m.name: m.kept for m in telemetry.sample().motors} == {'left': None, 'right': None}

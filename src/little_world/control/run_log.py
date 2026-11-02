@@ -22,6 +22,7 @@ class MotorSample:
     available: float            # the most it could deliver at this speed, N m
     saturated: bool             # delivering all it can
     slip: float = 0.            # tread speed minus ground speed at the wheel, m/s
+    kept: float | None = None   # a weakened motor's share of its own stall torque; None as built (ADR 0058)
 
     @property
     def slipping(self):

@@ -565,6 +565,8 @@ ADR 0057) and the hand opens 8 mm past the part to let go (`release_grip`).
 A motor can be weakened during a run (ADR 0058): `MotorProfile.weakened` (core) scales a motor's
 own speed-torque line and keeps its friction; `MujocoBackend.weaken` swaps a motor's profile until
 the world resets; `fields/disturbance.py`'s 'motor' kind does it on a disturbance's trigger.
+`MujocoBackend.motor_line` gives the line a motor follows now and the one it was built with; the drive
+telemetry reads a motor's speed and torque against the first and marks it weakened (`MotorSample.kept`).
 
 `control/tipping.py` (ADR 0059) is the force-angle measure: `force_angles`, `measure` and `ordered`
 over a support polygon, numpy only, and `Watch`, which reads a machine's mass, centre of mass,
