@@ -11,6 +11,14 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-10-27 · Claude (Cowork) · OPEN LW-033: once it holds, an alarm is not heard
+Did: ADR 0060 (`Runner.holding`, `Runner.felt`; `listening` false while the program holds what it
+reached for; the window's Look again greys out then; What's new says so).
+Measured: on the Fetch an alarm after the grasp check no longer drops the cube - the run is the
+undisturbed one, the cube in the bin at 36.87 s (it was 44.24 s and 44.51 s).
+Unfinished: LW-034 (a cube on its side) stays open.
+For the owner: nothing to decide here.
+
 ## 2026-10-27 · Claude (Cowork) · ADR 0058 seen in the window: a motor run hot
 Did: What's new's "A motor run hot" (the arm on its cart fetching with its left motor 50 K hot) and the
 drive panel's mark on a weakened motor (`MujocoBackend.motor_line`, `MotorSample.kept`); What's new

@@ -202,6 +202,7 @@ class Runner:
         self.regrasps=0;self.reopen=None;self.followed={};self.goal=None
         self.above=None;self.rising=None;self.frame=None;self.faults=[]
         self.after_look=None;self.earlier=None
+        self.felt=None      # the grasp check that last found the object held, by its block (OPEN LW-033)
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
@@ -211,7 +212,7 @@ class Runner:
         if self.index>=len(self.program.blocks):
             self.cycle+=1
             if self.cycle>=self.program.repeat:self.state='completed';self.message='Completed';return
-            self.index=0
+            self.index=0;self.felt=None
         if self.single:self.state='paused';self.message='Step complete'
     def fail(self,message):
         self.state='failed';self.message=message
@@ -264,9 +265,15 @@ class Runner:
         return True
     def listening(self):
         """Whether an alarm now would make the program look again: running, at a stop where it
-        looked, with a regrasp left, and not already going back (FR-022)."""
+        looked, with a regrasp left, not already going back (FR-022) - and not holding what it
+        reached for, which looking again would drop (OPEN LW-033)."""
         return self.state=='running' and not self.reopen and not self.rising and \
-            self.looked is not None and self.stop_block is not None and self.regrasps<self.regrasp_limit
+            self.looked is not None and self.stop_block is not None and self.regrasps<self.regrasp_limit and \
+            not self.holding()
+    def holding(self):
+        """Whether the program is past a grasp check that found the object held since it last
+        looked: looking again would open the jaws on it in the air (OPEN LW-033)."""
+        return self.felt is not None and self.after_look is not None and self.after_look<=self.felt<self.index
     def alarm(self,message='An alarm: looking again'):
         """A detector outside the program says its reach is going wrong (FR-022): it recovers as
         its own recovery does, whatever recovery it was given - opens the jaws by as much as they
@@ -350,7 +357,7 @@ class Runner:
         if any(sum((a-b)**2 for a,b in zip(v,middle))>STILL**2 for v in last):return False
         self.offset=tuple(a-b for a,b in zip(middle,block.point));self.looked=block.point
         self.seen.append((block.target,block.point,middle))
-        self.after_look=self.index+1
+        self.after_look=self.index+1;self.felt=None
         if self.earlier is not None:
             # The 'guess' baseline: looked again, but aimed as far from where it was first seen as
             # it now is, in a random direction across the table - the same reach, without what
@@ -476,7 +483,9 @@ class Runner:
             if self.state!='running':return output
         if b.kind=='if_contact':self.advance(1 if condition else 2)
         elif b.kind in ('move','contact','distance','grasp','goto'):
-            if condition:self.advance()
+            if condition:
+                if b.kind=='grasp':self.felt=self.index     # held: an alarm is not heard now
+                self.advance()
             elif self.elapsed+1e-9>=b.duration:
                 if b.kind=='grasp' and self.regrasp('Nothing held: looking again',reopen=True,rise=True):pass
                 elif b.kind=='grasp' and self.recovery=='ignore':self.advance()

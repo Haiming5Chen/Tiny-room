@@ -1662,3 +1662,14 @@ motor as built) and a window test in `tests/test_whats_new.py`. Suites on MuJoCo
 
 Not claimed: what the panel's share means for heat - it is the share of the motor's own stall torque,
 whatever weakened it.
+
+## Once it holds, an alarm is not heard — 2026-10-27
+
+ADR 0060 (OPEN LW-033). The Fetch as designed listens from 15.14 s to its grasp check at 19.11 s (it
+listened to 20.62 s). An alarm 0.3 s and 1.5 s after the check is not heard, and the run is its
+undisturbed run step for step, the cube in the bin at 36.87 s; before, the jaws opened on the cube in
+the air and it was fetched again, in the bin at 44.24 s and 44.51 s. Checked in `tests/test_branch.py`
+(one more). Suites on MuJoCo 3.10.0: 1117 passed with a display, 1059 headless.
+
+Not claimed: ADR 0052's false-alarm study run again; a cube slipping from the hand after the check
+looked for again on an alarm.

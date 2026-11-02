@@ -279,6 +279,9 @@ change the design, try again.** A desktop robotics sandbox on
   measure - and the run report the fewest. On the tilt table the arm on its cart counts down about three
   quarters of a degree for each degree of table and runs out at 53.5, as it goes over; a hard stop from
   full speed takes 3 to 4 degrees from it. What's new shows it ([ADR 0059](docs/adr/0059-how-near-it-is-to-tipping.md)).
+- **Look again, not once it holds.** The Program panel's *Look again* greys out once the program has
+  felt the cube in its jaws: pressed then, it opened the jaws in the air and dropped the cube, and the
+  run took 7.4 s longer ([ADR 0060](docs/adr/0060-once-it-holds-it-does-not-look-again.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

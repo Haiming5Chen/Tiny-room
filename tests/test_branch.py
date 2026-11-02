@@ -68,6 +68,24 @@ def test_an_alarm_is_heard_only_at_a_stop_where_the_program_looked():
     assert raised[0][1] is False and runner.state == 'completed', 'no regrasp left: not listening'
 
 
+def test_once_it_holds_the_object_an_alarm_is_not_heard_and_changes_nothing():
+    """OPEN LW-033: past a grasp check that found the cube held, looking again would open the jaws
+    on it in the air - ADR 0052's false alarms dropped it up to 6.6 cm, and once broke the run."""
+    cube = lambda t: (1.84, 0., .14)
+    lifting = lambda runner: runner.program.blocks[runner.index].kind == 'pose' and runner.holding()
+    runner, _, actions, log, raised = drive(Runner(), cube, lambda aimed: True, lifting)
+    (when, acted, reopen), = raised
+    assert not acted and reopen is None and runner.felt == 7, 'held at the grasp check, block 7'
+    assert runner.state == 'completed' and runner.regrasps == 0 and not any('alarm' in m for m in log), log
+    assert not [a for t, a in actions if t > when], 'the jaws are left shut on it'
+    held = Runner()
+    held.start(FETCH)
+    held.felt, held.after_look, held.index, held.looked, held.stop_block = 7, 4, 8, (1.84, 0., .14), 2
+    assert held.holding() and not held.listening()
+    held.index = 7
+    assert not held.holding() and held.listening(), 'checking the grasp: an alarm still opens the jaws'
+
+
 def test_ignoring_its_checks_the_program_goes_on_as_taught():
     runner, _, _, log, _ = drive(Runner(recovery='ignore'), *moved_once())
     assert runner.state == 'completed' and runner.regrasps == 0, log

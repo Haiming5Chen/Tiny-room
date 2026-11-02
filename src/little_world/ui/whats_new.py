@@ -64,7 +64,8 @@ DEMOS = (
          'shoved 6 N s at the table', 'ADR 0031'),
     Demo('alarm', 'Tell it to look again yourself',
          'The Fetch program, undisturbed. While it reaches for the cube, press Look again in the '
-         'Program panel: it opens its jaws, rises, looks again and carries on.',
+         'Program panel: it opens its jaws, rises, looks again and carries on. Once it holds the cube '
+         'the button greys out: looking again then would drop it.',
          'press Look again in the Program panel while the arm reaches for the cube',
          '', 'ADR 0052'),
 )

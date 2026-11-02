@@ -283,7 +283,7 @@ class ProgramWorkspace:
         """Tell the running program its reach is going wrong: at a stop where it looked, it opens
         its jaws, rises, goes back and looks again, as its own recovery does (ADR 0052)."""
         if not self.runner.alarm('You asked it to look again'):
-            raise ValueError('It looks again only at a stop where it looked, once a run')
+            raise ValueError('It looks again only at a stop where it looked, before it holds what it reached for, once a run')
         self.status='Looking again: it opens its jaws, rises, goes back to its stop and looks.'
 
     def pause_program(self):
