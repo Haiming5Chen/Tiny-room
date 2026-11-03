@@ -1690,3 +1690,13 @@ slid out on the lift). The squeeze grows with the load (3.1 N as designed, 5.2 N
 Not claimed: a sourced torsional friction coefficient (MuJoCo's 0.005 m default); still contacts
 inside their cones (a block on a slope creeps, OPEN LW-039); more than one set-up for the mass study;
 the wheels' traction margin.
+
+## The collection's search mixes words and meaning — 2026-11-02
+
+ADR 0062 (OPEN LW-027). The 20 questions with known answers (docs/radar/queries.jsonl), an answer in
+the top three: at 183 entries words alone 15 (mean reciprocal rank 0.69), words and meaning equally 17
+(0.76); with the reading of 2 November, 238 entries, words alone 14 (0.60), Okapi BM25 14 to 15, the
+mix 16 (0.69). The command line now mixes by default. Checked in `tests/test_radar_collection.py`.
+Suites on MuJoCo 3.10.0: 1122 passed with a display, 1063 headless.
+
+Not claimed: more than 20 questions; that the mix keeps its answers as the collection grows.

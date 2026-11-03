@@ -257,8 +257,8 @@ the polite HTTP client; `brief.py` (ADR 0026) reads the proposals in
 `docs/agents/FRONTIER.md` and writes the radar's section of that file between two markers,
 leaving the rest to the agents. `collection.py` (ADR 0034) keeps what was filed or judged
 in `docs/radar/collection.jsonl`, one sorted line an entry that merges line by line, and
-moves it to and from a store; `search.py` searches it by the same tf-idf cosine and, when
-asked, a latent-semantic one - numpy, the radar's only module outside the standard library,
+moves it to and from a store; `search.py` searches it by the same tf-idf cosine mixed equally with a
+latent-semantic one (ADR 0062; words alone when asked) - numpy, the radar's only module outside the standard library,
 imported only by the `search` and `related` commands. See docs/RADAR.md.
 
 ## Interactive construction

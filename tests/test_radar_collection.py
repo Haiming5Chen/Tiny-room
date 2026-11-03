@@ -9,7 +9,7 @@ import pytest
 from little_world.radar import collection
 from little_world.radar.__main__ import main
 from little_world.radar.items import Item
-from little_world.radar.search import Index, about, background, check
+from little_world.radar.search import LATENT, Index, about, background, check
 from little_world.radar.store import VERDICTS, Store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -146,16 +146,16 @@ def test_the_collection_in_the_repository_is_sorted_judged_public_and_merges_by_
     assert 'docs/radar/collection.jsonl merge=union' in (ROOT / '.gitattributes').read_text(encoding='utf-8')
 
 
-def test_the_questions_with_known_answers_are_answerable_and_words_answer_most(tmp_path):
+def test_the_questions_with_known_answers_are_answerable_and_the_search_answers_most(tmp_path):
     """The measurement ADR 0034 reports, repeated: every expected entry is in the collection,
-    and words alone put one in the top three for at least 15 of the 20 questions (17 when
-    it was written, of 81 entries; the latent share did no better). At 134 entries, 16 of 20,
-    the mean reciprocal rank 0.70 where it was 0.79; at 177, 15 of 20 and 0.69: more entries
-    share the questions' words (OPEN LW-027)."""
+    and the search puts one in the top three for at least 15 of the 20 questions. Words alone
+    did for 17 when it was written (81 entries), 16 at 134, 15 at 177 and 14 at 238, as more
+    entries shared the questions' words (OPEN LW-027); words and meaning mixed equally - the
+    command line's default since ADR 0062 - for 17 at 183 entries and 16 at 238."""
     questions = [json.loads(row) for row in (ROOT / 'docs' / 'radar' / 'queries.jsonl').read_text().splitlines()]
     kept = collection.read(ROOT / collection.PATH)
     assert len(questions) == 20 and all(e in kept for q in questions for e in q['expect'])
-    [(_, top, mrr, _)] = check(Index(kept.values()), questions, (0.,))
+    [(_, top, mrr, _)] = check(Index(kept.values(), background(ROOT)), questions, (LATENT,))
     assert top >= 15 and mrr >= .65
     out = tmp_path / 'out'
     with open(out, 'w') as stream:

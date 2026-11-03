@@ -7,7 +7,8 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0061. The newest: 0061 how close to slipping (FR-036), 0060 once it
+- **Decision records** 0001 to 0062. The newest: 0062 the search mixes words and meaning (OPEN
+  LW-027), 0061 how close to slipping (FR-036), 0060 once it
   holds, an alarm is not heard (OPEN LW-033), 0059 how near it is to tipping (FR-005), 0058 a motor
   run hot (FR-019), 0057 the cell lowers
   its parts straight down (OPEN LW-037), 0056 the factory cell judged by its process window (FR-029), 0055 watch it work (the owner's request of 26 October: recent work seen in the app), 0054 searching for the failure (FR-025, measured, not adopted), 0053 time passes while the program looks (FR-028), 0052 how late is too late (FR-022), 0051 what looking again earns (FR-023), 0050 a contact census (FR-030), 0049 tuning draws and held-out

@@ -63,8 +63,9 @@ def main(argv=None, out=sys.stdout):
         cmd.add_argument('--verdict', action='append', choices=(*VERDICTS, 'none'), default=None,
                          help="only entries judged so ('none': not yet judged); repeatable")
         cmd.add_argument('--file', default=None, help=f'default: {collection.PATH} in the project')
-        cmd.add_argument('--latent', type=float, default=0., metavar='SHARE',
-                         help='mix in the latent-semantic cosine with this share, 0 to 1 (default 0: words alone)')
+        cmd.add_argument('--latent', type=float, default=None, metavar='SHARE',
+                         help='the latent-semantic cosine\'s share of a hit\'s score, 0 to 1 (default 0.5, words and '
+                              'meaning mixed equally, ADR 0062; 0: words alone)')
     args = parser.parse_args(argv)
     root = project_root(args.root)
 
@@ -77,6 +78,8 @@ def main(argv=None, out=sys.stdout):
             from .search import LATENT, Index, about, background, check     # numpy: the rest stays standard library
         except ImportError as error:
             parser.error(f"search needs numpy, which comes with MuJoCo: pip install -e '.[mujoco]' ({error})")
+        if args.latent is None:
+            args.latent = LATENT            # words and meaning mixed: words alone fell short as the collection grew (ADR 0062)
         if not 0. <= args.latent <= 1.:
             parser.error('--latent is a share between 0 and 1')
         path = Path(args.file) if args.file else Path(root) / collection.PATH

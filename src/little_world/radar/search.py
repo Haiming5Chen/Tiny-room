@@ -13,9 +13,11 @@ with, and the stems that brought it close are shown with it.
 Measured on 20 questions written down before the first search (docs/radar/queries.jsonl,
 81 entries; ADR 0034): words alone put an answer in the top three for 17, every time; the
 latent half, mixed in equally, for 15 to 19 as the number of directions and the project's
-writing changed. Too little to change what a search returns by default, so a search ranks
-by words unless asked (`--latent`), and `search --check` repeats the measurement as the
-collection grows. Built from the files when asked - well under a second - and searched
+writing changed. Too little then to change what a search returns by default. As the
+collection grew, words alone lost answers - 16 of 20 at 134 entries, 15 at 177, 14 at 238
+(OPEN LW-027) - while the mix kept 15, its mean reciprocal rank 0.70 to words' 0.60: the
+command line now mixes them equally unless told otherwise (`--latent 0`, ADR 0062), and
+`search --check` repeats the measurement as the collection grows. Built from the files when asked - well under a second - and searched
 exhaustively: at this size an exact cosine over every entry costs less than an index would.
 numpy only; no model to download; the same ranking on every machine, up to rounding.
 """

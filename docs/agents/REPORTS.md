@@ -11,6 +11,14 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-02 · Claude (Cowork) · OPEN LW-027: the collection's search mixes words and meaning
+Did: ADR 0062 (the command line's `search` and `related` mix words and meaning equally by default);
+the reading of 2 November's 55 sources into the collection (238 entries).
+Measured: at 238 entries words alone answer 14 of the 20 questions with known answers (MRR 0.60),
+BM25 14 to 15, the mix 16 (0.69).
+Unfinished: nothing new.
+For the owner: nothing to decide here.
+
 ## 2026-11-02 · Claude (Cowork) · FR-036: how close to slipping
 Did: ADR 0061 (`MujocoBackend.friction_use`, `scale_mass`; `handling.grip_use`; `Runner.carrying`,
 `Run.grip`, `run(masses=...)`; the drive panel's grip line; What's new's "How close to slipping"), and
