@@ -25,10 +25,21 @@ class Demo:
                             # 'factory': Real's cell
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
+    after: str = ''         # when set, the run stops as its program ends - its report on the left,
+                            # as Stop shows it - and the status line says this (ADR 0063, 0064)
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('repeats', 'Where repeats fail',
+         'The Fetch runs once, as designed, and stops when the cube is in the bin. Under each Repeat '
+         'button its report says what the repeats can show before they run. Repeated with '
+         'disturbances, each that cost runs says which goal they missed and what the program was '
+         'doing when it gave up.',
+         'when the run stops, the lines under the Repeat buttons; then press Repeat with disturbances',
+         '', 'ADR 0063, 0064',
+         after='under each Repeat button, what its runs can show. Press Repeat with disturbances: '
+               'when its runs are done, each disturbance says where they failed'),
     Demo('slip', 'How close to slipping',
          'The cube is made 16 times as heavy: 260 g, as if it were silver. On the left, under "holding", '
          "a line says how much of the grip's friction is in use. It climbs as the arm lifts, reaches "
@@ -95,6 +106,7 @@ class WhatsNew:
         demonstration's disturbance and run it - or, for the factory's, start Real's cell."""
         from little_world.robots.mobile_manipulator import mobile_manipulator_blueprint
         demo = BY_ID[demo_id]
+        self.demo_report_due = False
         if demo.where == 'factory':
             self.start_factory_demo(demo)
             return
@@ -118,7 +130,26 @@ class WhatsNew:
         if demo.tab:
             self.active_tab = demo.tab      # the drive panel: its motors (ADR 0058)
         self.demo = demo.id
+        self.demo_report_due = bool(demo.after)
         self.status = f'{demo.title}: {demo.watch}.'
+
+    def poll_demo(self):
+        """A demonstration that ends on its run's report stops the run as its program ends -
+        done, or given up - as a press of Stop would, once (ADR 0063, 0064)."""
+        if not getattr(self, 'demo_report_due', False):
+            return
+        if self.building:
+            self.demo_report_due = False        # stopped by hand first
+            return
+        if self.runner.state in ('completed', 'failed'):
+            self.demo_report_due = False
+            self.events.append(self.end_demo_run)
+
+    def end_demo_run(self):
+        demo = BY_ID[self.demo]
+        if not self.building:
+            self.simulate()             # back to build, the run's report on the left
+        self.status = f'{demo.title}: {demo.after}.'
 
     def start_tilt_demo(self, demo):
         """The arm on its cart on the tilt table, run, the drive panel open (ADR 0059)."""

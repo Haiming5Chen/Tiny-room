@@ -554,6 +554,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         self.script_poll()
         self.poll_variations()
         self.poll_disturbances()
+        self.poll_demo()
         ww,wh=glfw.get_window_size(self.window)
         fw,fh=glfw.get_framebuffer_size(self.window)
         if not fw or not fh:

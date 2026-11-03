@@ -20,10 +20,12 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['slip', 'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['repeats', 'slip', 'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove',
+                                     'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1., 16.] + [1.] * 7
+    assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -456,3 +458,49 @@ def test_a_cube_sixteen_times_as_heavy_slides_out_of_the_jaws_as_the_panel_count
     uses = [int(w.split()[1]) for w in words if w.startswith('grip: ') and w.split()[1].isdigit()]
     assert uses and min(uses) < 90 and max(uses) >= 95, (min(uses), max(uses))
 
+
+@WINDOW
+def test_the_repeats_demonstration_stops_on_its_report_and_says_what_the_repeats_could_show(tmp_path, monkeypatch):
+    """ADR 0063, 0064: the Fetch run once, stopped as its program ends; under each Repeat button what
+    its draws can show - 8 drawn bound failures under 31 %, and a disturbance must break 6 of the 8
+    to be shown - and Repeat with disturbances starts its 72 runs in the background."""
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'Where repeats fail')
+        elif n == 2:
+            assert app.field_id == 'fetch' and not app.building and app.demo == 'repeats', app.status
+            assert app.runner.state == 'running' and app.status.startswith('Where repeats fail: ')
+        elif n == 3:
+            if not app.building:
+                assert app.state.time < 80, app.runner.message
+                return
+            seen['runner'] = app.runner.state
+            seen['goals'] = {g.id: g.status for g in app.run_report.goals}
+            seen['status'] = app.status
+        elif n == 4:
+            click(app, 'Repeat with disturbances')
+        elif n == 5:
+            seen['total'] = app.disturbing['total'] if app.disturbing else None
+            app.stop_disturbances()
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    words = said(app, monkeypatch, 'draw_run_report')
+    app.run(seconds=600)
+    assert step['n'] == 6 and seen['goals'] == FETCHED, seen
+    assert seen['status'].startswith('Where repeats fail: under each Repeat button'), seen['status']
+    assert '8 drawn: if all succeed, failures under 31 %' in words
+    assert 'to be sure it breaks runs, it must break 6 of the 8 drawn' in words
+    assert seen['total'] == 72 and app.disturbing is None, "started in the background, and stopped"
+    assert not getattr(app, 'demo_report_due', False), "once"

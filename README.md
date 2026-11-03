@@ -294,7 +294,8 @@ change the design, try again.** A desktop robotics sandbox on
 - **What a sweep can show, before it runs.** Under *Repeat with variations* a line says what its
   draws can bound ("8 drawn: if all succeed, failures under 31 %"), and under *Repeat with
   disturbances* how many set-ups a disturbance must break before the paired test can be sure of it
-  ("6 of the 8 drawn") ([ADR 0064](docs/adr/0064-plan-the-draws.md)).
+  ("6 of the 8 drawn") ([ADR 0064](docs/adr/0064-plan-the-draws.md)). What's new's *Where repeats
+  fail* runs the Fetch once and stops on its report, both lines under its buttons.
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

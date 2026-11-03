@@ -1721,3 +1721,14 @@ the power summed over outcomes agrees with 4000 random draws within 2.5 points. 
 
 Not claimed: a plan written into the seed ledger by the command line; the smallest effect worth seeing,
 which is chosen, not computed.
+
+## What's new: where repeats fail — 2026-11-03
+
+ADR 0063 and 0064 in the app. What's new's *Where repeats fail* runs the Fetch once, as designed, and
+stops the run as its program ends - its report on the left, as Stop shows it, with both lines under its
+Repeat buttons: "8 drawn: if all succeed, failures under 31 %" and "to be sure it breaks runs, it must
+break 6 of the 8 drawn"; Repeat with disturbances then starts its 72 runs in the background. Checked by a
+window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0: 1130 passed with a display,
+1070 headless.
+
+Not claimed: anything measured by the demonstration itself; the sweep it starts is the panel's own.
