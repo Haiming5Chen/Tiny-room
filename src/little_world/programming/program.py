@@ -274,6 +274,12 @@ class Runner:
         """Whether the program is past a grasp check that found the object held since it last
         looked: looking again would open the jaws on it in the air (OPEN LW-033)."""
         return self.felt is not None and self.after_look is not None and self.after_look<=self.felt<self.index
+    def carrying(self):
+        """Whether the program holds what it reached for and has not begun to let it go: past the
+        grasp check that found it held, and no opening of the jaws since (FR-036)."""
+        if not self.holding():return False
+        blocks=self.program.blocks
+        return not any(blocks[i].kind=='action' and blocks[i].value<0 for i in range(self.felt+1,self.index+1))
     def alarm(self,message='An alarm: looking again'):
         """A detector outside the program says its reach is going wrong (FR-022): it recovers as
         its own recovery does, whatever recovery it was given - opens the jaws by as much as they

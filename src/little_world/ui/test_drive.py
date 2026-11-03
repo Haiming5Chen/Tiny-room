@@ -418,6 +418,14 @@ class TestDrive:
         if held:
             text('holding: ' + ', '.join(sorted(held)), 16, y, 12, ACCENT, 256)
             y += 20
+            # How near what it holds is to slipping: its grip's friction in use (FR-036).
+            from little_world.inventory.handling import grip_use
+            for name in sorted(observations.grasped()):
+                use = grip_use(self.backend, name)
+                if use is not None and y + 20 <= bottom:
+                    text(f'grip: {100 * use:.0f} % of its friction in use' + ('  (slipping)' if use > .995 else ''),
+                         16, y, 12, WARN if use >= .8 else LIGHT, 256)
+                    y += 20
         # A vehicle touching things is news; an arm touching things is its job.
         text('touching: ' + touching if touching else 'touching nothing', 16, y, 12,
              WARN if touching and not anchored else (.86, .90, .93) if touching else MUTED, 256)

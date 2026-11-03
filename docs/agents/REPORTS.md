@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-02 · Claude (Cowork) · FR-036: how close to slipping
+Did: ADR 0061 (`MujocoBackend.friction_use`, `scale_mass`; `handling.grip_use`; `Runner.carrying`,
+`Run.grip`, `run(masses=...)`; the drive panel's grip line; What's new's "How close to slipping"), and
+the weekly reading of 2 November into the frontier (FR-036 to FR-039) and the collection.
+Measured: the Fetch carries its cube using 38 % of its grip's friction; heavier, it held to 8 times and
+slid out at 16 - the squeeze grows with the load, so the use is not a mass margin. A block on a slope
+creeps inside its cone (OPEN LW-039).
+Unfinished: the wheels' traction margin (FR-036's third check); LW-039.
+For the owner: nothing to decide here.
+
 ## 2026-10-27 · Claude (Cowork) · OPEN LW-033: once it holds, an alarm is not heard
 Did: ADR 0060 (`Runner.holding`, `Runner.felt`; `listening` false while the program holds what it
 reached for; the window's Look again greys out then; What's new says so).

@@ -51,6 +51,8 @@ class Run:
     alarm: tuple = ()               # an alarm raised from outside: ((when, whether the program acted on it, its block),) (FR-022)
     recovered: tuple = ()           # when the program began each recovery, its own or an alarm's (FR-022)
     listening: tuple = ()           # the spans (from, to) in which an alarm would have made it look again (FR-022)
+    grip: tuple = ()                # while the program carried what it held, in the air: (from, to, the most of
+                                    # its grip's friction in use, when, the median) (FR-036); () if it carried nothing
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -157,7 +159,7 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True, probe=None, recovery=None, alarm=None, latency=None):
+        feel=True, probe=None, recovery=None, alarm=None, latency=None, masses=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -179,7 +181,10 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     reach is going wrong, and it recovers as its own recovery would, if it is listening (`Runner.alarm`,
     FR-022); the run is its unalarmed run until then, step for step. `latency`, a
     `control.latency.Latency`: the program's pictures show the world as it was that long ago, and its
-    servo commands and readings cross the bus that late (FR-028); None or zero, at once, as before."""
+    servo commands and readings cross the bus that late (FR-028); None or zero, at once, as before.
+    `masses` makes bodies heavier or lighter for the run, {body: factor}, as a payload is a condition
+    (FR-036). While the program carries what it holds, the share of its grip's friction in use is
+    followed (`Run.grip`)."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -211,6 +216,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
         table = friction(variation)
         if table:
             backend.vary_pair_friction(table)
+        for body, factor in (masses or {}).items():
+            if factor != 1.:
+                backend.scale_mass(body, factor)
         drive, control, base = _rigs(backend, bp)
         steps = round(duration / world.timestep)
         runner = None
@@ -271,6 +279,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 return Run(variation, error=str(error))
             actual = []         # where each looked-for object really was: measured, not seen
             alarmed, recovered, listened, recoveries = [], [], [], 0
+            grip = []           # (time, friction use) while it carries what it holds, in the air (FR-036)
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
                 registers = feeling.read(backend, control, jaws) if readable else None
@@ -311,6 +320,11 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                 if late is not None:
                     late.keep()
                 watch(state)
+                if runner.carrying():
+                    from little_world.inventory.handling import grip_use
+                    use = grip_use(backend, program.blocks[runner.felt].target)
+                    if use is not None:
+                        grip.append((round(state.time, 3), use))
                 if runner.state != 'running':
                     break
             if listened and listened[-1][1] is None:
@@ -339,8 +353,17 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    runner.regrasps if runner else 0, runner.message if runner else '',
                    kick.began + tracker.start if kick is not None and kick.began is not None else None,
                    tuple(w.result() for w in watching), tuple(felt_at) if protocol == 'program' else (),
-                   *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened))
+                   *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened), carried(grip))
                      if protocol == 'program' else ()))
+
+
+def carried(grip):
+    """`Run.grip` from the steps of a carry: (from, to, the most use, when, the median)."""
+    if not grip:
+        return ()
+    from statistics import median
+    most = max(grip, key=lambda g: g[1])
+    return (grip[0][0], grip[-1][0], round(most[1], 4), most[0], round(median(u for _, u in grip), 4))
 
 
 def shared_site(blueprint, variations):
@@ -776,7 +799,7 @@ def _run(r):
                r.get('regrasped', 0), r.get('message', ''), r.get('event'),
                tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())),
                tuple(tuple(x) for x in r.get('alarm', ())), tuple(r.get('recovered', ())),
-               tuple(tuple(x) for x in r.get('listening', ())))
+               tuple(tuple(x) for x in r.get('listening', ())), tuple(r.get('grip', ())))
 
 
 def _handled(h):

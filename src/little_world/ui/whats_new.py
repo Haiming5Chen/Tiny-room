@@ -24,10 +24,17 @@ class Demo:
     where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
                             # 'factory': Real's cell
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
+    heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('slip', 'How close to slipping',
+         'The cube is made 16 times as heavy: 260 g, as if it were silver. On the left, under "holding", '
+         "a line says how much of the grip's friction is in use. It climbs as the arm lifts, reaches "
+         '100 % and the cube slides out of the jaws. The ordinary cube uses about 38 %.',
+         'on the left, under "holding": the friction in use climbs to 100 % and the cube slides out',
+         '', 'ADR 0061', heavier=16., tab='Edit'),
     Demo('tipping', 'How near it is to tipping',
          'The arm on its cart stands on a table that tilts 2 degrees a second. On the left, under the '
          "table's angle, a line counts the degrees it has left before it tips - its weight and its "
@@ -103,6 +110,8 @@ class WhatsNew:
         self.set_field('fetch')
         self.arm_disturbance(demo.disturbance or None)
         self.fetch_program()            # solved for the machine as it stands: leaves the run paused
+        if demo.heavier != 1.:
+            self.backend.scale_mass('objects/fetch_cube', demo.heavier)     # until the world is reset (FR-036)
         self.show_program()
         self.start_program()
         self.watch_the_table()

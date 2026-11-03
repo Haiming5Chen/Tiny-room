@@ -136,7 +136,8 @@ lowers its parts straight down and lets go with a narrow hand, and tall blocks r
 motor can be run hot partway through a run; the kit cart's drive leaves so much margin that it
 does not notice; What's new runs it (ADR 0058). The drive panel says how many degrees a machine has left before it tips,
 its accelerations counted (ADR 0059). Once a program holds what it reached for, an alarm is not heard and
-Look again greys out (ADR 0060).
+Look again greys out (ADR 0060). The drive panel says how much of a grip's friction is in use, and a cube made
+heavier until it slides out measures how much weight a grasp carries (ADR 0061).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
 feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
 calibrated with the system identification toolbox, and the factory cell grasping from its

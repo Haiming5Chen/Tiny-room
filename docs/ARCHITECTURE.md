@@ -568,6 +568,12 @@ the world resets; `fields/disturbance.py`'s 'motor' kind does it on a disturbanc
 `MujocoBackend.motor_line` gives the line a motor follows now and the one it was built with; the drive
 telemetry reads a motor's speed and torque against the first and marks it weakened (`MotorSample.kept`).
 
+How near a contact is to sliding (ADR 0061): `MujocoBackend.friction_use(body)` gives each of a body's
+contacts' normal force and the friction it uses, as its cone measures it (pyramidal: each frictional
+force over its coefficient, summed); `inventory/handling.grip_use` makes a grip's share of it, for a part
+only the machine touches; `Runner.carrying` and `Run.grip` follow it while a program carries what it
+holds. `MujocoBackend.scale_mass` makes a body heavier for a run (`run(masses=...)`), undone by a reset.
+
 `control/tipping.py` (ADR 0059) is the force-angle measure: `force_angles`, `measure` and `ordered`
 over a support polygon, numpy only, and `Watch`, which reads a machine's mass, centre of mass,
 acceleration and rate of change of angular momentum (over 50 ms) and its support - its geoms within

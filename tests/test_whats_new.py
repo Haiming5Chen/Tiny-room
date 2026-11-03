@@ -20,9 +20,10 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['slip', 'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.where for d in DEMOS] == ['fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [16.] + [1.] * 7
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -415,3 +416,43 @@ def test_a_motor_run_hot_is_marked_in_the_drive_panel_and_the_cube_is_fetched_as
     assert kept and kept[-1]['left'] == pytest.approx(hot()) and kept[-1]['right'] is None, kept[-1:]
     delivered = app.goal_tracker.met['delivered']
     assert abs(delivered - 37.5) < 1., "the cube in the bin when it is undisturbed, 37.5 s"
+
+
+@WINDOW
+def test_a_cube_sixteen_times_as_heavy_slides_out_of_the_jaws_as_the_panel_counts_up(tmp_path, monkeypatch):
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    cube = {}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'How close to slipping')
+        elif n == 2:
+            assert app.field_id == 'fetch' and app.active_tab == 'Edit' and app.demo == 'slip'
+            body = app.backend.model.body('objects/fetch_cube').id
+            cube['id'] = body
+            assert app.backend.model.body_mass[body] == pytest.approx(16 * .01625), "16 times as heavy"
+        elif n == 3:
+            if app.state.time < 24.:
+                assert app.runner.state == 'running', app.runner.message
+                return
+            cube['z'] = float(app.backend.data.xpos[cube['id']][2])
+            cube['goals'] = goals(app)
+            app.simulate()                              # back to build: the world is reset
+            assert app.backend.model.body_mass[cube['id']] == pytest.approx(.01625), "as designed again"
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    words = said(app, monkeypatch, 'draw_test_drive_panel')
+    app.run(seconds=600)
+    assert step['n'] == 4 and cube['goals']['lifted'] != 'met' and cube['z'] < .15, "it slid out on the lift"
+    uses = [int(w.split()[1]) for w in words if w.startswith('grip: ') and w.split()[1].isdigit()]
+    assert uses and min(uses) < 90 and max(uses) >= 95, (min(uses), max(uses))
+

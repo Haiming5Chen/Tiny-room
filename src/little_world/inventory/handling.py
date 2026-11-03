@@ -22,6 +22,18 @@ WINDOW = .05    # s: forces are also averaged over this long
 HELD = .05      # N: two of the machine's bodies pushing a part this hard from opposite sides hold it
 
 
+
+def grip_use(backend, part, machine='machine/'):
+    """The share of its grip's friction the machine uses on `part` now, held in the air: the
+    friction its contacts use over what their cones allow, summed (`MujocoBackend.friction_use`) -
+    0 with nothing pulling it along the jaws, 1 when every contact is at its edge and it slides.
+    None when anything else touches it, or nothing does (FR-036)."""
+    rows = backend.friction_use(part) if part else ()
+    if not rows or any(not other.startswith(machine) for other, _, _ in rows):
+        return None
+    normal = sum(n for _, n, _ in rows)
+    return sum(u for _, _, u in rows) / normal if normal > 1e-9 else None
+
 def partner(name, machine='machine/'):
     """What a body touching the part is called in a report: the machine; a part of the field by
     the first word of its name - 'field/bin_wall_2' is the bin, 'field/table' the table; any

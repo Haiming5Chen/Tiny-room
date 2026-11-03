@@ -1,5 +1,5 @@
 """All native MuJoCo construction and runtime operations live in this adapter."""
-from math import isfinite
+from math import isfinite, sqrt
 import mujoco as mj
 import numpy as np
 from little_world.core.command import slope_of
@@ -209,6 +209,7 @@ class MujocoBackend:
         self._static_states = {}
         self._motor_profiles = {}
         self._motor_original = {}   # a weakened motor's profile as compiled (ADR 0058)
+        self._mass_original = {}    # a body made heavier for a run: its mass and inertia as compiled (FR-036)
         self._geom_surface = None
         self._pair_mu = None
         self._any_sourced = False
@@ -447,7 +448,7 @@ class MujocoBackend:
             for i in range(1,model.nbody):
                 if model.body(i).name.startswith(native_prefix):
                     self.robot_owners[model.body(i).name]=native_prefix.split(name+'__robot_')[0]+name
-        self._motor_profiles={};self._motor_original={}
+        self._motor_profiles={};self._motor_original={};self._mass_original={}
         for n,p in profiles.items():
             dof=int(model.jnt_dofadr[model.actuator_trnid[self._motor_ids[n],0]])
             # The most one step of this motor alone can add to its joint's speed, per
@@ -492,6 +493,27 @@ class MujocoBackend:
             mu[index[a], index[b]] = mu[index[b], index[a]] = value
         self._pair_mu = mu
 
+    def scale_mass(self, body, factor):
+        """Make `body` `factor` times as heavy as designed - its mass and its inertia alike, as
+        if its material were that much denser - from now on: a condition of the run, as a payload
+        is (FR-036). The model's constants that follow from its masses are recomputed and the
+        world's state is kept; a reset world's body is as designed again."""
+        self._ready()
+        if body not in self._body_ids:
+            raise ValueError(f'no body called {body!r}')
+        if not isfinite(factor) or factor <= 0:
+            raise ValueError('a body is made heavier or lighter by a finite factor above 0')
+        m, d = self.model, self.data
+        idx = self._body_ids[body]
+        mass, inertia = self._mass_original.setdefault(idx, (float(m.body_mass[idx]), m.body_inertia[idx].copy()))
+        m.body_mass[idx] = mass * factor
+        m.body_inertia[idx] = inertia * factor
+        kept = (d.time, d.qpos.copy(), d.qvel.copy(), d.act.copy(), d.ctrl.copy())
+        mj.mj_setConst(m, d)              # subtree masses, the weights contacts are softened by
+        d.time = kept[0]
+        d.qpos[:], d.qvel[:], d.act[:], d.ctrl[:] = kept[1:]
+        mj.mj_forward(m, d)
+
     def contact_report(self):
         """Current contacts: (geom, geom, coefficient in use, sourced pair or None)."""
         self._ready()
@@ -526,6 +548,37 @@ class MujocoBackend:
             first, second = owners[i]
             other, sign = (first, 1.) if second == idx else (second, -1.)
             out.append((m.body(int(other)).name, tuple(float(v) for v in sign * on_second)))
+        return tuple(out)
+
+    def friction_use(self, body):
+        """How near each of `body`'s contacts is to sliding (FR-036): one (other body's name,
+        normal force N, friction used N) per contact now. The friction used is what the contact's
+        cone measures - each frictional force (two along the surface, a torsional one where the
+        contact has it) over its own coefficient, summed for the pyramidal cones the scenes use
+        and taken as a length for elliptic ones - so it reaches the normal force exactly when the
+        contact is at its cone's edge and may slide: its friction use, used / normal, is 0 to 1."""
+        self._ready()
+        if body not in self._body_ids:
+            raise ValueError(f'no body called {body!r}')
+        m, d = self.model, self.data
+        idx = self._body_ids[body]
+        if not d.ncon:
+            return ()
+        owners = m.geom_bodyid[d.contact.geom[:d.ncon]]
+        elliptic = m.opt.cone == mj.mjtCone.mjCONE_ELLIPTIC
+        out, force = [], np.zeros(6)
+        for i in np.nonzero((owners == idx).any(axis=1))[0]:
+            contact = d.contact[int(i)]
+            dim = int(contact.dim)
+            if dim < 3:
+                continue                    # frictionless: nothing to slide against
+            mj.mj_contactForce(m, d, int(i), force)
+            parts = [abs(float(force[k])) / float(contact.friction[k - 1]) for k in range(1, dim)
+                     if contact.friction[k - 1] > 0]
+            used = sqrt(sum(p * p for p in parts)) if elliptic else sum(parts)
+            first, second = owners[i]
+            other = first if second == idx else second
+            out.append((m.body(int(other)).name, max(0., float(force[0])), used))
         return tuple(out)
 
     def contact_census(self, bodies=()):
@@ -720,6 +773,14 @@ class MujocoBackend:
         for idx, profile in self._motor_original.items():     # a weakened motor is itself again
             self._motor_profiles[idx] = (profile, *self._motor_profiles[idx][1:])
         self._motor_original = {}
+        if self._mass_original:                                # a heavier body is as designed again
+            for idx, (mass, inertia) in self._mass_original.items():
+                self.model.body_mass[idx], self.model.body_inertia[idx] = mass, inertia
+            self._mass_original = {}
+            mj.mj_setConst(self.model, self.data)
+            mj.mj_resetData(self.model, self.data)
+            self.data.qpos[:]=self._initial_qpos
+            self.data.ctrl[:]=self._initial_ctrl
         staged_forward(self.model, self.data, self._contact_policy, self._energy_sensor)
         return self.snapshot()
 
@@ -841,5 +902,6 @@ class MujocoBackend:
         self._static_states = {}
         self._motor_profiles = {}
         self._motor_original = {}   # a weakened motor's profile as compiled (ADR 0058)
+        self._mass_original = {}    # a body made heavier for a run: its mass and inertia as compiled (FR-036)
         self._motor_dofs = {}
         self._affine = np.zeros(0, dtype=np.intp)

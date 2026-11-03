@@ -1673,3 +1673,20 @@ the air and it was fetched again, in the bin at 44.24 s and 44.51 s. Checked in 
 
 Not claimed: ADR 0052's false-alarm study run again; a cube slipping from the hand after the check
 looked for again on an alarm.
+
+## How close to slipping — 2026-11-02
+
+ADR 0061 (FR-036). Friction use - the friction a contact uses over what its cone allows - against its
+closed form: a wooden block on a concrete slope (mu 0.4) uses tan(theta) / mu within 0.02 at 5, 15 and
+21 deg and is at the edge, 1, and sliding at 23 deg. Reading it leaves a Sprint unchanged step for
+step. The Fetch's grip while it carries the cube: median 0.38, at most 0.80; made 2, 4, 8, 16 and 32
+times as heavy: 0.43, 0.44, 0.61 (in the bin, having slid 17 mm in the jaws), 0.77 and 0.94 (both
+slid out on the lift). The squeeze grows with the load (3.1 N as designed, 5.2 N at 4 times, 5.9 N at
+8), so the first-order margin from the use (1.25 to 2.6 times) did not say how heavy a cube it carries
+(8 times). In the window the cube 16 times as heavy slides out as the panel passes 95 %. Checked in
+`tests/test_friction_use.py` (4) and a window test in `tests/test_whats_new.py`. Suites on MuJoCo
+3.10.0: 1122 passed with a display, 1063 headless.
+
+Not claimed: a sourced torsional friction coefficient (MuJoCo's 0.005 m default); still contacts
+inside their cones (a block on a slope creeps, OPEN LW-039); more than one set-up for the mass study;
+the wheels' traction margin.
