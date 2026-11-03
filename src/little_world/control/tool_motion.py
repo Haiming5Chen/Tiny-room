@@ -511,6 +511,23 @@ SQUEEZE = .02           # s the jaws keep closing once the object is felt held, 
                         # and tilted it then crept out (ADR 0042); 0.6 degrees more holds at about 1 N
 
 
+FULL_CLOSE = 1.4        # s: the kit jaws' target from fully open (-12 deg) to fully closed (30 deg) at 30 deg/s
+
+
+def squeezed(program, newtons, close=FULL_CLOSE):
+    """A program whose jaws close as a servo in current-based position control does (FR-037):
+    each close action held until the jaws' target is fully closed, `close` seconds at least, with
+    a squeeze of `newtons` at each pad - its Goal Current - so the squeeze is the setting, not
+    where the closing ramp ended (ADR 0042)."""
+    from dataclasses import replace
+    if not newtons > 0:
+        raise ValueError('a squeeze is more than 0 N')
+    return replace(program, blocks=tuple(replace(b, secondary=newtons, duration=max(b.duration, close))
+                                         if b.kind == 'action' and b.value == 1 and b.duration >= .5 else
+                                         replace(b, secondary=newtons) if b.kind == 'action' and b.value == 1 else b
+                                         for b in program.blocks))
+
+
 def at_base(base_now, base_plan, point):
     """A world point as it sits relative to the base now, if it sits relative to the base
     at `base_plan` as it does in the world: planar poses (x, y, yaw). A joint solution

@@ -8,6 +8,9 @@ class KeyboardPositionControl:
         self.specs=tuple(c for c in specs if c.kind=='keyboard_position')
         self.held=set()
         self.targets={}
+        # actuator -> the most torque it may push with, below its motor's: a smart servo's Goal
+        # Current in current-based position control (FR-037). None set: the motor's own limit.
+        self.limits={}
 
     def press(self,key):
         self.held.add(key)
@@ -21,6 +24,7 @@ class KeyboardPositionControl:
     def reset(self):
         self.clear()
         self.targets.clear()
+        self.limits.clear()
 
     def commands(self,observations,dt):
         """Observations: actuator -> (angle, speed, lower, upper, max torque[, model bias]), SI.
@@ -34,6 +38,7 @@ class KeyboardPositionControl:
             direction=int(spec.positive_key in self.held)-int(spec.negative_key in self.held)
             for name in spec.actuators:
                 angle,velocity,lower,upper,limit,*extra=observations[name]
+                limit=min(limit,self.limits.get(name,limit))
                 bias=extra[0] if extra else 0.
                 target=self.targets.get(name,angle)+direction*radians(spec.speed)*dt
                 self.targets[name]=target=max(lower,min(upper,target))

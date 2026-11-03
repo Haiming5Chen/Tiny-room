@@ -20,13 +20,14 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory', 'look_again', 'frozen',
-                                     'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory', 'look_again',
+                                     'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1., 1., 16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1., 1., 1., 16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Tall block'] + ['Small block'] * 9
+    assert [d.product for d in DEMOS] == ['Small block', 'Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [7.] + [0.] * 10
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -552,3 +553,48 @@ def test_the_panda_held_up_puts_tall_blocks_within_a_millimetre_of_their_slots(t
     app.run(seconds=600)
     w = cell['window']
     assert step['n'] == 4 and w.inside == 2 and w.worst < 1., w
+
+
+@WINDOW
+def test_a_squeeze_set_in_newtons_holds_the_cube_with_more_of_its_grip_to_spare(tmp_path, monkeypatch):
+    """FR-037: the Fetch with its jaws squeezing 7 N by current - the close block says so - fetches
+    the cube with the grip's friction in use at most about 60 %, where the ramp's squeeze reaches 80 %."""
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'A squeeze set in newtons')
+        elif n == 2:
+            closes = [b for b in app.program.blocks if b.kind == 'action' and b.value == 1]
+            seen['closes'] = [(b.duration, b.secondary) for b in closes]
+            assert app.field_id == 'fetch' and app.demo == 'squeeze' and app.runner.state == 'running', app.status
+        elif n == 3:
+            r = app.runner
+            if r.state == 'running':
+                assert app.state.time < 80, r.message
+                if r.carrying():                    # in the air, between the grasp check and letting go
+                    use = grip_use(app.backend, 'objects/fetch_cube')
+                    if use is not None:
+                        carried.append(use)
+                return
+            seen['goals'] = goals(app)
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    from little_world.inventory.handling import grip_use
+    carried = []
+    monkeypatch.setattr(app, 'draw', exercise)
+    words = said(app, monkeypatch, 'draw_test_drive_panel')
+    app.run(seconds=600)
+    assert step['n'] == 4 and seen['goals'] == FETCHED, seen
+    assert seen['closes'] == [(1.4, 7.), (pytest.approx(.02), 7.)], seen['closes']
+    assert any(w.startswith('grip: ') for w in words), "the drive panel says how much of the grip is in use"
+    assert carried and max(carried) <= .65, max(carried)

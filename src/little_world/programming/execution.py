@@ -13,6 +13,10 @@ def apply(output, control):
     keys an action block holds down this step."""
     specs = {s.id: s for s in control.specs}
     keys = set()
+    if output.get('squeeze') and hasattr(control, 'squeeze'):
+        name, newtons = output['squeeze']
+        if newtons or getattr(control, 'limits', None):
+            control.squeeze(name, newtons)      # its jaws' Goal Current, until changed (FR-037)
     if output.get('action'):
         name, direction = output['action']
         spec = specs[name]

@@ -1746,3 +1746,15 @@ of their slots (2.2 to 6.3 mm before): Cpk along x 10 to 20, from 0.85 to 1.27. 
 
 Not claimed: the real arm's identified dynamics, its hand's force control, a payload compensated; a
 Panda on a cart held up; an imported robot's gripper weighted to its jaws (OPEN LW-040).
+
+## The jaws squeeze by current — 2026-11-03
+
+ADR 0066 (FR-037, in part). The kit gripper's jaws closed on a fixed box at their pads' centres, set
+to 1, 2, 4 and 6 N, push with 0.98, 1.95, 3.97 and 5.99 N, Present Current within a count of its Goal
+Current; a box reaching past the pads' centres is pushed with 52.5 / 67.5 of the setting; with no
+squeeze the motors' full 0.6 N m. The Fetch as designed, closed fully at 7 N: every goal met, the
+grip's friction in use at most 60 % (80 % as it is). Checked in `tests/test_grip_current.py` (6) and a
+window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0: 1140 passed with a display, 1078 headless.
+
+Not claimed: the Fetch's program squeezing by current, or its sweeps with it (OPEN LW-041); a squeeze
+in newtons anywhere but at a pad's centre; the servo's current noise or the datasheet's bent curve.

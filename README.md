@@ -302,6 +302,12 @@ change the design, try again.** A desktop robotics sandbox on
   it sagged 5 to 7 mm, and its parts land within about a millimetre of their slots, where they landed
   2 to 6 mm out. What's new's *The Panda holds itself up* runs it with tall blocks
   ([ADR 0065](docs/adr/0065-the-panda-holds-itself-up.md)).
+- **A squeeze set in newtons.** A Joint action block can say how hard the jaws squeeze, in newtons at
+  each pad: the kit gripper's servos then cap their current at it, as a ROBOTIS servo in
+  current-based position control does. Closed on a fixed box at 1 to 6 N they push within 2.5 % of
+  the setting; where a part sits along the rotary jaws still sets how hard it is held. What's new's
+  *A squeeze set in newtons* runs the Fetch at 7 N: the grip's friction in use peaks at 60 %, where
+  the closing ramp's own squeeze peaks at 80 % ([ADR 0066](docs/adr/0066-the-jaws-squeeze-by-current.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

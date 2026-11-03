@@ -11,6 +11,17 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-03 · Claude (Cowork) · FR-037, in part: the jaws squeeze by current
+Did: ADR 0066 (`KeyboardPositionControl.limits`, `MujocoKeyboardControl.squeeze` and `pad_lever`; an
+action block's squeeze in newtons, in the Program editor; `tool_motion.squeezed`; What's new's "A squeeze
+set in newtons").
+Measured: on a fixed box at the pads' centres, set 1 to 6 N, pushed within 2.5 %; the Fetch as designed
+at 7 N, closed fully: every goal met 0.7 s later, the grip at most 60 % in use (80 % with the ramp's
+squeeze).
+Unfinished: OPEN LW-041 (the Fetch squeezing by current, side by side on the tuning set-ups and held-out
+draws, before its program changes).
+For the owner: nothing to decide here.
+
 ## 2026-11-03 · Claude (Cowork) · OPEN LW-036: the Panda holds itself up; What's new for ADR 0063, 0064
 Did: ADR 0065 (`robot_models.CONTROLLERS`; the backend's `held` and the hand's speed: the Panda's links
 held against gravity on a fixed base, its hand squeezing 70 N a finger at 50 mm/s, its fingers' contacts

@@ -503,6 +503,10 @@ pushing towards it. `programming/execution.held_now` gives a program its grasp f
 programs run - the window, the benchmark, sweeps; a registered model's own gripper servo is not
 read this way and keeps the contacts (`Observations.grasped`). The contacts stay the judge: each
 grasp check records what was felt and what was so (`Run.felt`), and sweep reports count them.
+A joint's torque can be capped below its motor's (`KeyboardPositionControl.limits`) - a smart
+servo's Goal Current in current-based position control; `MujocoKeyboardControl.squeeze` sets it for
+a gripper's jaws from a force at their pads, through each jaw's lever (`pad_lever`), and an action
+block's `secondary` is that force (ADR 0066).
 
 ## Spatial drag preview and library styles
 

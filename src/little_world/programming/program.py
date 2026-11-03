@@ -70,6 +70,7 @@ class Block:
         if any(not isfinite(v) for v in (self.value,self.duration,self.secondary)):raise ValueError('Block numbers must be finite')
         if not .002<=self.duration<=120:raise ValueError('Duration / timeout must be 0.002 to 120 seconds')
         if self.kind=='action' and self.value not in (-1,1):raise ValueError('Direction must be -1 or 1')
+        if self.kind=='action' and not 0<=self.secondary<=100:raise ValueError('A squeeze is 0 to 100 N')
         if self.kind=='drive' and max(abs(self.value),abs(self.secondary))>12:raise ValueError('Wheel targets must be within +/-12 rad/s')
         if self.kind=='distance' and self.value<0:raise ValueError('Distance must be nonnegative')
         if self.kind=='goto' and not 0<=self.secondary<=10:raise ValueError('A stop follows its object at most 0 to 10 m along its heading')
@@ -387,7 +388,7 @@ class Runner:
         now stands (ADR 0025); `see(object, planned)`: a camera's picture of an object planned
         at `planned`, something with its `centre` where it was seen, or None (ADR 0032)."""
         if not isfinite(dt) or dt<=0:raise ValueError('Timestep must be positive')
-        output={'action':None,'drive':(0.,0.),'move':None,'pose':None,'base':None}
+        output={'action':None,'drive':(0.,0.),'move':None,'pose':None,'base':None,'squeeze':None}
         if self.state!='running':return output
         b=self.program.blocks[self.index];self.elapsed+=dt
         if self.reopen:
@@ -408,7 +409,7 @@ class Runner:
             if self.elapsed+1e-9>=travel and up or self.elapsed+1e-9>=travel+wait:
                 self.rising=None;self.pose_from=None;self.elapsed=0.
             return output
-        if b.kind=='action':output['action']=(b.target,b.value)
+        if b.kind=='action':output['action']=(b.target,b.value);output['squeeze']=(b.target,b.secondary)
         elif b.kind=='drive':output['drive']=(b.value,b.secondary);self.offset=None;self.looked=None
         elif b.kind=='move':output['move']=(b.target,b.value)
         elif b.kind=='pose':

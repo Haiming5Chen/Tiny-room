@@ -1,5 +1,22 @@
 """Optional native binding for the portable keyboard controller."""
+from math import isfinite
+
 from .keyboard import KeyboardPositionControl
+
+
+def pad_lever(model, data, actuator):
+    """The moment arm, about its joint, of a push square to the face of the pad a jaw motor's
+    joint carries, through the pad's centre (m) - None for a joint with no pad (FR-037)."""
+    import numpy as np
+    joint = int(model.actuator_trnid[actuator, 0])
+    body = int(model.jnt_bodyid[joint])
+    pads = [i for i in range(model.nbody) if int(model.body_parentid[i]) == body and model.body(i).name.endswith('_pad')]
+    if not pads or not model.body_geomnum[pads[0]]:
+        return None
+    g = int(model.body_geomadr[pads[0]])
+    normal = data.geom_xmat[g].reshape(3, 3)[:, int(np.argmin(model.geom_size[g]))]    # across its thinnest side
+    arm = np.cross(data.geom_xpos[g] - data.xanchor[joint], normal)
+    return abs(float(arm @ data.xaxis[joint]))
 
 
 class MujocoKeyboardControl(KeyboardPositionControl):
@@ -11,6 +28,7 @@ class MujocoKeyboardControl(KeyboardPositionControl):
         self.servos={}
         self.units={}   # a robot servo's: 'deg', 'mm' or '%' (a gripper, by its closure)
         self.grips={}   # a gripper servo's (control open, closed, joint position open, closed)
+        self.levers={}  # a jaw motor's moment arm at its pad's centre, m (FR-037)
         model=backend.model
         for spec in self.specs:
             for name in spec.actuators:
@@ -26,6 +44,8 @@ class MujocoKeyboardControl(KeyboardPositionControl):
                     continue
                 actuator=model.actuator(self.prefix+name).id
                 idx=int(model.actuator_trnid[actuator,0])
+                lever=pad_lever(model,backend.data,actuator)
+                if lever:self.levers[name]=lever
                 self.channels[name]=(int(model.jnt_qposadr[idx]),int(model.jnt_dofadr[idx]),
                                      float(model.jnt_range[idx,0]),float(model.jnt_range[idx,1]),
                                      float(model.actuator_ctrlrange[actuator,1]))
@@ -54,6 +74,19 @@ class MujocoKeyboardControl(KeyboardPositionControl):
                 lo,hi=self.backend.model.actuator_ctrlrange[idx] if self.backend.model.actuator_ctrllimited[idx] else (-6.283185307,6.283185307)
                 self.targets[name]=result[name]=max(float(lo),min(float(hi),target))
         return {self.prefix+name:value for name,value in result.items()}
+
+    def squeeze(self,spec_id,newtons):
+        """Let the jaws of the joint action `spec_id` push with at most `newtons` square to each
+        pad at its centre - their servos' Goal Current, in current-based position control (FR-037)
+        - or, with 0, with their motors' full torque. It holds until changed."""
+        spec=next((s for s in self.specs if s.id==spec_id),None)
+        if spec is None:raise ValueError(f'no joint action called {spec_id!r}')
+        if not isfinite(newtons) or newtons<0:raise ValueError('a squeeze is a finite force, 0 or more newtons')
+        if newtons and not all(name in self.levers for name in spec.actuators):
+            raise ValueError(f'{spec.label or spec.id} has no jaw pads to squeeze with')
+        for name in spec.actuators:
+            if newtons:self.limits[name]=newtons*self.levers[name]
+            else:self.limits.pop(name,None)
 
     def gripper(self,name):
         """Whether this action's actuator is a model's gripper servo, driven by its closure."""

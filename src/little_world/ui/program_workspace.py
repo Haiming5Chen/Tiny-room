@@ -197,13 +197,15 @@ class ProgramWorkspace:
             if kind=='look':
                 self.look_form(index);return
             def target_selected(target=''):
-                if kind=='action':fields=[('Direction: 1 increase / -1 decrease',str(old.value if old else 1)),('Duration (seconds)',str(old.duration if old else 1))]
+                if kind=='action':fields=[('Direction: 1 increase / -1 decrease',str(old.value if old else 1)),('Duration (seconds)',str(old.duration if old else 1)),
+                                          ("Jaws' squeeze, N at each pad (0: the motors' full torque)",str(old.secondary if old else 0))]
                 elif kind=='drive':fields=[('Left wheel target (rad/s)',str(old.value if old else 3)),('Right wheel target (rad/s)',str(old.secondary if old else 3)),('Duration (seconds)',str(old.duration if old else 1))]
                 elif kind=='move':fields=[('Target (degrees; Panda grip: % closed)',str(old.value if old else 20)),('Timeout (seconds)',str(old.duration if old else 5))]
                 else:fields=[('Duration (seconds)',str(old.duration if old else 1))]
                 def apply(values):
                     nums=[numbers(v,1)[0] for v in values]
-                    b=Block(kind,target,nums[0] if kind!='wait' else 0,nums[-1],secondary=nums[1] if kind=='drive' else 0)
+                    if kind=='action':b=Block(kind,target,nums[0],nums[1],secondary=nums[2])    # its squeeze (FR-037)
+                    else:b=Block(kind,target,nums[0] if kind!='wait' else 0,nums[-1],secondary=nums[1] if kind=='drive' else 0)
                     blocks=list(self.program.blocks)
                     if index is None:blocks.append(b)
                     else:blocks[index]=b
@@ -363,7 +365,7 @@ class ProgramWorkspace:
             active=self.runner.index==i and self.runner.state in ('running','paused')
             button(label,x+16,y,294,lambda i=i:setattr(self,'program_selected',i),active=active or (editing and self.program_selected==i),h=26)
             detail=f'{b.duration:g}s'
-            if b.kind=='action':detail=('Increase / close' if b.value>0 else 'Decrease / open')+f' for {b.duration:g}s'
+            if b.kind=='action':detail=('Increase / close' if b.value>0 else 'Decrease / open')+f' for {b.duration:g}s'+(f', squeeze {b.secondary:g} N' if b.secondary else '')
             elif b.kind=='drive':detail=f'L {b.value:g} / R {b.secondary:g} rad/s for {b.duration:g}s'
             elif b.kind=='move':detail=f'{b.value:g} degrees / timeout {b.duration:g}s'
             elif b.kind=='distance':detail=f'Within {b.value:g} m / timeout {b.duration:g}s'

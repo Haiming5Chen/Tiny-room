@@ -28,10 +28,18 @@ class Demo:
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
                             # as Stop shows it - and the status line says this (ADR 0063, 0064)
     product: str = 'Small block'    # what Real's cell makes in a 'factory' demonstration
+    squeeze: float = 0.             # the Fetch's jaws squeezing this many newtons by current, 0: as solved (FR-037)
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('squeeze', 'A squeeze set in newtons',
+         "The Fetch program with its jaws set to squeeze 7 N at each pad, as a ROBOTIS servo sets it by "
+         "its current: in the Program panel the close block says \"squeeze 7 N\". On the left, under "
+         "\"holding\", the grip's friction in use peaks near 60 %, where the squeeze the closing ramp "
+         "leaves peaks near 80 %.",
+         'the close block says "squeeze 7 N"; on the left, the grip in use stays near 60 % at most',
+         '', 'ADR 0066', tab='Edit', squeeze=7.),
     Demo('panda', 'The Panda holds itself up',
          'In Real mode the Panda puts six tall blocks in their slots. Its joints are now held up against '
          'gravity, as its own controller holds the real arm, and its hand squeezes 70 N, as its '
@@ -130,6 +138,9 @@ class WhatsNew:
         self.set_field('fetch')
         self.arm_disturbance(demo.disturbance or None)
         self.fetch_program()            # solved for the machine as it stands: leaves the run paused
+        if demo.squeeze:
+            from little_world.control.tool_motion import squeezed
+            self.program_edit(squeezed(self.program, demo.squeeze))     # its jaws by current (FR-037)
         if demo.heavier != 1.:
             self.backend.scale_mass('objects/fetch_cube', demo.heavier)     # until the world is reset (FR-036)
         self.show_program()
