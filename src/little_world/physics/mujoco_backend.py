@@ -196,6 +196,51 @@ def staged_step(m, d, contact_hook, energy_sensor=False):
         mj.mj_Euler(m, d)
 
 
+FINGER_SOLMIX = 1000.     # a held robot's fingers: their contacts take the fingers' stiffness (OPEN LW-036)
+
+
+def held(child, asset, on_free_base):
+    """A registered robot as its own controller drives it (OPEN LW-036; `robot_models.CONTROLLERS`):
+    its links held against gravity - only on a fixed base: on a cart MuJoCo's compensation would
+    lift the cart's free joint too - and its hand squeezing with its datasheet's force, the
+    fingers' contacts as stiff as an imported gripper's jaws (ADR 0047). Returns the hand's
+    actuator and how fast its control may change, per second, for its fingers to move at their
+    datasheet's speed - or None."""
+    from little_world.assets.robot_models import CONTROLLERS
+    from little_world.physics.importer import JAW_SOLIMP, JAW_SOLREF
+    controller = CONTROLLERS.get(asset)
+    if not controller:
+        return None
+    if controller.get('gravcomp') and not on_free_base:
+        for body in child.bodies:
+            if body.name and body.name != 'world':
+                body.gravcomp = 1.
+    hand = controller.get('hand')
+    if hand:
+        name, squeeze, fingers, speed = hand
+        rate = None
+        for act in child.actuators:
+            if act.name == name:
+                # A stiff servo on the tendon, limited to the squeeze: each finger takes half the
+                # tendon's force, so the limit is twice the squeeze.
+                act.gainprm[0] *= 100.
+                act.biasprm[1] *= 100.
+                act.biasprm[2] = -100.
+                act.forcerange[:] = (-2. * squeeze, 2. * squeeze)
+                # Its control is where the fingers are sent, -biasprm[1] / gainprm[0] of it a metre.
+                rate = speed * -act.biasprm[1] / act.gainprm[0]
+        for body in child.bodies:
+            if body.name in fingers:
+                for g in body.geoms:
+                    g.solref[:] = JAW_SOLREF
+                    g.solimp[:3] = JAW_SOLIMP
+                    # MuJoCo averages a contact's stiffness over its two geoms, weighted by solmix:
+                    # weighted so, a finger's contact with a part is the finger's, not half the part's.
+                    g.solmix = FINGER_SOLMIX
+        return name, rate
+    return None
+
+
 class MujocoBackend:
     def __init__(self):
         self.model = self.data = None
@@ -210,6 +255,8 @@ class MujocoBackend:
         self._motor_profiles = {}
         self._motor_original = {}   # a weakened motor's profile as compiled (ADR 0058)
         self._mass_original = {}    # a body made heavier for a run: its mass and inertia as compiled (FR-036)
+        self._hand_rates = {}       # a held robot's hand: how fast its control may change (OPEN LW-036)
+        self._hand_goals = {}       # and where it was last sent
         self._geom_surface = None
         self._pair_mu = None
         self._any_sourced = False
@@ -255,6 +302,7 @@ class MujocoBackend:
         geared = []  # native joints carrying a gearmotor's sourced friction
         profiles={}
         robots=[]
+        hands=[]    # (a held robot's hand actuator, how fast its control may change) - held()
         robot_jaws=[]   # an imported gripper's two jaw links, by their names here (ADR 0047)
         servo_names={}
         servo_units={}
@@ -277,6 +325,14 @@ class MujocoBackend:
             bodies = {b.id: b for b in bp.components if isinstance(b, Body)}
             native = {}
 
+            def free(name):
+                """Whether a body moves with something on a free joint: a robot on a cart."""
+                while name is not None:
+                    if bodies[name].dynamic:
+                        return True
+                    name = bodies[name].parent
+                return False
+
             def add_body(name):
                 if name in native:
                     return native[name]
@@ -298,11 +354,13 @@ class MujocoBackend:
                     meta=metadata(b.robot_asset)
                     child=mj.MjSpec.from_file(str(model_path(b.robot_asset)))
                     for key in list(child.keys):child.delete(key)
+                    hand=held(child,b.robot_asset,free(name))
                     # Invisible bounds proxy exists only for editor selection/highlight.
                     nb.add_geom(name=prefix+name+'_geom',type=mj.mjtGeom.mjGEOM_BOX,
                                 size=tuple(v/2 for v in b.geometry.size),rgba=(0,0,0,0),
                                 contype=0,conaffinity=0,mass=0,group=5)
                     native_prefix=prefix+name+'__robot_'
+                    if hand and hand[1]:hands.append((native_prefix+hand[0],hand[1]))
                     for i,g in enumerate(child.geoms):
                         g.name='geom_'+str(i)
                         # Keep detailed appearance; hide collision-only hulls.
@@ -443,6 +501,10 @@ class MujocoBackend:
         self._initial_qpos=data.qpos.copy()
         self._initial_ctrl=data.ctrl.copy()
         self._servo_ids=[idx for idx,_ in self.servo_info.values()]
+        # A held robot's hand moves its fingers at its datasheet's speed: its control follows the
+        # command no faster (OPEN LW-036). The command is kept until the next one.
+        self._hand_rates={model.actuator(n).id:rate for n,rate in hands}
+        self._hand_goals={}
         self.robot_owners={}
         for name,native_prefix,_ in robots:
             for i in range(1,model.nbody):
@@ -652,6 +714,11 @@ class MujocoBackend:
                 # the command was computed for, and the slope for the implicit step.
                 bias[idx]=-slope*float(self.data.qvel[self._motor_dofs[idx]]),slope
             controls[idx] = value
+            if idx in self._hand_rates:
+                self._hand_goals[idx] = value
+        for idx, goal in self._hand_goals.items():
+            now, most = float(self.data.ctrl[idx]), self._hand_rates[idx] * float(self.model.opt.timestep)
+            controls[idx] = min(now + most, max(now - most, goal))
         self.data.ctrl[:] = controls
         if self._affine.size:
             self.model.actuator_biasprm[self._affine,0]=bias[self._affine,0]
@@ -768,6 +835,7 @@ class MujocoBackend:
         mj.mj_resetData(self.model, self.data)
         self.data.qpos[:]=self._initial_qpos
         self.data.ctrl[:]=self._initial_ctrl
+        self._hand_goals = {}
         self.model.dof_frictionloss[:] = self._base_frictionloss
         self.model.actuator_biasprm[self._affine] = 0.
         for idx, profile in self._motor_original.items():     # a weakened motor is itself again
@@ -903,5 +971,7 @@ class MujocoBackend:
         self._motor_profiles = {}
         self._motor_original = {}   # a weakened motor's profile as compiled (ADR 0058)
         self._mass_original = {}    # a body made heavier for a run: its mass and inertia as compiled (FR-036)
+        self._hand_rates = {}       # a held robot's hand: how fast its control may change (OPEN LW-036)
+        self._hand_goals = {}       # and where it was last sent
         self._motor_dofs = {}
         self._affine = np.zeros(0, dtype=np.intp)

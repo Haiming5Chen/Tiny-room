@@ -73,7 +73,7 @@ def test_tall_blocks_now_go_into_their_slots_and_the_tool_keeps_to_the_vertical(
         assert cycle.state == 'completed' and cycle.run['done'] == 6, cycle.message
         zx, zy, turn = slot_room(SLOTS, 32.)
         window = judge(cycle.run['placements'], (zx, zy), turn)
-        assert window.inside == 6 and window.worst < 6., window
-        assert stray < .0055, f'the tool strayed {1000 * stray:.1f} mm from the vertical: the arm sags, it does not swing'
+        assert window.inside == 6 and window.worst < 1.5, window
+        assert stray < .0015, f'the tool strayed {1000 * stray:.1f} mm from the vertical: held up, it neither sags nor swings'
     finally:
         b.close()

@@ -25,6 +25,14 @@ MODELS={
 # metadata: a link named like a tool, else its last driven link.
 TOOLS={'franka_panda':('hand',(0.,0.,.103))}
 
+# What a real arm's controller does that its model's servos do not (OPEN LW-036). Franka's holds
+# the arm against gravity - its joint torques include the arm's weight - so a commanded pose is
+# reached, not sagged under; its hand squeezes with 70 N continuously, 140 N at most (Franka Hand
+# datasheet), where Menagerie's hand is a 100 N/m spring on its fingers' tendon: 1.6 N on a 32 mm
+# part; and its fingers move at 50 mm/s each, where Menagerie's close at 0.26 m/s. (hand actuator,
+# the squeeze in newtons on each finger, the fingers' bodies, their speed in m/s)
+CONTROLLERS={'franka_panda':dict(gravcomp=True,hand=('actuator8',70.,('left_finger','right_finger'),.05))}
+
 
 def asset_root(asset):
     if robot_library.is_user(asset):return robot_library.folder(asset)

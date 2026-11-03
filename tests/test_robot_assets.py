@@ -38,7 +38,9 @@ def test_panda_native_constraints_and_controls():
     assert m.nmesh==source.nmesh and m.neq==source.neq and m.ntendon==source.ntendon
     assert m.body_mass.sum()==pytest.approx(source.body_mass.sum())
     assert np.allclose(m.jnt_range,source.jnt_range)
-    assert np.allclose(m.actuator_forcerange,source.actuator_forcerange)
+    hand=m.actuator('machine/root__robot_actuator8').id
+    assert np.allclose(np.delete(m.actuator_forcerange,hand,0),np.delete(source.actuator_forcerange,7,0))
+    assert tuple(m.actuator_forcerange[hand])==(-140.,140.)    # its datasheet's squeeze, 70 N a finger (ADR 0065)
     original=d.qpos.copy()
     control=MujocoKeyboardControl(backend,panda())
     for _ in range(200):backend.step(control.step_commands(.002))

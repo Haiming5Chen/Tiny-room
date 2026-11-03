@@ -465,7 +465,10 @@ model exactly as it attaches a Menagerie arm. A servo's unit - 'deg', 'mm', or a
 and the block programs. A gripper found at import (ADR 0047) is metadata of the robot - its
 channel, its open and closed positions, its two jaws: `robot_models.grip` maps its closure to its
 control, the backend names its jaws (`robot_jaws`) and `Observations` counts both of them on a
-movable object as held. Tests each run with an empty library.
+movable object as held. Tests each run with an empty library. What a registered robot's own
+controller does that its model's servos do not - hold the arm against gravity, squeeze its hand with
+a force and move its fingers at a speed - is the robot's data, `robot_models.CONTROLLERS`; the backend
+applies it as the model is loaded (`held`, ADR 0065) and holds the hand's control to that speed.
 
 ## Lessons the app checks
 

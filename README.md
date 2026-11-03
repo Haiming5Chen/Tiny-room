@@ -296,6 +296,12 @@ change the design, try again.** A desktop robotics sandbox on
   disturbances* how many set-ups a disturbance must break before the paired test can be sure of it
   ("6 of the 8 drawn") ([ADR 0064](docs/adr/0064-plan-the-draws.md)). What's new's *Where repeats
   fail* runs the Fetch once and stops on its report, both lines under its buttons.
+- **The Panda holds itself up.** In Real mode the Panda is held against gravity, as its own
+  controller holds the real arm, and its hand squeezes 70 N with its fingers moving 50 mm/s, as the
+  Franka Hand's datasheet gives: the cell's tool stops within half a millimetre of every point, where
+  it sagged 5 to 7 mm, and its parts land within about a millimetre of their slots, where they landed
+  2 to 6 mm out. What's new's *The Panda holds itself up* runs it with tall blocks
+  ([ADR 0065](docs/adr/0065-the-panda-holds-itself-up.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

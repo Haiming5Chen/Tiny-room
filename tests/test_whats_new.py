@@ -20,12 +20,13 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['repeats', 'slip', 'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove',
-                                     'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory', 'look_again', 'frozen',
+                                     'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1., 16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1., 1., 16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
+    assert [d.product for d in DEMOS] == ['Tall block'] + ['Small block'] * 9
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -504,3 +505,50 @@ def test_the_repeats_demonstration_stops_on_its_report_and_says_what_the_repeats
     assert 'to be sure it breaks runs, it must break 6 of the 8 drawn' in words
     assert seen['total'] == 72 and app.disturbing is None, "started in the background, and stopped"
     assert not getattr(app, 'demo_report_due', False), "once"
+
+
+@WINDOW
+def test_the_panda_held_up_puts_tall_blocks_within_a_millimetre_of_their_slots(tmp_path, monkeypatch):
+    """ADR 0065: Real's cell making tall blocks, the Panda held against gravity and squeezing 70 N."""
+    import glfw
+    from little_world.factory.controller import SLOTS
+    from little_world.factory.process import judge, slot_room
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    cell = {}
+
+    def in_the_cell():
+        real = app.active_workspace
+        cell['draw']()
+        n = step['n']
+        if n == 2:
+            assert real.app_mode == 'Real' and real.experiment == 'Pick and place' and real.product == 'Tall block'
+            assert real.cycle.run is not None and real.cycle.state == 'running' and app.demo == 'panda'
+        elif n == 3:
+            placed = real.cycle.run['placements']
+            if len(placed) < 2:
+                assert real.state.time < 60 and real.cycle.state == 'running', real.cycle.message
+                return
+            zx, zy, turn = slot_room(SLOTS, 32.)
+            cell['window'] = judge(placed, (zx, zy), turn)
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            button = next(b for b in app.active_workspace.buttons if b.label == 'The Panda holds itself up')
+            button.action()
+            real = app.active_workspace
+            cell['draw'] = real.draw
+            monkeypatch.setattr(real, 'draw', in_the_cell)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    w = cell['window']
+    assert step['n'] == 4 and w.inside == 2 and w.worst < 1., w

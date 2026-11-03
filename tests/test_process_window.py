@@ -81,7 +81,7 @@ def test_a_production_run_says_where_each_part_was_left_and_a_fed_part_off_centr
         assert [p.part for p in placed] == [0, 1] and [p.seconds for p in placed] == cycle.run['times']
         assert cycle.placement is placed[-1]
         for p in placed:
-            assert 1. < p.dx < 6.5 and -2.5 < p.dy < -.5, "out along the table, within its room, and short across it"
+            assert 0. < p.dx < 1.5 and abs(p.dy) < 1., "within a millimetre or so: the arm held up, the part still in the hand (ADR 0065)"
             assert abs(p.yaw) < 3., "the hand squares a part fed turned 10 deg, to within 2 (ADR 0057)"
     finally:
         b.close()

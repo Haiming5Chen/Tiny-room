@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-03 · Claude (Cowork) · OPEN LW-036: the Panda holds itself up; What's new for ADR 0063, 0064
+Did: ADR 0065 (`robot_models.CONTROLLERS`; the backend's `held` and the hand's speed: the Panda's links
+held against gravity on a fixed base, its hand squeezing 70 N a finger at 50 mm/s, its fingers' contacts
+their own stiffness). What's new's "The Panda holds itself up" (tall blocks in the cell) and "Where
+repeats fail" (the Fetch run once and stopped on its report, the lines ADR 0063 and 0064 added under its
+Repeat buttons).
+Measured: the cell's tool within 0.47 mm of every point (5.7 to 6.7 mm before); 228 parts in 38
+production runs within 1.05 mm of their slots (2.2 to 6.3 mm), Cpk along x 10 to 20 (0.85 to 1.27).
+Found on the way: MuJoCo averages a contact's stiffness over its geoms - the 70 N squeeze alone still
+let the part slide 2 mm along the fingers - and the stiffer hand shut its fingers at 2.9 m/s.
+Unfinished: OPEN LW-040 (an imported gripper's contacts averaged the same way).
+For the owner: nothing to decide here.
+
 ## 2026-11-03 · Claude (Cowork) · FR-039: plan the draws
 Did: ADR 0064 (`inventory/power.py`; what a sweep can show, under its button in the window).
 Measured: FR-039's numbers reproduced exactly; read again, ADR 0041's presses (21 % power, 116 draws

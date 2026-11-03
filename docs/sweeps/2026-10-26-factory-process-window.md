@@ -72,7 +72,28 @@ Every run finished. No part left turned more than 2.5 deg. Cycles 12.0 to 13.9 s
 (12.8 s before). With both previewed Panda fixes on top, a run of each product: 1.5 to 2.5 mm out along
 the table, within 0.4 mm across.
 
-## The two fixes, previewed (not adopted)
+## Held up, squeezing as its hand does (ADR 0065)
+
+The arm's links gravity-compensated on its fixed base; the hand squeezing 70 N a finger with its fingers
+moving 50 mm/s, their contacts the fingers' own stiffness. The same 38 runs again (228 parts): the
+tool stops within 0.47 mm of every point.
+
+| | Feeder | Parts within their room | Off along x | Off across | Cpk x | Worst |
+| --- | --- | --- | --- | --- | --- | --- |
+| Small | at the centre | 6 of 6 | +0.36 to +0.78 mm | -0.08 to +0.24 mm | 14.1 | 0.82 mm |
+| Small | ±2 mm, ±5 deg | 54 of 54 | +0.25 to +0.87 | -0.32 to +0.35 | 12.0 (9.7-14.3) | 0.92 mm |
+| Small | ±5 mm, ±15 deg | 54 of 54 | +0.26 to +1.00 | -0.33 to +0.33 | 10.2 (8.2-12.1) | 1.05 mm |
+| Tall | at the centre | 6 of 6 | +0.28 to +0.59 | -0.32 to +0.07 | 16.8 | 0.67 mm |
+| Tall | ±2 mm, ±5 deg | 54 of 54 | +0.30 to +0.69 | -0.39 to +0.19 | 20.1 (16.2-23.9) | 0.79 mm |
+| Tall | ±5 mm, ±15 deg | 54 of 54 | +0.26 to +0.83 | -0.41 to +0.19 | 16.4 (13.3-19.5) | 0.86 mm |
+
+Every run finished; no part left turned more than 1.8 deg; cycles 12.0 to 13.95 s, 12.4 s on average.
+Two tries before it, the same runs: with the fingers' contacts averaged with the part's (MuJoCo's
+default solmix), every part landed +1.1 to +2.8 mm out along x - the part slid 2 mm along the fingers
+as it was carried; with them weighted to the fingers but the fingers shut at 2.9 m/s, -0.6 to +1.7 mm,
+one standard deviation 0.58 mm for small blocks at the wider spread, where it is now 0.19.
+
+## The two fixes, previewed (not adopted; adopted in ADR 0065)
 
 The same runs on copies of the model: the arm's links gravity-compensated (`gravcomp` 1), as the
 real Panda's controller compensates its weight; the hand squeezing with a force limit (20 N or the

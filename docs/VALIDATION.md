@@ -1732,3 +1732,17 @@ window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0: 1130 passed w
 1070 headless.
 
 Not claimed: anything measured by the demonstration itself; the sweep it starts is the panel's own.
+
+## The Panda held up — 2026-11-03
+
+ADR 0065 (OPEN LW-036). The Panda's links held against gravity on a fixed base, not on a cart; its
+hand's servo limited to 70 N a finger, its fingers moving at 50 mm/s, their contacts weighted to the
+fingers' stiffness. In the cell the tool stops within 0.47 mm of every point (5.7 to 6.7 mm before),
+each finger presses 70.0 N through the carry, and 228 parts in 38 production runs land within 1.05 mm
+of their slots (2.2 to 6.3 mm before): Cpk along x 10 to 20, from 0.85 to 1.27. Checked in
+`tests/test_panda_held.py` (2), with `tests/test_robot_assets.py`, `tests/test_process_window.py`,
+`tests/test_straight_descent.py` and a window test in `tests/test_whats_new.py`. Suites on MuJoCo
+3.10.0: 1133 passed with a display, 1072 headless.
+
+Not claimed: the real arm's identified dynamics, its hand's force control, a payload compensated; a
+Panda on a cart held up; an imported robot's gripper weighted to its jaws (OPEN LW-040).

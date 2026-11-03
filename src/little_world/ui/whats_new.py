@@ -27,10 +27,18 @@ class Demo:
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
                             # as Stop shows it - and the status line says this (ADR 0063, 0064)
+    product: str = 'Small block'    # what Real's cell makes in a 'factory' demonstration
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('panda', 'The Panda holds itself up',
+         'In Real mode the Panda puts six tall blocks in their slots. Its joints are now held up against '
+         'gravity, as its own controller holds the real arm, and its hand squeezes 70 N, as its '
+         'datasheet gives: each part lands within a millimetre of its slot, where they landed 2 to 6 mm '
+         'out.',
+         'the line under the cell: every part within its room, the worst under a millimetre off',
+         '', 'ADR 0065', where='factory', product='Tall block'),
     Demo('repeats', 'Where repeats fail',
          'The Fetch runs once, as designed, and stops when the cube is in the bin. Under each Repeat '
          'button its report says what the repeats can show before they run. Repeated with '
@@ -179,8 +187,8 @@ class WhatsNew:
         if real.experiment != 'Pick and place':
             real.select_experiment('Pick and place')
         real.reset_cell()
-        if real.product != 'Small block':
-            real.select_product('Small block')     # the cell's own part: a tall one tips in the hand (ADR 0056)
+        if real.product != demo.product:
+            real.select_product(demo.product)
         real.start_run()
         real.status = f'{demo.title}: {demo.watch}.'
 
