@@ -118,9 +118,16 @@ class VariedRuns:
         if not self.variable(record.field):
             return y
         if v is None or v['field'] != record.field or v['blueprint'] is not self.editor.blueprint:
-            button(f'Repeat with variations ({len(plan(ranges_for(record.field)))} runs)', 12, y, 264,
-                   self.start_variations, h=28)
+            variations = plan(ranges_for(record.field))
+            button(f'Repeat with variations ({len(variations)} runs)', 12, y, 264, self.start_variations, h=28)
             text('off its mark, turned, loaded, other floors', 16, y + 34, 10, MUTED, 256)
+            # What the draws can show before they are made (FR-039).
+            from little_world.inventory.power import zero_bound
+            drawn = sum(1 for v in variations if v.label.startswith('repeat'))
+            if drawn:
+                text(f'{drawn} drawn: if all succeed, failures under {100 * zero_bound(drawn):.0f} %', 16, y + 48, 10,
+                     MUTED, 256)
+                return y + 68
             return y + 54
         section(f'RUN {v["run"]} REPEATED  /  varied', y)
         y += 22

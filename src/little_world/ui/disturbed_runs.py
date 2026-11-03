@@ -73,10 +73,17 @@ class DisturbedRuns:
         if d is None or d['field'] != record.field or d['blueprint'] is not self.editor.blueprint:
             if y + 54 > wh - 40:
                 return y
-            total = len(setups(ranges_for(record.field))) * (1 + len(DEFAULTS[record.field]))
+            chosen = setups(ranges_for(record.field))
+            drawn = sum(1 for v in chosen if v.label.startswith('repeat'))      # the pairs a test can read (ADR 0036)
+            total = len(chosen) * (1 + len(DEFAULTS[record.field]))
             button(f'Repeat with disturbances ({total} runs)', 12, y, 264, self.start_disturbances, h=28)
             text('shoved, or a part moved, partway', 16, y + 34, 10, MUTED, 256)
-            return y + 54
+            # What the pairs can show before they are run (FR-039): each set-up against itself.
+            from little_world.inventory.power import to_show
+            need = to_show(drawn)
+            text(f'to be sure it breaks runs, it must break {need} of the {drawn} drawn' if need else
+                 f'{drawn} drawn set-ups are too few to be sure of any', 16, y + 48, 10, MUTED, 256)
+            return y + 68
         section(f'RUN {d["run"]} DISTURBED  /  shoved, moved', y)
         y += 22
         if d['error']:

@@ -11,6 +11,13 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-03 · Claude (Cowork) · FR-039: plan the draws
+Did: ADR 0064 (`inventory/power.py`; what a sweep can show, under its button in the window).
+Measured: FR-039's numbers reproduced exactly; read again, ADR 0041's presses (21 % power, 116 draws
+needed) and ADR 0042's gentle set-downs (8 %, 186) were underpowered; ADR 0036's and 0051's were shown.
+Unfinished: the plan line in the seed ledger (`sweep --plan`).
+For the owner: nothing to decide here.
+
 ## 2026-11-03 · Claude (Cowork) · FR-038: where runs fail
 Did: ADR 0063 (`inventory/stages.py`, `Run.stopped`, `Group.where`; a table in every sweep report; two
 lines under each line that missed in the variations and disturbances panels).

@@ -1710,3 +1710,14 @@ and fail in two places - the cube moved 2 s after the look at the reach (the pro
 arm, 9), the camera frozen and the camera dark at the look (9 each). Checked in `tests/test_stages.py` (3). Suites on MuJoCo 3.10.0: 1125 passed with a display, 1066 headless (run with ADR 0064's four tests beside them: 1129 and 1070).
 
 Not claimed: stages finer than the field's goals and the program's block kinds.
+
+## Plan the draws — 2026-11-03
+
+ADR 0064 (FR-039). The exact McNemar test needs 6 pairs all one way for p < 0.05 (4: 0.125, 5: 0.0625,
+6: 0.031); at a 4 in 59 rate 59 paired draws have a 21 % chance to show it, 116 give 80 %, 120 83 %,
+150 95 %; 59 draws that all succeed bound a failure rate at 4.95 %, under 2 % takes 149, under 1 % 299;
+the power summed over outcomes agrees with 4000 random draws within 2.5 points. Checked in
+`tests/test_power.py` (4). Suites on MuJoCo 3.10.0: 1129 passed with a display, 1070 headless.
+
+Not claimed: a plan written into the seed ledger by the command line; the smallest effect worth seeing,
+which is chosen, not computed.
