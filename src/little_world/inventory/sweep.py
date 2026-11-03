@@ -53,6 +53,7 @@ class Run:
     listening: tuple = ()           # the spans (from, to) in which an alarm would have made it look again (FR-022)
     grip: tuple = ()                # while the program carried what it held, in the air: (from, to, the most of
                                     # its grip's friction in use, when, the median) (FR-036); () if it carried nothing
+    stopped: tuple = ()             # where a program that gave up stopped: (its block, the block's kind) (FR-038)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -353,7 +354,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    runner.regrasps if runner else 0, runner.message if runner else '',
                    kick.began + tracker.start if kick is not None and kick.began is not None else None,
                    tuple(w.result() for w in watching), tuple(felt_at) if protocol == 'program' else (),
-                   *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened), carried(grip))
+                   *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened), carried(grip),
+                      (runner.index, program.blocks[runner.index].kind)
+                      if runner.state == 'failed' and runner.index < len(program.blocks) else ())
                      if protocol == 'program' else ()))
 
 
@@ -547,6 +550,7 @@ class Group:
     broke: int = 0
     rescued: int = 0
     why: str = ''           # what the program said when it stopped, in most of the set-ups that missed
+    where: str = ''         # where its runs failed: the first goal missed and what a program that gave up was doing (FR-038)
 
     @property
     def low(self):
@@ -595,8 +599,13 @@ def summaries(result):
                          sum(1 for r in runs if r.regrasped),
                          sum(1 for was, _ in pairs if was), sum(1 for was, now in pairs if was and not now),
                          sum(1 for was, now in pairs if now and not was),
-                         _why(r for r in runs if _last(r) is None)))
+                         _why(r for r in runs if _last(r) is None), stage_line(runs)))
     return out
+
+
+def stage_line(runs):
+    from little_world.inventory.stages import lines
+    return '; '.join(lines(runs))
 
 
 def _handled_by_disturbance(result):
@@ -761,6 +770,8 @@ def disturbed_markdown(result):
         seen = ('' if not looked else f' {g.again or "-"} |' + (' - |' if not g.seen else
                 f' {100 * median(g.seen):.1f} cm ({100 * g.seen[0]:.1f} to {100 * g.seen[-1]:.1f}) |'))
         lines.append(f'| {g.label} | {g.met} of {g.runs} | {sure} | {broken} | {change} | {pushed} | {g.went_back or "-"} |{seen} {lost} |')
+    from little_world.inventory.stages import markdown as stage_profile
+    lines += stage_profile([(label, runs) for label, _, runs in result.groups])
     lines += _handled_by_disturbance(result)
     lines += _felt([r for _, _, runs in result.groups for r in runs])
     lines += ['', 'What each disturbance does:', '']
@@ -799,7 +810,7 @@ def _run(r):
                r.get('regrasped', 0), r.get('message', ''), r.get('event'),
                tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())),
                tuple(tuple(x) for x in r.get('alarm', ())), tuple(r.get('recovered', ())),
-               tuple(tuple(x) for x in r.get('listening', ())), tuple(r.get('grip', ())))
+               tuple(tuple(x) for x in r.get('listening', ())), tuple(r.get('grip', ())), tuple(r.get('stopped', ())))
 
 
 def _handled(h):
@@ -933,6 +944,9 @@ def markdown(sweep):
                   f'saw it {1000 * median(looks):.1f} mm from where it was planned (median; {1000 * looks[0]:.1f} to '
                   f'{1000 * looks[-1]:.1f} mm), each time within {1000 * worst:.1f} mm of where it really was.']
     lines += ['', _how_sure(sweep)]
+    from little_world.inventory.stages import markdown as stage_profile
+    if any(r.status not in ('met', 'kept') for r0 in ran for r in r0.results):
+        lines += stage_profile([('as designed and drawn', ran)])
     lines += _handling(ran)
     lines += _felt(ran)
     from little_world.inventory.jitter import lines as knife_edge

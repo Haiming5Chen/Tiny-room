@@ -286,6 +286,11 @@ change the design, try again.** A desktop robotics sandbox on
   grip's friction is in use - 0 with nothing pulling it along the jaws, 100 % when it slides. The
   ordinary cube uses about 38 %; made 16 times as heavy it reaches 100 % on the lift and slides out,
   which What's new shows ([ADR 0061](docs/adr/0061-how-close-to-slipping.md)).
+- **Where runs fail.** After *Repeat with variations* or *Repeat with disturbances*, each line that
+  missed says where: the first goal its runs missed ("missed: lifted 9") and what a program that gave
+  up was doing ("gave up: looking 9"); every sweep report has the table. Two disturbances that both
+  cost every run can fail in different places, and now it shows
+  ([ADR 0063](docs/adr/0063-where-runs-fail.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

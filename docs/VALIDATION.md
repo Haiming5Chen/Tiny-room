@@ -1700,3 +1700,13 @@ mix 16 (0.69). The command line now mixes by default. Checked in `tests/test_rad
 Suites on MuJoCo 3.10.0: 1122 passed with a display, 1063 headless.
 
 Not claimed: more than 20 questions; that the mix keeps its answers as the collection grows.
+
+## Where runs fail — 2026-11-03
+
+ADR 0063 (FR-038). The stage profile - how many runs met each goal and every goal before it, the first
+goal each missed, what a program that gave up was doing - on runs made up for it, and on the field:
+the Fetch's disturbance sweep with its recovery off, where three disturbances each cost all 9 set-ups
+and fail in two places - the cube moved 2 s after the look at the reach (the program gave up moving the
+arm, 9), the camera frozen and the camera dark at the look (9 each). Checked in `tests/test_stages.py` (3). Suites on MuJoCo 3.10.0: 1125 passed with a display, 1066 headless (run with ADR 0064's four tests beside them: 1129 and 1070).
+
+Not claimed: stages finer than the field's goals and the program's block kinds.

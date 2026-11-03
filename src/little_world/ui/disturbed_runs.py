@@ -99,5 +99,10 @@ class DisturbedRuns:
             text(f'{g.met}/{g.runs}', 16, y, 11, ACCENT if g.met == g.runs else WARN)
             text(g.label + later + broke, 52, y, 11, LIGHT, 220)
             y += 17
+            for said in g.where.split('; ') if g.where else ():
+                if y > wh - 110:
+                    break
+                text(said, 52, y - 3, 10, MUTED, 220)       # where its runs failed (FR-038)
+                y += 13
         button('Copy the disturbances report', 12, y + 4, 264, self.copy_disturbances_report, h=26)
         return y + 38

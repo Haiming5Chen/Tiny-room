@@ -157,6 +157,12 @@ class VariedRuns:
                 text(f'{good}/{total}', 16, y, 11, ACCENT if good == total else WARN)
                 text(label + span, 52, y, 11, LIGHT, 220)
                 y += 17
+            from little_world.inventory.stages import lines as where
+            for said in where(s.runs):          # where the runs that missed got to (FR-038)
+                if y > wh - 160:
+                    break
+                text(said, 52, y - 3, 10, MUTED, 220)
+                y += 13
         y = self.draw_strip(ui, text, strip(s), y)
         most = moved_most(s)
         if most and y < wh - 150:

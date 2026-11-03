@@ -11,6 +11,14 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-03 · Claude (Cowork) · FR-038: where runs fail
+Did: ADR 0063 (`inventory/stages.py`, `Run.stopped`, `Group.where`; a table in every sweep report; two
+lines under each line that missed in the variations and disturbances panels).
+Measured: on the Fetch with its recovery off, three disturbances cost every set-up and fail in two
+places: the moved cube's runs gave up at the reach, the camera faults' at the look.
+Unfinished: nothing new.
+For the owner: nothing to decide here.
+
 ## 2026-11-02 · Claude (Cowork) · OPEN LW-027: the collection's search mixes words and meaning
 Did: ADR 0062 (the command line's `search` and `related` mix words and meaning equally by default);
 the reading of 2 November's 55 sources into the collection (238 entries).
