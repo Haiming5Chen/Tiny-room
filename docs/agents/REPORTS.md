@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-04 · Claude (Cowork) · FR-007: the cell fed by a conveyor
+Did: ADR 0068 (friction rollers in `fields/conveyor.py`, a `Line` laid out anywhere; the cell's
+conveyor feeder in `factory/scene.py` and `factory/controller.py`; "Conveyor: on" in Real's panel;
+What's new's "The cell fed by a conveyor"). FR-007 done; OPEN LW-005 and LW-042 done.
+Measured: small blocks 60 of 60 placed over ten runs fed by the conveyor, each arriving within 3.9
+mm of its place at the stop and left within 1.0 mm of its slot, 12.1 to 13.9 s a part; tall blocks
+24 of 24. Under a held pallet the friction rollers stand still and what it carries stays put.
+On the way: a loose part slides 3.4 mm on its pallet at each stop (v^2/2ug, wood on HDPE), so the
+pallets locate their parts between two bars; the hand caught the conveyor's side frame lowering into
+the near row of a tray, so the frames stand lower.
+Unfinished: the pallets' return and loading are a person's move, not simulated; the feeder is not
+saved with a cell.
+
 ## 2026-11-03 · Claude (Cowork) · FR-007, in part: a roller conveyor
 Did: ADR 0067 (`fields/conveyor.py` and the "Roller conveyor" field; the capsule shape in the core and
 the backend; What's new's "A roller conveyor").

@@ -518,7 +518,8 @@ def _conveyor():
     return Field(
         'conveyor', 'Roller conveyor',
         'Two pallets ride powered rollers at 0.1 m/s to a stop plate, the kit cube on each: the first '
-        'comes to rest against the stop, the second queues behind it, and the rollers turn on under both.',
+        'comes to rest against the stop, the second queues behind it, and the rollers under both stand '
+        'still while their drives turn on - friction rollers.',
         conveyor_entities, goals=conveyor.goals(), actuate=conveyor.actuate,
         home=((.45, .75, .15), 1.3, -60., -28.))
 

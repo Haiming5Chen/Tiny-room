@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import mujoco as mj
 from .scene import TABLE
+from little_world.fields.conveyor import PALLET
 from little_world.programming.observations import Observations
 
 @dataclass
@@ -25,6 +26,7 @@ class Stage:
 LINES=('Lower to grasp','Lift and check grasp','Lower into bin','Retract')
 STEP=.01        # m between joint solutions along a line
 HAND_OPEN=.04   # m each Panda finger travels at the hand's widest, control 255 (Menagerie's hand)
+SETTLE=.1       # s a pallet rests at the conveyor's stop before its part is picked (ADR 0068)
 CLEAR=.008      # m each finger opens past a part to let it go: fully open (80 mm), a finger
                 # reached the next tall part's top (ADR 0056)
 
@@ -34,10 +36,12 @@ SLOTS=((0.,-.035),(0.,.035),(-.045,-.035),(-.045,.035),(.045,-.035),(.045,.035))
 
 
 class FactoryCycle:
-    def __init__(self,backend,source='input'):
+    def __init__(self,backend,source='input',line=None):
+        """The cell's controller on `backend`'s model; `line` the roller conveyor that feeds the
+        source when it does (a fields.conveyor.Line, ADR 0068), its stop the source's place."""
         from .recipe import TRAYS
         if source not in TRAYS:raise ValueError('Unknown source tray')
-        self.source=source
+        self.source=source;self.line=line
         self.backend=backend;self.model=backend.model;self.data=backend.data
         self.prefix='machine/root__robot_'
         self.hand=self.model.body(self.prefix+'hand').id
@@ -50,12 +54,83 @@ class FactoryCycle:
         self.run=None   # a production run in progress, or None
         self.feeder=None    # where the feeder puts part i: i -> (dx, dy in m, turn in deg) off the tray's centre, or None
         self.placement=None # the last part placed, as it was left: a process.Placement (ADR 0056)
-        self.trays={name:self.data.xpos[self.model.body('factory/'+name+'_base').id][:2].copy() for name in TRAYS}
+        # The trays the scene has: fed by the conveyor, its stop is the source's place (ADR 0068).
+        self.trays={name:self.data.xpos[self.model.body('factory/'+name+'_base').id][:2].copy() for name in TRAYS
+                    if mj.mj_name2id(self.model,mj.mjtObj.mjOBJ_BODY,'factory/'+name+'_base')>=0}
+        if line is not None:self.bind_line(line)
         self.scratch=mj.MjData(self.model)
         self.state='idle';self.message='Select a product and output tray, then Preview path.'
         self.stages=[];self.index=0;self.elapsed=0.;self.total=0.;self.lift_verified=False
         self.observations=Observations(self.model,self.data)
         self.local_tool=np.array((0.,0.,.103))
+
+    # -- the roller conveyor that feeds the source, when it does (ADR 0068) ------------------
+
+    def bind_line(self,line):
+        from little_world.fields.conveyor import ROLLERS
+        self.trays[self.source]=np.array((line.at_stop(1),line.start[1]))
+        self.rollers=np.array([self.model.jnt_dofadr[self.model.joint(f'{line.entity}/roller_{i}_hinge').id] for i in range(ROLLERS)])
+        self.pallets=[]
+        while mj.mj_name2id(self.model,mj.mjtObj.mjOBJ_BODY,'objects/pallet_'+str(len(self.pallets)+1))>=0:
+            self.pallets.append('objects/pallet_'+str(len(self.pallets)+1))
+        # Which part rides on which pallet: the part resting over its centre.
+        self.carrier={}
+        for pallet in self.pallets:
+            at=self.data.xpos[self.model.body(pallet).id]
+            for b in range(self.model.nbody):
+                name=self.model.body(b).name
+                if name.startswith('objects/product') and np.linalg.norm(self.data.xpos[b][:2]-at[:2])<.04 and self.data.xpos[b][2]>at[2]:
+                    self.carrier[name]=pallet
+        self.waited=0.;self.settled=0.
+
+    def belt(self):
+        """The conveyor's rollers held at its speed, every step, the cell running or not."""
+        return {} if self.line is None else self.line.torques(self.data.qvel[self.rollers])
+
+    def free(self,body):
+        """(qpos address, dof address) of a loose body's free joint."""
+        joint=self.model.body_jntadr[self.model.body(body).id]
+        return self.model.jnt_qposadr[joint],self.model.jnt_dofadr[joint]
+
+    def resting_at_stop(self):
+        """Whether the pallet carrying the current part rests at the stop, and the part on it."""
+        pallet=self.carrier.get(self.product)
+        if pallet is None:return False
+        x,y,_=self.data.xpos[self.model.body(pallet).id]
+        if abs(x-self.line.at_stop(1))>.002 or abs(y-self.line.start[1])>.01:return False
+        return all(np.linalg.norm(self.data.qvel[dof:dof+3])<.002 for dof in (self.free(pallet)[1],self.free(self.product)[1]))
+
+    def arrived(self,dt):
+        """Waiting for the current part: once its pallet has rested at the stop for SETTLE, its pick
+        is planned and started, and where it arrived is noted - mm from the pallet's place there."""
+        self.waited+=dt
+        self.settled=self.settled+dt if self.resting_at_stop() else 0.
+        if self.settled<SETTLE:
+            if self.waited>12.:self.fail('The next pallet did not reach the stop.')
+            return
+        pos=self.data.xpos[self.object_id]
+        if self.run is not None:
+            self.run['arrivals'].append((1000*float(pos[0]-self.line.at_stop(1)),1000*float(pos[1]-self.line.start[1]),self.waited))
+        self.state='idle';self.plan(self.run['destination'] if self.run is not None else self.destination);self.start()
+        if self.run is not None:self.message=f"Part {self.run['done']+1} of {len(self.run['parts'])}: "+self.stages[0].label
+
+    def send_back(self):
+        """The current part is off its pallet: unless it was the run's last, the pallet goes back
+        to the line's start - with the next part waiting on the shelf on it, if one does - and the
+        pallet behind rides up to the stop. The return and the loading are a person's, not
+        simulated: one move."""
+        pallet=self.carrier.pop(self.product,None);run=self.run
+        if pallet is None or run is None:return
+        later=list(run['parts'][run['done']+1:])
+        if not later:return
+        adr,dof=self.free(pallet)
+        self.data.qpos[adr:adr+7]=(self.line.entry(),self.line.start[1],self.line.pallet_z()+.0005,1.,0.,0.,0.)
+        self.data.qvel[dof:dof+6]=0.
+        mj.mj_forward(self.model,self.data)
+        waiting=[p for p in later if p not in self.carrier]
+        if waiting:
+            self.carrier[waiting[0]]=pallet
+            self.feed(waiting[0],run['parts'].index(waiting[0]))
 
     def tool(self,data):
         return data.xpos[self.hand]+data.xmat[self.hand].reshape(3,3)@self.local_tool
@@ -84,7 +159,10 @@ class FactoryCycle:
         pick=self.data.xpos[self.object_id].copy();self.initial_height=float(pick[2])
         if np.linalg.norm(pick[:2]-self.trays[self.source])>.07:raise ValueError('Reset the product to the input tray before planning.')
         pick[2]+=.001
-        drop=np.array((*(self.trays[destination]+np.array(self.slot)),pick[2]+.009))
+        # Lowered to where it would sit on the tray's floor, 9 mm over it: from a pallet, the
+        # pallet's top is that much higher than a tray's floor (ADR 0068).
+        lift=0. if self.line is None else self.line.top+PALLET[2]-(TABLE+.008)
+        drop=np.array((*(self.trays[destination]+np.array(self.slot)),pick[2]+.009-lift))
         above=pick+np.array((0,0,.16));over_bin=drop+np.array((0,0,.16))
         release=self.release_grip()
         points=(('Approach product',above,255),('Lower to grasp',pick,255),('Close gripper',pick,0),
@@ -147,8 +225,17 @@ class FactoryCycle:
         if self.state=='running':raise ValueError('Pause or reset before starting a run')
         parts=tuple(parts)
         if not parts or parts[0]!=self.product:raise ValueError('A run starts with the part on the input tray')
-        self.run=dict(parts=parts,done=0,failed=0,times=[],placements=[],destination=destination,failure=None,started=float(self.data.time))
+        self.run=dict(parts=parts,done=0,failed=0,times=[],placements=[],arrivals=[],destination=destination,failure=None,started=float(self.data.time))
         self.slot=SLOTS[0]
+        if self.line is not None:
+            # Fed by the conveyor (ADR 0068): each part on a pallet where the feeder puts it, the
+            # first picked once its pallet rests at the stop.
+            if self.feeder is not None:
+                for i,part in enumerate(parts):
+                    if part in self.carrier:self.feed(part,i)
+            self.destination=destination;self.state='waiting';self.waited=0.;self.settled=0.
+            self.message=f'Part 1 of {len(parts)}: waiting for its pallet at the stop'
+            return
         if self.feeder is not None:self.feed(self.product,0)
         self.plan(destination);self.start()
 
@@ -160,8 +247,14 @@ class FactoryCycle:
         joint=self.model.body_jntadr[object_id];adr=self.model.jnt_qposadr[joint];dof=self.model.jnt_dofadr[joint]
         size=self.model.geom_size[next(g for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==object_id)]
         dx,dy,turn=self.feeder(i) if self.feeder is not None else (0.,0.,0.)
-        x,y=self.trays[self.source];a=radians(turn)/2
-        self.data.qpos[adr:adr+7]=(x+dx,y+dy,TABLE+.008+size[2]+.001,cos(a),0.,0.,sin(a))
+        x,y=self.trays[self.source];a=radians(turn)/2;z=TABLE+.008+size[2]+.001
+        if self.line is not None:
+            # On its pallet, wherever the pallet is now, between its nest's bars (ADR 0068).
+            from .scene import NEST
+            reach=size[0]*abs(cos(radians(turn)))+size[1]*abs(sin(radians(turn)))+abs(dx)
+            if reach>size[0]+NEST[0]+1e-9:raise ValueError(f'A part {1000*dx:+.1f} mm along the line and turned {turn:g} deg does not fit between its pallet\'s bars.')
+            x,y,z=self.data.xpos[self.model.body(self.carrier[body]).id];z+=PALLET[2]/2+size[2]+.001
+        self.data.qpos[adr:adr+7]=(x+dx,y+dy,z,cos(a),0.,0.,sin(a))
         self.data.qvel[dof:dof+6]=0.
         mj.mj_forward(self.model,self.data)
 
@@ -188,8 +281,12 @@ class FactoryCycle:
             self.message=f"The {run['destination']} tray is full after {run['done']} parts.";return
         self.product='objects/'+run['parts'][run['done']].split('/')[-1]
         self.object_id=self.model.body(self.product).id
-        self.feed(self.product,run['done'])
         self.slot=SLOTS[run['done']]
+        if self.line is not None:
+            self.state='waiting';self.waited=0.;self.settled=0.
+            self.message=f"Part {run['done']+1} of {len(run['parts'])}: waiting for its pallet at the stop"
+            return
+        self.feed(self.product,run['done'])
         self.state='idle'
         self.plan(run['destination']);self.start()
         self.message=f"Part {run['done']+1} of {len(run['parts'])}: "+self.stages[0].label
@@ -204,6 +301,14 @@ class FactoryCycle:
         return run['done'],run['failed'],per,rate
 
     def commands(self,dt):
+        """The cell's commands for one step: its conveyor's rollers, if it has one, and the arm's."""
+        belt=self.belt()
+        if self.state=='waiting':self.arrived(dt)
+        if self.state!='running':return belt
+        result=self.arm(dt);result.update(belt)
+        return result
+
+    def arm(self,dt):
         if self.state!='running':return {}
         stage=self.stages[self.index];self.elapsed+=dt;self.total+=dt
         t=min(1.,self.elapsed/stage.duration);blend=t*t*(3-2*t)
@@ -221,6 +326,7 @@ class FactoryCycle:
             if self.index==3:
                 self.lift_verified=bool(pos[2]>self.initial_height+.09)
                 if not self.lift_verified:self.fail('Product slipped or did not lift.');return result
+                if self.line is not None:self.send_back()
             if self.index==7:
                 x,y=self.trays[self.destination]
                 if abs(pos[0]-x)<.08 and abs(pos[1]-y)<.07 and TABLE<pos[2]<TABLE+.12:

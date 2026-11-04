@@ -126,7 +126,8 @@ leaving obstacles undisturbed. `Scene.backdrop` is an appearance hint ('sky') th
 MuJoCo adapter turns into a gradient skybox and a directional sun. A field can move by itself:
 the tilt table (ADR 0020) and the roller conveyor (`fields/conveyor.py`, ADR 0067), whose rollers -
 capsules, a shape the core has for what rolls under a flat face - are held at one speed by the field's
-own velocity servos.
+own velocity servos, each passing at most a friction roller's share of its load (ADR 0068). A `Line`
+is one conveyor laid out: the field's, or the factory cell's feeder.
 
 What the machine is made of is read from the Blueprint alone (ADR 0015,
 `construction/structure.py`, standard library): modules are catalog parts as inserted,
@@ -561,7 +562,7 @@ connecting a product/destination recipe to observable, failure-aware task stages
 Known-object sensing reads simulator state and is explicitly not image detection.
 Grasps use physical finger contact, never welds or object teleportation. A fixed
 workcell demo launches separately so the builder's unsaved design is preserved.
-It is not yet a general collision-avoiding planner, editable line, or conveyor system.
+It is not yet a general collision-avoiding planner or an editable line.
 
 `factory/process.py` (standard library, ADR 0056) judges a cell as a factory does: a run's
 `Placement`s - each part from its slot's centre, turned from square, and its cycle - against the
@@ -571,6 +572,13 @@ once its placement is checked; `FactoryCycle.feeder` puts each part on the input
 for a study; the factory panel shows `process.line` under a production run. The cell's vertical
 stages carry joint solutions a centimetre apart along their line (`Stage.path`, `FactoryCycle.along`,
 ADR 0057) and the hand opens 8 mm past the part to let go (`release_grip`).
+
+A cell can be fed by the roller conveyor (ADR 0068): `factory_scene(feeder='conveyor')` lays a
+`fields.conveyor.Line` on the table in the source tray's place (`conveyor_line` says where it does not
+fit), its pallets carrying the parts in nests. `FactoryCycle(line=)` drives its rollers every step,
+waits for each part's pallet to rest at the stop (`arrived`, `resting_at_stop`), plans the pick from
+the part, and sends the emptied pallet back to the line's start with the next part (`send_back`) - a
+person's move, not simulated. `run['arrivals']` keeps where each part reached the stop.
 
 A motor can be weakened during a run (ADR 0058): `MotorProfile.weakened` (core) scales a motor's
 own speed-torque line and keeps its friction; `MujocoBackend.weaken` swaps a motor's profile until

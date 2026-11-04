@@ -165,9 +165,11 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Note (weekly run, 2026-10-21): [LIBERO-Pro2.0](https://arxiv.org/abs/2610.24587) (`arxiv:2610.24587`) separates 22 static perturbations from 20 runtime interventions; runtime shifts cost 26.5 points on average (up to 32.5) over 17 policies. Little World already keeps the two apart (ADR 0024 static draws, ADR 0030 disturbances); the reports should keep saying which is which.
 
 ### FR-007 · A powered roller conveyor for the factory's feeder
-- Status: doing (ADR 0067, 2026-11-03, in part: a roller conveyor field - 50 mm steel rollers as capsules, 160 mm
-  pallets carried within 0.1 % of their speed to a stop and queued; the cell's feeder still moves its
-  parts by hand; taken by the weekly reading's ranking of 2 November, as the owner asked)
+- Status: done (ADR 0067, 2026-11-03: a roller conveyor field - 50 mm steel rollers as capsules, 160 mm
+  pallets carried within 0.1 % of their speed to a stop and queued; ADR 0068, 2026-11-04: it feeds the
+  cell on friction rollers, each part on a pallet's nest arriving within 4 mm of its place at the stop
+  and picked every time, the frame time stated; taken by the weekly reading's ranking of 2 November,
+  as the owner asked)
 - From: [MuJoCo 3.11.0: `geom/surfacevel`](https://mujoco.readthedocs.io/en/latest/changelog.html)
   (`mujoco:3.11.0#1`, radar: adopt); [Drake 1.57: virtual conveyor belts](https://drake.mit.edu/release_notes/v1.57.0.html)
   (`web:drake-1.57`, radar: learn); OPEN LW-005

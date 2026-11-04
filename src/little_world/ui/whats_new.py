@@ -28,15 +28,23 @@ class Demo:
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
                             # as Stop shows it - and the status line says this (ADR 0063, 0064)
     product: str = 'Small block'    # what Real's cell makes in a 'factory' demonstration
+    feeder: str = 'hand'            # how Real's cell is fed in a 'factory' demonstration: 'conveyor' (ADR 0068)
     squeeze: float = 0.             # the Fetch's jaws squeezing this many newtons by current, 0: as solved (FR-037)
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('fed', 'The cell fed by a conveyor',
+         'In Real mode a roller conveyor feeds the Panda: pallets carry the parts to its stop, the '
+         'Panda picks each off its pallet into its slot, and the empty pallet goes back to the '
+         'line\'s start with the next part on it. The rollers under a held pallet stand still, as '
+         'friction rollers do.',
+         'each part arrives at the stop on its pallet; the line under the cell says how far from its place',
+         '', 'ADR 0068', where='factory', feeder='conveyor'),
     Demo('conveyor', 'A roller conveyor',
          "A new test field: nine powered steel rollers carry two pallets at 0.1 m/s, the kit's cube on "
          "each, to a stop plate. The first comes to rest against the stop, the second queues behind "
-         "it, and the rollers turn on under both.",
+         "it, and the rollers under both stand still while their drives turn on (ADR 0068).",
          'the pallets ride to the stop and queue; on the left, their goals met by 2 s',
          '', 'ADR 0067', where='conveyor', tab='Edit'),
     Demo('squeeze', 'A squeeze set in newtons',
@@ -205,6 +213,8 @@ class WhatsNew:
         if real.experiment != 'Pick and place':
             real.select_experiment('Pick and place')
         real.reset_cell()
+        if real.feeder != demo.feeder:
+            real.select_feeder(demo.feeder)
         if real.product != demo.product:
             real.select_product(demo.product)
         real.start_run()

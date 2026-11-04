@@ -313,6 +313,13 @@ change the design, try again.** A desktop robotics sandbox on
   queues behind - carried within 0.1 % of the rollers' speed. Parts this short ride on pallets, as
   on an assembly line; MuJoCo's cylinders let a box sink into them, so the rollers are capsules, a new
   shape. What's new's *A roller conveyor* runs it ([ADR 0067](docs/adr/0067-a-roller-conveyor.md)).
+- **The cell fed by a conveyor.** In Real's pick-and-place panel, *Conveyor: on* puts the roller
+  conveyor on the cell's table in the input tray's place: pallets carry the parts to its stop, the
+  Panda picks each off its pallet, and the empty pallet goes back to the line's start with the next
+  part. Each pallet locates its part between two bars, so every part arrives within 4 mm of its place
+  at the stop and lands within a millimetre of its slot. The rollers are friction rollers: under a
+  held pallet they stand still, as a real accumulating line's do. What's new's *The cell fed by a
+  conveyor* runs six parts ([ADR 0068](docs/adr/0068-the-cell-fed-by-a-conveyor.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

@@ -56,7 +56,7 @@ def test_pallets_ride_at_the_rollers_speed_to_the_stop_and_queue():
     with World(backend, field.scene(Entity('machine', mobile_manipulator_blueprint()))) as world:
         state = world.start()
         tracker = GoalTracker(field.goals, 'machine/root')
-        carried, risen = [], 0.
+        carried, risen, on = [], 0., {}
         for k in range(round(4. / world.timestep)):
             state = world.step(field.commands(state))
             tracker.update(state)
@@ -64,10 +64,16 @@ def test_pallets_ride_at_the_rollers_speed_to_the_stop_and_queue():
                 carried += [state.bodies[f'objects/pallet_{p}'].linear_velocity[0] for p in (1, 2)]
             for p in (1, 2):
                 risen = max(risen, state.bodies[f'objects/pallet_{p}'].pose.position[2] - cv.TOP - cv.PALLET[2] / 2)
-        surface = cv.surface_speed(state)
+            if round(state.time, 3) in (2.5, 4.):           # the cube on the held first pallet, along it
+                on[round(state.time, 3)] = state.bodies['objects/cube_1'].pose.position[0] - state.bodies['objects/pallet_1'].pose.position[0]
+        spins = cv.FIELD.spins(state)
         results = {r.id: r for r in tracker.results(finished=True)}
         rest = [state.bodies[f'objects/pallet_{p}'].pose.position for p in (1, 2)]
-    assert surface == pytest.approx(cv.SPEED, rel=.01), "each roller held at 0.1 m/s under the pallets' load"
+    under = {i for i in range(cv.ROLLERS) if any(abs(cv.roller_x(i) - cv.at_stop(p)) < cv.PALLET[0] / 2 for p in (1, 2))}
+    free = [spins[i] * cv.ROLLER[0] for i in range(cv.ROLLERS) if i not in under]
+    assert free and all(v == pytest.approx(cv.SPEED, rel=.01) for v in free), "the rollers nothing rests on turn at 0.1 m/s"
+    assert all(abs(spins[i] * cv.ROLLER[0]) < .001 for i in under), "friction rollers: those under the held pallets stand still (ADR 0068)"
+    assert abs(on[4.] - on[2.5]) < .0002, "so the cube on a held pallet stays put (OPEN LW-042)"
     assert carried and all(abs(v - cv.SPEED) < .03 * cv.SPEED for v in carried), (min(carried), max(carried))
     assert risen < .001, "they ride on the rollers, not over them, and do not climb the stop"
     for p, (x, y, _) in enumerate(rest, 1):

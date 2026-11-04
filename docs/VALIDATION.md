@@ -1771,3 +1771,19 @@ the first, to 0.1 mm, rising under 0.5 mm, the first pallet's cube still on it. 
 Not claimed: the factory's feeder (it still moves its parts by hand); a shared drive, a motor curve or
 a speed other than 0.1 m/s; accumulation pressure measured against a real line; a held pallet's load
 staying put - it creeps forward on a pallet the rollers slip under (OPEN LW-042).
+
+## The cell fed by a conveyor — 2026-11-04
+
+ADR 0068 (FR-007). Friction rollers: each drive passes at most 5 % of its share of a pallet's load
+(Interroll's 4 to 6 %); under the field's held pallets the rollers stand still and the cube on the
+first stays put (it crept 0.7 mm/s, its follower 3.8 mm/s, OPEN LW-042). The cell fed by the
+conveyor (`docs/sweeps/2026-11-04-cell-fed-by-the-conveyor.md`): small blocks 60 of 60 placed over
+ten runs, each arriving within 3.9 mm of its place at the stop and left within 1.0 mm of its slot;
+tall blocks 24 of 24, within 3.7 and 0.75 mm. Frame time: a 2 ms step 0.86 ms fed by the conveyor, 0.39
+ms fed by hand. Checked in `tests/test_cell_conveyor.py` (3), the field's run
+in `tests/test_conveyor.py` and a window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0:
+1148 passed with a display, 1084 headless.
+
+Not claimed: the pallets' return and loading (a person's, not simulated); a friction roller's drive
+following the load on it step by step; zones, sensors, or a speed other than 0.1 m/s; a person's
+spread on the pallet beyond the assumed draws; the feeder saved with a cell.

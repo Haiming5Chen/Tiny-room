@@ -151,7 +151,11 @@ class FactoryAuthoring:
             if p is None:self.authoring_note='Keep the tray over the table.';return
             point=np.round((p[:2]-drag['offset'])/.01)*.01;drag['point']=tuple(point)
             try:
-                drag['candidate']=self.recipe.moved(drag['name'],point)
+                candidate=self.recipe.moved(drag['name'],point)
+                if getattr(self,'feeder','hand')=='conveyor':
+                    from little_world.factory.scene import conveyor_line
+                    conveyor_line(candidate)        # the conveyor follows the source; it must fit (ADR 0068)
+                drag['candidate']=candidate
                 self.authoring_note='Fits the table. Release to place; Preview checks reach.'
             except ValueError as error:self.authoring_note=str(error)
             return

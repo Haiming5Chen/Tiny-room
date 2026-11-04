@@ -20,14 +20,15 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory',
+    assert [d.id for d in DEMOS] == ['fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory',
                                      'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1., 1., 1., 1., 16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1., 1., 1., 1., 1., 16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block', 'Small block', 'Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0., 7.] + [0.] * 10
+    assert [d.product for d in DEMOS] == ['Small block'] * 3 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0., 0., 7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['conveyor'] + ['hand'] * 12
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -629,3 +630,55 @@ def test_the_roller_conveyor_carries_its_pallets_to_the_stop_in_the_window(tmp_p
     monkeypatch.setattr(app, 'draw', exercise)
     app.run(seconds=600)
     assert step['n'] == 4 and seen['goals'] == {'pallet_1': 'met', 'pallet_2': 'met', 'cube_1': 'met'}, seen
+
+
+@WINDOW
+def test_the_cell_fed_by_the_conveyor_picks_each_part_off_its_pallet(tmp_path, monkeypatch):
+    """ADR 0068: Real's cell fed by the roller conveyor from What's new - each part picked off its
+    pallet at the stop, the emptied pallet back at the line's start with the next part on it."""
+    import glfw
+    from little_world.factory.controller import SLOTS
+    from little_world.factory.process import judge, slot_room
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    cell = {}
+
+    def in_the_cell():
+        real = app.active_workspace
+        cell['draw']()
+        n = step['n']
+        if n == 2:
+            assert real.app_mode == 'Real' and real.feeder == 'conveyor' and real.cycle.line is not None
+            assert real.cycle.run is not None and app.demo == 'fed', real.cycle.message
+        elif n == 3:
+            placed = real.cycle.run['placements']
+            if len(placed) < 2:
+                assert real.state.time < 60 and real.cycle.state in ('waiting', 'running'), real.cycle.message
+                return
+            zx, zy, turn = slot_room(SLOTS, 32.)
+            cell['window'] = judge(placed, (zx, zy), turn)
+            cell['arrivals'] = list(real.cycle.run['arrivals'])
+            cell['carrier'] = dict(real.cycle.carrier)
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            button = next(b for b in app.active_workspace.buttons if b.label == 'The cell fed by a conveyor')
+            button.action()
+            real = app.active_workspace
+            cell['draw'] = real.draw
+            monkeypatch.setattr(real, 'draw', in_the_cell)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    w = cell['window']
+    assert step['n'] == 4 and w.inside == 2 and w.worst < 1.5, w
+    assert len(cell['arrivals']) >= 2 and all((x * x + y * y) ** .5 < 2.5 for x, y, _ in cell['arrivals']), cell['arrivals']
+    assert 'objects/product_3' in cell['carrier'], "the first pallet went back with the third part on it"
