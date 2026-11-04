@@ -165,7 +165,9 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Note (weekly run, 2026-10-21): [LIBERO-Pro2.0](https://arxiv.org/abs/2610.24587) (`arxiv:2610.24587`) separates 22 static perturbations from 20 runtime interventions; runtime shifts cost 26.5 points on average (up to 32.5) over 17 policies. Little World already keeps the two apart (ADR 0024 static draws, ADR 0030 disturbances); the reports should keep saying which is which.
 
 ### FR-007 · A powered roller conveyor for the factory's feeder
-- Status: proposed
+- Status: doing (ADR 0067, 2026-11-03, in part: a roller conveyor field - 50 mm steel rollers as capsules, 160 mm
+  pallets carried within 0.1 % of their speed to a stop and queued; the cell's feeder still moves its
+  parts by hand; taken by the weekly reading's ranking of 2 November, as the owner asked)
 - From: [MuJoCo 3.11.0: `geom/surfacevel`](https://mujoco.readthedocs.io/en/latest/changelog.html)
   (`mujoco:3.11.0#1`, radar: adopt); [Drake 1.57: virtual conveyor belts](https://drake.mit.edu/release_notes/v1.57.0.html)
   (`web:drake-1.57`, radar: learn); OPEN LW-005
@@ -569,7 +571,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 - Cost and needs: about a day; stdlib and calls already in the adapter; 36 Fetch runs. Works on 3.10.0.
 
 ### FR-037 · The jaws squeeze by current, as the XH430 does in its current-based position mode
-- Status: in part (ADR 0066, 2026-11-03: the jaws squeeze by current, a setting in newtons on an action block, the registers at Goal Current; the Fetch's own program is not changed - the side-by-side on the 71 tuning set-ups and the 59 held-out draws are not made, OPEN LW-041; taken fifth by the weekly reading's ranking, as the owner asked on 2 Nov)
+- Status: doing (ADR 0066, 2026-11-03, in part: the jaws squeeze by current, a setting in newtons on an action block, the registers at Goal Current; the Fetch's own program is not changed - the side-by-side on the 71 tuning set-ups and the 59 held-out draws are not made, OPEN LW-041; taken fifth by the weekly reading's ranking, as the owner asked on 2 Nov)
 - From: the weekly reading of 2026-11-02 (FR-W02): [ROBOTIS e-Manual, XH430-W350](https://emanual.robotis.com/docs/en/dxl/x/xh430-w350/) (`web:emanual.robotis.com/docs/en/dxl/x/xh430-w350`: Operating Mode 5, current-based position control; Goal Current at address 102 within the Current Limit, 2.69 mA a count; stall 3.4 N m at 1.3 A); [FEEL, arXiv 2610.38351](https://arxiv.org/abs/2610.38351) (finger force from proprioception, 0.251 N RMSE over 0-20 N).
 - Idea: the kit jaws are position servos and their squeeze is a by-product: ADR 0042 found the hold is set by when the closing ramp ends. The real XH430's Operating Mode 5 runs the position loop with the current - the torque - capped by Goal Current, so a squeeze becomes a setting in newtons. Model it: keep the jaw position loop and clamp its force at k_t I_goal through the jaw lever, k_t from the e-Manual's stall point (3.4 N m / 1.3 A, about 2.6 N m/A; a stall approximation until a bench measurement, FR-010). The grasp block gets a squeeze in newtons, by default the least that keeps FR-036's grip margin at 2; the feel registers (ADR 0048) then read Present Current near Goal Current while holding, as the real servo would.
 - In Little World: `control/feel.py` (Operating Mode and Goal Current registers); the jaw actuator's force range set during a run from Goal Current (check first that changing it on a compiled 3.10.0 model is safe); the Fetch's squeeze step replaced by a current setting; a squeeze in newtons in the Joint lab and the grasp block; measured side by side and adopted only after held-out draws (ADR 0049).

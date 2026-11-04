@@ -70,5 +70,5 @@ tool within a millimetre of its vertical. Suites on MuJoCo 3.10.0: 1133 passed w
 controller uses its identified model; a held part's weight is not compensated. A Panda on a cart is
 not held up and sags as before. The squeeze is a force limit on a stiff servo, reached 0.27 s after
 the fingers touch: the real hand's force control is not modelled. Only the Panda is registered with
-its controller; an imported robot's gripper still has its contacts averaged with what it holds
-(OPEN LW-040). The cell's spread is the simulation's: the real arm repeats to ±0.1 mm (ISO 9283).
+its controller. (An imported robot's gripper is not averaged: its jaws take priority, ADR 0047;
+OPEN LW-040, filed here, was checked and closed.) The cell's spread is the simulation's: the real arm repeats to ±0.1 mm (ISO 9283).

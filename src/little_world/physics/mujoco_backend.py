@@ -392,6 +392,8 @@ class MujocoBackend:
                     kind, dims = mj.mjtGeom.mjGEOM_BOX, tuple(x / 2 for x in size)
                 elif shape == "cylinder":
                     kind, dims = mj.mjtGeom.mjGEOM_CYLINDER, (size[0], size[1] / 2, 0)
+                elif shape == "capsule":
+                    kind, dims = mj.mjtGeom.mjGEOM_CAPSULE, (size[0], size[1] / 2, 0)
                 else:
                     kind, dims = mj.mjtGeom.mjGEOM_SPHERE, (size[0], 0, 0)
                 mat = materials[b.material]

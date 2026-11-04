@@ -64,6 +64,8 @@ def body_mass(body, densities):
         volume = g.size[0] * g.size[1] * g.size[2]
     elif g.shape == 'cylinder':
         volume = pi * g.size[0] ** 2 * g.size[1]
+    elif g.shape == 'capsule':
+        volume = pi * g.size[0] ** 2 * g.size[1] + 4 / 3 * pi * g.size[0] ** 3
     else:
         volume = 4 / 3 * pi * g.size[0] ** 3
     return densities[body.material] * volume
@@ -167,8 +169,9 @@ def surface_points(body, transform):
     if g.shape == 'box':
         hx, hy, hz = (s / 2 for s in g.size)
         local = [(sx * hx, sy * hy, sz * hz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
-    elif g.shape == 'cylinder':
-        r, h = g.size[0], g.size[1] / 2
+    elif g.shape in ('cylinder', 'capsule'):
+        # A capsule's round ends within its radius of its straight part's: their rims, moved out.
+        r, h = g.size[0], g.size[1] / 2 + (g.size[0] if g.shape == 'capsule' else 0.)
         local = [(r * cos(pi * k / 8), r * sin(pi * k / 8), end * h) for end in (-1, 1) for k in range(16)]
     else:
         r = g.size[0]

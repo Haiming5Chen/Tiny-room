@@ -32,6 +32,7 @@ def body_bounds(body,transform):
     for axis in range(3):
         if g.shape=='sphere':extent=g.size[0]
         elif g.shape=='cylinder':extent=g.size[0]*sqrt(basis[0][axis]**2+basis[1][axis]**2)+g.size[1]/2*abs(basis[2][axis])
+        elif g.shape=='capsule':extent=g.size[0]*sqrt(basis[0][axis]**2+basis[1][axis]**2)+(g.size[1]/2+g.size[0])*abs(basis[2][axis])
         else:extent=sum(abs(basis[j][axis])*g.size[j]/2 for j in range(3))
         lo[axis]=transform.position[axis]-extent;hi[axis]=transform.position[axis]+extent
     return tuple(lo),tuple(hi)

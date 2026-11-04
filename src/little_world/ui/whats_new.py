@@ -22,7 +22,7 @@ class Demo:
     disturbance: str    # the Fetch field's disturbance armed for the run, '' for none
     adr: str
     where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
-                            # 'factory': Real's cell
+                            # 'factory': Real's cell; 'conveyor': beside the roller conveyor
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
@@ -33,6 +33,12 @@ class Demo:
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('conveyor', 'A roller conveyor',
+         "A new test field: nine powered steel rollers carry two pallets at 0.1 m/s, the kit's cube on "
+         "each, to a stop plate. The first comes to rest against the stop, the second queues behind "
+         "it, and the rollers turn on under both.",
+         'the pallets ride to the stop and queue; on the left, their goals met by 2 s',
+         '', 'ADR 0067', where='conveyor', tab='Edit'),
     Demo('squeeze', 'A squeeze set in newtons',
          "The Fetch program with its jaws set to squeeze 7 N at each pad, as a ROBOTIS servo sets it by "
          "its current: in the Program panel the close block says \"squeeze 7 N\". On the left, under "
@@ -126,7 +132,7 @@ class WhatsNew:
         if demo.where == 'factory':
             self.start_factory_demo(demo)
             return
-        if demo.where == 'tilt':
+        if demo.where in ('tilt', 'conveyor'):
             self.start_tilt_demo(demo)
             return
         if not self.building:
@@ -171,7 +177,8 @@ class WhatsNew:
         self.status = f'{demo.title}: {demo.after}.'
 
     def start_tilt_demo(self, demo):
-        """The arm on its cart on the tilt table, run, the drive panel open (ADR 0059)."""
+        """The arm on its cart on a field that moves by itself - the tilt table (ADR 0059), the
+        roller conveyor (ADR 0067) - run, the drive panel open."""
         from little_world.robots.mobile_manipulator import mobile_manipulator_blueprint
         if not self.building:
             self.simulate()
@@ -179,7 +186,7 @@ class WhatsNew:
         self.stop_program()
         self.edit(lambda: self.editor.load(mobile_manipulator_blueprint()))
         self.program_edit(type(self.program)())
-        self.set_field('tilt')
+        self.set_field(demo.where)
         self.arm_disturbance(None)
         self.simulate()
         self.home(True)

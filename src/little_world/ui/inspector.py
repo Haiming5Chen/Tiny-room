@@ -104,7 +104,7 @@ class PrecisionInspector:
             rotation=numbers(values[1],3)
             size=tuple(v/1000 for v in numbers(values[2],len(b.geometry.size)))
             self.edit(lambda:self.editor.set_parameters(position,rotation,size))
-        size_label={'box':'Size X, Y, Z (mm)','sphere':'Radius (mm)','cylinder':'Radius, length (mm)'}[b.geometry.shape]
+        size_label={'box':'Size X, Y, Z (mm)','sphere':'Radius (mm)','cylinder':'Radius, length (mm)','capsule':'Radius, length (mm)'}[b.geometry.shape]
         self.form('Exact dimensions & pose',[
             ('Position X, Y, Z (mm)',formatted(v*1000 for v in b.transform.position)),
             ('Rotation X, Y, Z (degrees)',formatted(rotation_degrees(b.transform.quaternion))),

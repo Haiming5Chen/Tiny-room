@@ -308,6 +308,11 @@ change the design, try again.** A desktop robotics sandbox on
   the setting; where a part sits along the rotary jaws still sets how hard it is held. What's new's
   *A squeeze set in newtons* runs the Fetch at 7 N: the grip's friction in use peaks at 60 %, where
   the closing ramp's own squeeze peaks at 80 % ([ADR 0066](docs/adr/0066-the-jaws-squeeze-by-current.md)).
+- **A roller conveyor.** A new test field: nine powered 50 mm steel rollers carry two 160 mm pallets,
+  the kit's cube on each, at 0.1 m/s to a stop plate - the first comes to rest against it, the next
+  queues behind - carried within 0.1 % of the rollers' speed. Parts this short ride on pallets, as
+  on an assembly line; MuJoCo's cylinders let a box sink into them, so the rollers are capsules, a new
+  shape. What's new's *A roller conveyor* runs it ([ADR 0067](docs/adr/0067-a-roller-conveyor.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

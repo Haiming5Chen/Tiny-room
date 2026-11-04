@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-03 · Claude (Cowork) · FR-007, in part: a roller conveyor
+Did: ADR 0067 (`fields/conveyor.py` and the "Roller conveyor" field; the capsule shape in the core and
+the backend; What's new's "A roller conveyor").
+Measured: two 160 mm pallets carried at 0.0999 m/s on rollers held at 0.1 m/s, at rest at the stop and
+queued to 0.1 mm. On the way: a box across cylinders sinks into them in MuJoCo 3.10 with multiccd off
+(4 mm into 50 mm ones), across capsules it does not; rollers too light let a light pallet hop 13 mm.
+Found after: a pallet held at the stop or in the queue shakes on the rollers slipping under it, and
+the cube on it creeps forward - 6 mm on the first, 31 mm on the second, from 2 to 10 s (OPEN LW-042).
+Unfinished: the cell's feeder (OPEN LW-005): the conveyor is a field, not yet the cell's. Closed OPEN LW-040,
+filed with ADR 0065: an imported gripper's jaws already take priority (ADR 0047), so they are not averaged.
+FR-037's frontier status reads "doing": c8285c2 wrote "in part", which the docs check does not know.
+For the owner: the parts ride on pallets because rollers cannot carry parts this short bare - the call
+FR-007's note left open, made by the weekly reading's ranking as you asked on 2 November.
+
 ## 2026-11-03 · Claude (Cowork) · FR-037, in part: the jaws squeeze by current
 Did: ADR 0066 (`KeyboardPositionControl.limits`, `MujocoKeyboardControl.squeeze` and `pad_lever`; an
 action block's squeeze in newtons, in the Program editor; `tool_motion.squeezed`; What's new's "A squeeze

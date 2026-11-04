@@ -1745,7 +1745,7 @@ of their slots (2.2 to 6.3 mm before): Cpk along x 10 to 20, from 0.85 to 1.27. 
 3.10.0: 1133 passed with a display, 1072 headless.
 
 Not claimed: the real arm's identified dynamics, its hand's force control, a payload compensated; a
-Panda on a cart held up; an imported robot's gripper weighted to its jaws (OPEN LW-040).
+Panda on a cart held up.
 
 ## The jaws squeeze by current — 2026-11-03
 
@@ -1758,3 +1758,16 @@ window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0: 1140 passed w
 
 Not claimed: the Fetch's program squeezing by current, or its sweeps with it (OPEN LW-041); a squeeze
 in newtons anywhere but at a pad's centre; the servo's current noise or the datasheet's bent curve.
+
+## A roller conveyor — 2026-11-03
+
+ADR 0067 (FR-007, in part). In MuJoCo itself, a 160 mm box laid across 50 mm cylinders sinks into them
+with multiccd off, and across capsules rests on their tops. The conveyor field: the rollers held at
+0.1 m/s under load; two pallets carried within 0.1 % of it, at rest against the stop and queued behind
+the first, to 0.1 mm, rising under 0.5 mm, the first pallet's cube still on it. Checked in
+`tests/test_conveyor.py` (3) and a window test in `tests/test_whats_new.py`. Suites on MuJoCo 3.10.0:
+1144 passed with a display, 1081 headless.
+
+Not claimed: the factory's feeder (it still moves its parts by hand); a shared drive, a motor curve or
+a speed other than 0.1 m/s; accumulation pressure measured against a real line; a held pallet's load
+staying put - it creeps forward on a pallet the rollers slip under (OPEN LW-042).

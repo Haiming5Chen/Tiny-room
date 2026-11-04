@@ -20,14 +20,14 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory', 'look_again',
-                                     'frozen', 'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory',
+                                     'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1., 1., 1., 16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1., 1., 1., 1., 16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block', 'Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [7.] + [0.] * 10
+    assert [d.product for d in DEMOS] == ['Small block', 'Small block', 'Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0., 7.] + [0.] * 10
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -598,3 +598,34 @@ def test_a_squeeze_set_in_newtons_holds_the_cube_with_more_of_its_grip_to_spare(
     assert seen['closes'] == [(1.4, 7.), (pytest.approx(.02), 7.)], seen['closes']
     assert any(w.startswith('grip: ') for w in words), "the drive panel says how much of the grip is in use"
     assert carried and max(carried) <= .65, max(carried)
+
+
+@WINDOW
+def test_the_roller_conveyor_carries_its_pallets_to_the_stop_in_the_window(tmp_path, monkeypatch):
+    """ADR 0067: the conveyor field from What's new - the arm on its cart beside it, the pallets
+    carried to the stop and queued, their goals met by 2 s."""
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'A roller conveyor')
+        elif n == 2:
+            assert app.field_id == 'conveyor' and not app.building and app.demo == 'conveyor', app.status
+        elif n == 3:
+            if app.state.time < 2.5:
+                return
+            seen['goals'] = goals(app)
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    assert step['n'] == 4 and seen['goals'] == {'pallet_1': 'met', 'pallet_2': 'met', 'cube_1': 'met'}, seen

@@ -96,6 +96,9 @@ PALETTE = (
     Material('stand', 2700, .5, (.12, .17, .19, 1), surface='aluminium'),
     Material('cube', 650, .6, (.91, .84, .65, 1), surface='wood'),
     Material('tray', 950, .3, (.25, .55, .75, 1), 'matte_plastic', .6, 'hdpe'),
+    # A conveyor roller: a solid as heavy as its 50 mm steel tube (FR-007); its pallets HDPE.
+    Material('roller', 404, .5, (.70, .72, .74, 1), surface='steel'),
+    Material('pallet', 950, .3, (.20, .26, .30, 1), 'matte_plastic', .6, 'hdpe'),
 )
 SLAB = (14., 8.)       # metres; x from -3 to 11, y from -4 to 4
 X0 = -3.
@@ -504,7 +507,24 @@ TILT = Field(
     reading=table_angle, gauge_top=TILT_MAX, side='right', ground=('field/tilt_table',), squared=True)
 
 
-FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE, FETCH, DOORWAY, TILT)}
+def conveyor_entities():
+    from . import conveyor
+    parts, props = conveyor.entities()
+    return field_entities(slab() + parts, props)
+
+
+def _conveyor():
+    from . import conveyor
+    return Field(
+        'conveyor', 'Roller conveyor',
+        'Two pallets ride powered rollers at 0.1 m/s to a stop plate, the kit cube on each: the first '
+        'comes to rest against the stop, the second queues behind it, and the rollers turn on under both.',
+        conveyor_entities, goals=conveyor.goals(), actuate=conveyor.actuate,
+        home=((.45, .75, .15), 1.3, -60., -28.))
+
+
+CONVEYOR = _conveyor()
+FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE, FETCH, DOORWAY, TILT, CONVEYOR)}
 
 
 def field_scene(field_id, machine):

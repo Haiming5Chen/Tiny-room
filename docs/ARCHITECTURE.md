@@ -123,7 +123,10 @@ Blueprint entities authored in the machine's start frame - so the design never m
 plus goals judged from the core `State` alone (`fields/goals.py`, standard library):
 lines crossed in order, zones reached or objects delivered at rest, staying upright,
 leaving obstacles undisturbed. `Scene.backdrop` is an appearance hint ('sky') that the
-MuJoCo adapter turns into a gradient skybox and a directional sun.
+MuJoCo adapter turns into a gradient skybox and a directional sun. A field can move by itself:
+the tilt table (ADR 0020) and the roller conveyor (`fields/conveyor.py`, ADR 0067), whose rollers -
+capsules, a shape the core has for what rolls under a flat face - are held at one speed by the field's
+own velocity servos.
 
 What the machine is made of is read from the Blueprint alone (ADR 0015,
 `construction/structure.py`, standard library): modules are catalog parts as inserted,

@@ -38,7 +38,9 @@ class Geometry:
     size: tuple
 
     def __post_init__(self):
-        counts = {"box": 3, "cylinder": 2, "sphere": 1}
+        # A capsule is a cylinder (radius, straight length) with round ends, for what rolls under
+        # a flat face: MuJoCo 3.10 has no box-on-cylinder collider of its own (FR-007).
+        counts = {"box": 3, "cylinder": 2, "sphere": 1, "capsule": 2}
         if self.shape not in counts:
             raise ValueError(f"unsupported geometry: {self.shape}")
         size = vector(self.size, counts[self.shape], "size")
