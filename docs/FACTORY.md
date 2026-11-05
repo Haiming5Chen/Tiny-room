@@ -53,6 +53,24 @@ reason. Above the scene: parts placed and failed, seconds per part and parts per
 of simulated time (about 12.3 s and 4.9 a minute for small blocks). **Reset cell** puts
 every part back ([ADR 0019](adr/0019-factory-production-run.md)).
 
+## Fed by a conveyor, found by a camera
+
+**Conveyor: on**, beside *From:*, lays a roller conveyor on the table in the source tray's
+place: two pallets carry the parts to its stop, each part held between two bars on its
+pallet, and the Panda picks each one off its pallet. Once a part is lifted its pallet goes
+back to the line's start with the next part from the shelf on it - that return and loading
+are a person's, not simulated. A line above the scene says where the parts arrived at the
+stop. The rollers are friction rollers: under a pallet the stop holds they stand still
+([ADR 0068](adr/0068-the-cell-fed-by-a-conveyor.md)). Where the conveyor would not fit - off
+the table, over another tray, by a camera post - it says so and the cell stays as it was.
+
+**Locate: camera**, beside *To:*, has the overhead camera find each part instead of the
+simulation telling the cell where it is: a RealSense D435's pixels and depth noise, the part
+looked for round the source's place. The arm first moves out of the camera's view; the
+camera's depth picture shows in the corner, the part green, with how far from its place it
+was seen ([ADR 0069](adr/0069-the-cell-finds-its-parts.md)). Neither choice is saved with
+the cell.
+
 In the **Joint lab**, the robot controls' **Tool** mode moves the hand in straight steps
 (the Panda's point is between its fingertips; an arm-only model's is its flange), and
 **Teach pose** adds the arm's targets to the program ([ADR 0016](adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md)).

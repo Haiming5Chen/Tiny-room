@@ -142,7 +142,6 @@ and its hand squeezes and moves as the real one does (ADR 0065). The kit's jaws 
 current, a setting in newtons (ADR 0066). A roller conveyor field carries pallets to a stop (ADR 0067), and feeds the factory cell on
 friction rollers (ADR 0068). The cell finds its parts with its overhead depth camera (ADR 0069). The Fetch keeps its closing
 ramp: a squeeze by current, side by side on 130 set-ups, was not worth it (ADR 0070).
-Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor, a roller conveyor for the factory's
-feeder (moving surfaces and the PID actuator need a release past 3.10), one real servo
-calibrated with the system identification toolbox, and the factory cell grasping from its
-own camera.
+Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor
+and one real servo calibrated with the system identification toolbox; moving surfaces and the PID
+actuator need a release past 3.10.
