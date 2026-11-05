@@ -13,7 +13,7 @@ from dataclasses import replace
 from little_world.factory.recipe import TRAYS
 from little_world.core.entity import Entity
 from little_world.factory.scene import factory_scene,conveyor_line,robot_blueprint,PRODUCTS,TABLE
-from little_world.factory.controller import FactoryCycle
+from little_world.factory.controller import FactoryCycle,camera_eye
 
 class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Workshop):
     PANEL=304
@@ -22,6 +22,7 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
         self.robot_asset='franka_panda';self.experiment='Pick and place';self._robot_programs={}
         self.single_stage=False;self.show_path=True;self.factory_commands={}
         self.feeder='hand'  # how parts reach the source: by hand, or on the roller conveyor (ADR 0068)
+        self.sensing='known'    # how the cell finds a part: the state ('known'), or its camera ('camera', ADR 0069)
         super().__init__(Path.home()/'.little-world-factory-unused.json',robot_blueprint())
         self.initial_camera=((.3,0,.9),2.6)
         self.library_open=False
@@ -37,7 +38,9 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
         return conveyor_line(self.recipe) if self.feeder=='conveyor' else None
 
     def bind_runtime(self):
-        super().bind_runtime();self.cycle=None if self.joint_lab else FactoryCycle(self.backend,source=self.recipe.source,line=self.line());self.factory_commands={}
+        super().bind_runtime()
+        eye=camera_eye(self.backend,self.world.scene) if self.sensing=='camera' and not self.joint_lab else None
+        self.cycle=None if self.joint_lab else FactoryCycle(self.backend,source=self.recipe.source,line=self.line(),eye=eye);self.factory_commands={}
         self.bind_teaching()
 
     def save(self):
@@ -61,6 +64,14 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
             self.feeder=old;self.rebuild();raise
         self.authoring_note=('Parts ride pallets on the roller conveyor to its stop; each empty pallet goes back for the next part.'
                              if name=='conveyor' else 'Parts are put on the input tray by hand.')
+
+    def select_sensing(self,name):
+        """Find each part by the simulator's state or with the cell's overhead depth camera (ADR 0069)."""
+        if not self.building:raise ValueError('Reset the cell before changing how it finds its parts.')
+        if name not in ('known','camera'):raise ValueError('Unknown sensing')
+        self.sensing=name;self.bind_runtime()
+        self.authoring_note=('The overhead depth camera finds each part; the arm first clears its view.' if name=='camera'
+                             else 'Each part is found from the simulation state, not a camera.')
 
     def select_product(self,name):
         self.apply_recipe(replace(self.recipe,product=name))
@@ -130,6 +141,27 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
             mj.mjv_connector(geom,mj.mjtGeom.mjGEOM_CAPSULE,.0018,a,b)
             geom.category=mj.mjtCatBit.mjCAT_DECOR;self.render_scene.ngeom+=1
 
+    def draw_cell_camera(self,ui,text,wh):
+        """The cell camera's last depth picture - the region round the source - in the corner of
+        the view, the part's pixels green, and where it saw the part (ADR 0069)."""
+        eye=getattr(self.cycle,'eye',None) if self.cycle is not None else None
+        picture=getattr(eye,'last',None)
+        if picture is None or not picture.depth.size or self.building or self.guided:return
+        rows,cols=picture.depth.shape
+        scale=min(200/cols,200/rows);w,h=cols*scale,rows*scale
+        x,top=self.PANEL+14,wh-74-h
+        ui.pixels('cell_look',picture.colours(),x,top,w,h,version=eye.pictures)
+        for rx,ry,rw,rh in ((x-2,top-2,w+4,2),(x-2,top+h,w+4,2),(x-2,top,2,h),(x+w,top,2,h)):ui.rect(rx,ry,rw,rh,(.37,.83,.69))
+        ui.rect(x-2,top-38,max(w+4,220),36,(.045,.065,.085,.9))
+        text('CELL CAMERA / DEPTH',x+6,top-34,10,(.68,.82,.84))
+        seen=self.cycle.sightings[-1] if self.cycle.sightings else None
+        if seen:
+            px,py=self.cycle.trays[self.cycle.source]
+            off=1000*((seen[1][0]-px)**2+(seen[1][1]-py)**2)**.5
+            line=f'{seen[0].split("/")[-1]}: {off:.1f} mm from its place, {seen[3]:+.1f} deg'
+        else:line='near warm, far cool, the part green'
+        text(line,x+6,top-19,10,(.6,.74,.77),max(w,212)-8)
+
     def draw_factory(self,ui,button,text,ww,wh,fw,fh):
         import textwrap
         glfw.set_window_title(self.window,'Little World | Real experiments')
@@ -154,10 +186,12 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
         button('Conveyor: on' if self.feeder=='conveyor' else 'Conveyor: off',176,252,110,
                lambda:self.select_feeder('hand' if self.feeder=='conveyor' else 'conveyor'),editable,active=self.feeder=='conveyor',h=26)
         text('To: '+tray_label(self.destination),18,290,13)
+        button('Locate: camera' if self.sensing=='camera' else 'Locate: known',176,280,110,
+               lambda:self.select_sensing('known' if self.sensing=='camera' else 'camera'),editable,active=self.sensing=='camera',h=26)
         button('Preview path',18,321,130,self.preview_cycle,self.building,h=34)
         button(f'Run {self.RUN} parts',156,321,130,self.start_run,self.cycle.state=='idle',h=34,tone='primary')
         text('TASK SEQUENCE',18,374,12)
-        labels=['Locate known product','Approach','Lower to grasp','Close gripper','Lift + verify','Transfer to '+tray_label(self.destination),'Lower into tray','Release','Retract + verify']
+        labels=['Locate product with camera' if self.sensing=='camera' else 'Locate known product','Approach','Lower to grasp','Close gripper','Lift + verify','Transfer to '+tray_label(self.destination),'Lower into tray','Release','Retract + verify']
         step=min(26,(wh-160-398)/9)
         for i,label in enumerate(labels):
             y=398+i*step;active=self.cycle.state!='idle' and i==self.cycle.index+1
@@ -199,6 +233,7 @@ class FactoryWorkshop(CellChanges,TeachingWorkspace,RealLab,FactoryAuthoring,Wor
                 zx,zy,turn=slot_room(SLOTS,1000*PRODUCTS[self.product][0])
                 window=judge(self.cycle.run['placements'],(zx,zy),turn)
                 text(window_line(window,(zx,zy)),self.PANEL+18,184,12,(.4,.85,.72) if window.inside==window.n else (.96,.72,.38),ww-self.PANEL-40)
+        self.draw_cell_camera(ui,text,wh)
         if self.guided:
             title,caption=self.guide_caption();width=min(540,ww-self.PANEL-36);top=wh-162
             ui.rect(self.PANEL+18,top,width,114,(.07,.14,.17))

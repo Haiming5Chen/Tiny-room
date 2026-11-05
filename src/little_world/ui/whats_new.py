@@ -29,11 +29,19 @@ class Demo:
                             # as Stop shows it - and the status line says this (ADR 0063, 0064)
     product: str = 'Small block'    # what Real's cell makes in a 'factory' demonstration
     feeder: str = 'hand'            # how Real's cell is fed in a 'factory' demonstration: 'conveyor' (ADR 0068)
+    sensing: str = 'known'          # how Real's cell finds its parts in a 'factory' demonstration: 'camera' (ADR 0069)
     squeeze: float = 0.             # the Fetch's jaws squeezing this many newtons by current, 0: as solved (FR-037)
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('seen', 'The cell finds its parts',
+         "In Real mode the Panda's cell looks for each part with its overhead depth camera, a "
+         "RealSense D435's pixels and noise, instead of reading where it is from the simulation. The "
+         "arm first moves out of the camera's view; in the corner the depth picture shows the part "
+         "in green, and where it was seen.",
+         'the depth picture in the corner: each part in green, and how far from its place it was seen',
+         '', 'ADR 0069', where='factory', feeder='conveyor', sensing='camera'),
     Demo('fed', 'The cell fed by a conveyor',
          'In Real mode a roller conveyor feeds the Panda: pallets carry the parts to its stop, the '
          'Panda picks each off its pallet into its slot, and the empty pallet goes back to the '
@@ -215,6 +223,8 @@ class WhatsNew:
         real.reset_cell()
         if real.feeder != demo.feeder:
             real.select_feeder(demo.feeder)
+        if real.sensing != demo.sensing:
+            real.select_sensing(demo.sensing)
         if real.product != demo.product:
             real.select_product(demo.product)
         real.start_run()

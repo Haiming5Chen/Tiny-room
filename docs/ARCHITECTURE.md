@@ -559,7 +559,8 @@ a Panda-specific damped least-squares IK adapter plans top-down waypoints using
 scratch native data, then commands the existing force-limited servos. Workcell
 geometry and products remain ordinary Entity/Blueprint data. The unique work is
 connecting a product/destination recipe to observable, failure-aware task stages.
-Known-object sensing reads simulator state and is explicitly not image detection.
+Known-object sensing reads simulator state and is explicitly not image detection; the cell can
+find its parts with its depth camera instead (ADR 0069).
 Grasps use physical finger contact, never welds or object teleportation. A fixed
 workcell demo launches separately so the builder's unsaved design is preserved.
 It is not yet a general collision-avoiding planner or an editable line.
@@ -579,6 +580,12 @@ fit), its pallets carrying the parts in nests. `FactoryCycle(line=)` drives its 
 waits for each part's pallet to rest at the stop (`arrived`, `resting_at_stop`), plans the pick from
 the part, and sends the emptied pallet back to the line's start with the next part (`send_back`) - a
 person's move, not simulated. `run['arrivals']` keeps where each part reached the stop.
+
+The cell can find its parts with its camera (ADR 0069): `camera_eye` makes the scene's overhead
+camera a `perception.Eye` with the D435's pixels and noise; `FactoryCycle(eye=)` plans each pick from
+`locate`, the box finder's sighting round the source's place, keeping each with the part's true pose
+for the record (`sightings`). `view_clear` casts rays from the camera to the part's top face; with the
+arm in the way the plan is provisional and the 'clearing' state moves the arm out of view first.
 
 A motor can be weakened during a run (ADR 0058): `MotorProfile.weakened` (core) scales a motor's
 own speed-torque line and keeps its friction; `MujocoBackend.weaken` swaps a motor's profile until

@@ -20,15 +20,17 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor', 'factory',
-                                     'look_again', 'frozen', 'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor',
+                                     'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1., 1., 1., 1., 1., 16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch',
+                                        'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1.] * 6 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 3 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0., 0., 7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['conveyor'] + ['hand'] * 12
+    assert [d.product for d in DEMOS] == ['Small block'] * 4 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['camera'] + ['known'] * 13
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -682,3 +684,54 @@ def test_the_cell_fed_by_the_conveyor_picks_each_part_off_its_pallet(tmp_path, m
     assert step['n'] == 4 and w.inside == 2 and w.worst < 1.5, w
     assert len(cell['arrivals']) >= 2 and all((x * x + y * y) ** .5 < 2.5 for x, y, _ in cell['arrivals']), cell['arrivals']
     assert 'objects/product_3' in cell['carrier'], "the first pallet went back with the third part on it"
+
+
+@WINDOW
+def test_the_cell_finds_its_parts_with_its_camera_in_the_window(tmp_path, monkeypatch):
+    """ADR 0069: Real's cell finding each part with its overhead depth camera, from What's new -
+    the arm out of the camera's view first, the depth picture drawn with the part's pixels."""
+    import glfw
+    from little_world.factory.controller import SLOTS
+    from little_world.factory.process import judge, slot_room
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    cell = {}
+
+    def in_the_cell():
+        real = app.active_workspace
+        cell['draw']()
+        n = step['n']
+        if n == 2:
+            assert real.app_mode == 'Real' and real.sensing == 'camera' and real.cycle.eye is not None, real.status
+            assert real.cycle.run is not None and app.demo == 'seen', real.cycle.message
+        elif n == 3:
+            placed = real.cycle.run['placements']
+            if len(placed) < 2:
+                assert real.state.time < 60 and real.cycle.state in ('waiting', 'clearing', 'running'), real.cycle.message
+                return
+            zx, zy, turn = slot_room(SLOTS, 32.)
+            cell['window'] = judge(placed, (zx, zy), turn)
+            cell['sightings'] = list(real.cycle.sightings)
+            cell['picture'] = real.cycle.eye.last
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            button = next(b for b in app.active_workspace.buttons if b.label == 'The cell finds its parts')
+            button.action()
+            real = app.active_workspace
+            cell['draw'] = real.draw
+            monkeypatch.setattr(real, 'draw', in_the_cell)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    w = cell['window']
+    assert step['n'] == 4 and w.inside == 2 and w.worst < 1.5, w
+    assert len(cell['sightings']) >= 2 and cell['picture'] is not None and cell['picture'].box is not None, "the part's pixels found"

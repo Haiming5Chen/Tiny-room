@@ -1787,3 +1787,14 @@ in `tests/test_conveyor.py` and a window test in `tests/test_whats_new.py`. Suit
 Not claimed: the pallets' return and loading (a person's, not simulated); a friction roller's drive
 following the load on it step by step; zones, sensors, or a speed other than 0.1 m/s; a person's
 spread on the pallet beyond the assumed draws; the feeder saved with a cell.
+
+## The cell finds its parts — 2026-11-04
+
+ADR 0069 (OPEN LW-010; FR-011 for the cell). The cell's overhead camera as a RealSense D435, its
+depth noise included, finds each part round the source's place (`docs/sweeps/2026-11-04-the-cell-finds-its-parts.md`):
+216 of 216 parts found and placed, small and tall, by hand and on the conveyor, each seen within 1.5 mm
+in plan, 2.2 mm in height and 4.1 deg, left within 1.6 mm of its slot - as the state's 180 of 180. Checked in `tests/test_cell_camera.py` (3) and a window test in `tests/test_whats_new.py`.
+Suites on MuJoCo 3.10.0: 1152 passed with a display, 1087 headless.
+
+Not claimed: a camera's calibration error, holes or flying pixels; latency; the turn it sees used for
+the grasp; a part found anywhere but round the source's place.

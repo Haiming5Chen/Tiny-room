@@ -1,7 +1,8 @@
 """Panda-only top-down manipulation using native IK and real contact grasps.
 
-Known object state is an ideal observation, not computer vision. This fixed-cell
-waypoint planner is not a general obstacle-avoidance or grasp-planning system.
+Where each part is comes from the simulator's state (known-object sensing) or from the cell's
+overhead depth camera (ADR 0069), which never reads the part's pose. This fixed-cell waypoint
+planner is not a general obstacle-avoidance or grasp-planning system.
 """
 from dataclasses import dataclass
 import numpy as np
@@ -33,15 +34,28 @@ CLEAR=.008      # m each finger opens past a part to let it go: fully open (80 m
 # Where successive parts go in the destination tray: two rows along the fingers' closing
 # direction, so an open hand lowering a part clears the parts already there (ADR 0019).
 SLOTS=((0.,-.035),(0.,.035),(-.045,-.035),(-.045,.035),(.045,-.035),(.045,.035))
+CAMERA='factory/overhead'   # the cell's camera, over the input tray's place
+
+
+def camera_eye(backend,scene,seed=0,ideal=False):
+    """The cell's overhead camera as a depth camera that finds its parts (ADR 0069): an Intel
+    RealSense D435's pixels and noise (ADR 0032) from where the scene's camera is, knowing the
+    sizes of the parts the scene has - as a lab knows the parts it picks."""
+    from little_world.perception.eye import Eye,sizes_in
+    from little_world.perception.sensors import REALSENSE_D435
+    return Eye(backend,CAMERA,REALSENSE_D435,sizes_in(scene),seed,ideal)
 
 
 class FactoryCycle:
-    def __init__(self,backend,source='input',line=None):
+    def __init__(self,backend,source='input',line=None,eye=None):
         """The cell's controller on `backend`'s model; `line` the roller conveyor that feeds the
-        source when it does (a fields.conveyor.Line, ADR 0068), its stop the source's place."""
+        source when it does (a fields.conveyor.Line, ADR 0068), its stop the source's place; `eye`
+        the cell's camera (`camera_eye`) when it finds the parts, else the state is read (ADR 0069)."""
         from .recipe import TRAYS
         if source not in TRAYS:raise ValueError('Unknown source tray')
-        self.source=source;self.line=line
+        self.source=source;self.line=line;self.eye=eye
+        self.sightings=[]   # with the camera: (part, where it was seen, where it was, seen turn, its turn) - the truth kept for the record only
+        self.provisional=False  # a plan made before the camera could see the part: the arm clears its view first
         self.backend=backend;self.model=backend.model;self.data=backend.data
         self.prefix='machine/root__robot_'
         self.hand=self.model.body(self.prefix+'hand').id
@@ -112,7 +126,7 @@ class FactoryCycle:
         if self.run is not None:
             self.run['arrivals'].append((1000*float(pos[0]-self.line.at_stop(1)),1000*float(pos[1]-self.line.start[1]),self.waited))
         self.state='idle';self.plan(self.run['destination'] if self.run is not None else self.destination);self.start()
-        if self.run is not None:self.message=f"Part {self.run['done']+1} of {len(self.run['parts'])}: "+self.stages[0].label
+        if self.run is not None:self.message=f"Part {self.run['done']+1} of {len(self.run['parts'])}: "+self.step_label()
 
     def send_back(self):
         """The current part is off its pallet: unless it was the run's last, the pallet goes back
@@ -151,12 +165,58 @@ class FactoryCycle:
             d.qpos[self.qids]=np.clip(d.qpos[self.qids]+delta,self.limits[:,0]+.005,self.limits[:,1]-.005)
         raise ValueError('Target is not reachable with this top-down grasp; reset the cell.')
 
+    # -- where the part is: the state, or the cell's camera (ADR 0069) -------------------------
+
+    def nominal(self):
+        """Where the current part stands at its source if it stands where it should: the source's
+        place, on the tray's floor or the pallet's top."""
+        size=self.part_size()
+        floor=TABLE+.008 if self.line is None else self.line.top+PALLET[2]
+        x,y=self.trays[self.source]
+        return np.array((x,y,floor+size[2]+.001))
+
+    def part_size(self):
+        """The current part's half sizes (MuJoCo's geom size), m."""
+        return self.model.geom_size[next(g for g in range(self.model.ngeom) if self.model.geom_bodyid[g]==self.object_id)]
+
+    def view_clear(self):
+        """Whether the camera sees the source's place: no ray from it to the corners and centre
+        of the part's top face there meets the machine first."""
+        i=mj.mj_name2id(self.model,mj.mjtObj.mjOBJ_CAMERA,self.eye.camera)
+        origin=self.data.cam_xpos[i];body=int(self.model.cam_bodyid[i])
+        centre=self.nominal();half=self.part_size()
+        geom=np.zeros(1,np.int32)
+        for dx,dy in ((0,0),(-1,-1),(-1,1),(1,-1),(1,1)):
+            point=centre+np.array((dx*half[0],dy*half[1],half[2]))
+            ray=point-origin;far=float(np.linalg.norm(ray))
+            hit=mj.mj_ray(self.model,self.data,origin,ray/far,np.array((1,1,1,0,0,0),np.uint8),1,body,geom)
+            if 0<=hit<far-.01 and geom[0]>=0 and self.model.body(self.model.geom_bodyid[geom[0]]).name.startswith('machine/'):
+                return False
+        return True
+
+    def locate(self):
+        """Where the current part is: the simulator's state, or where the cell's camera sees it
+        round the source's place. With the arm in the camera's view, where it should be, marked
+        provisional: `start` clears the view and looks before the arm goes for it."""
+        if self.eye is None:return self.data.xpos[self.object_id].copy()
+        if not self.view_clear():
+            self.provisional=True
+            return self.nominal()
+        self.provisional=False
+        seen=self.eye(self.product,tuple(self.nominal()))
+        if seen is None:raise ValueError('The camera does not see the part at the source.')
+        from math import atan2,degrees
+        w,qx,qy,qz=self.data.xquat[self.object_id]
+        turn=(degrees(atan2(2*(w*qz+qx*qy),1-2*(qy*qy+qz*qz)))+45)%90-45
+        self.sightings.append((self.product,tuple(seen.centre),tuple(float(v) for v in self.data.xpos[self.object_id]),seen.yaw,turn))
+        return np.array(seen.centre)
+
     def plan(self,destination):
         if self.state=='running':raise ValueError('Pause or reset before planning')
         if destination not in self.trays:raise ValueError('Unknown output tray')
         if destination==self.source:raise ValueError('Source and destination must differ')
         self.destination=destination
-        pick=self.data.xpos[self.object_id].copy();self.initial_height=float(pick[2])
+        pick=self.locate();self.initial_height=float(pick[2])
         if np.linalg.norm(pick[:2]-self.trays[self.source])>.07:raise ValueError('Reset the product to the input tray before planning.')
         pick[2]+=.001
         # Lowered to where it would sit on the tray's floor, 9 mm over it: from a pallet, the
@@ -207,8 +267,34 @@ class FactoryCycle:
 
     def start(self):
         if self.state!='planned':raise ValueError('Preview a path first')
-        self.state='running';self.index=0;self.elapsed=0.;self.total=0.
-        self.start_q=self.data.qpos[self.qids].copy();self.message=self.stages[0].label
+        self.start_q=self.data.qpos[self.qids].copy();self.elapsed=0.
+        if self.provisional:
+            # Planned before the camera could see the part: first out of its view, to above the
+            # destination as the plan goes there, then look, plan again and go (ADR 0069).
+            self.clear_q=self.stages[4].target.copy()
+            self.clear_time=max(1.2,float(np.max(np.abs(self.clear_q-self.start_q)))/.5)
+            self.state='clearing';self.message="Clearing the camera's view";return
+        self.state='running';self.index=0;self.total=0.
+        self.message=self.stages[0].label
+
+    def step_label(self):
+        """What the cell is doing now, in a few words."""
+        return "clearing the camera's view" if self.state=='clearing' else self.stages[self.index].label
+
+    def clearing(self,dt):
+        """The arm on its way out of the camera's view; once there, the cell looks and goes."""
+        self.elapsed+=dt;self.total+=dt
+        t=min(1.,self.elapsed/self.clear_time);blend=t*t*(3-2*t)
+        target=self.start_q+(self.clear_q-self.start_q)*blend
+        result={'machine/servo_'+str(i+1):float(v) for i,v in enumerate(target)}
+        result['machine/servo_8']=self.stages[0].grip
+        if self.elapsed>=self.clear_time+.35 and np.max(np.abs(self.data.qpos[self.qids]-self.clear_q))<.10:
+            total=self.total;self.state='idle'
+            self.plan(self.destination)
+            if self.provisional:self.fail("The arm hides the part from the camera.");return result
+            self.start();self.total=total
+        elif self.elapsed>self.clear_time+2:self.fail('Motion did not reach its target. Reset and inspect the cell.')
+        return result
 
     def fail(self,message):
         self.state='failed';self.message=message
@@ -289,7 +375,7 @@ class FactoryCycle:
         self.feed(self.product,run['done'])
         self.state='idle'
         self.plan(run['destination']);self.start()
-        self.message=f"Part {run['done']+1} of {len(run['parts'])}: "+self.stages[0].label
+        self.message=f"Part {run['done']+1} of {len(run['parts'])}: "+self.step_label()
 
     def run_summary(self):
         """(placed, failed, seconds per part, parts per minute) of the run so far, or None."""
@@ -304,6 +390,9 @@ class FactoryCycle:
         """The cell's commands for one step: its conveyor's rollers, if it has one, and the arm's."""
         belt=self.belt()
         if self.state=='waiting':self.arrived(dt)
+        if self.state=='clearing':
+            result=self.clearing(dt);result.update(belt)
+            return result
         if self.state!='running':return belt
         result=self.arm(dt);result.update(belt)
         return result

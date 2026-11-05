@@ -320,6 +320,12 @@ change the design, try again.** A desktop robotics sandbox on
   at the stop and lands within a millimetre of its slot. The rollers are friction rollers: under a
   held pallet they stand still, as a real accumulating line's do. What's new's *The cell fed by a
   conveyor* runs six parts ([ADR 0068](docs/adr/0068-the-cell-fed-by-a-conveyor.md)).
+- **The cell finds its parts.** *Locate: camera* in Real's pick-and-place panel: the cell's overhead
+  camera, as a RealSense D435 with its depth noise, finds each part where it was put, instead of the
+  simulation telling it; the arm first moves out of the camera's view. Its depth picture shows in the
+  corner of the view, the part green. Every part it looked for it found and the cell placed, 216 of
+  216, each seen within 1.5 mm of where it was. What's new's *The cell finds its parts* runs it
+  ([ADR 0069](docs/adr/0069-the-cell-finds-its-parts.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

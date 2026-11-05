@@ -267,7 +267,7 @@ How it works ([ADR 0026](../adr/0026-frontier-brief-and-proposals.md)):
 
 ### FR-011 · Grasping from the cell's camera, classical first
 - Status: done (ADR 0032, 2026-10-04, for the Fetch table; accepted by the owner 2026-10-03.
-  The factory cell still grasps at known positions: LW-010)
+  ADR 0069, 2026-11-04: the factory cell finds its parts with its overhead camera too)
 - From: [FoundationPose](https://huggingface.co/nvidia/foundationpose)
   (`hf-model:nvidia/foundationpose`, radar: watch); OPEN LW-010
 - Idea: real cells find their parts with a camera. Learned pose estimators such as

@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-04 · Claude (Cowork) · OPEN LW-010: the cell finds its parts with its camera
+Did: ADR 0069 (`camera_eye`, `FactoryCycle(eye=)` with `locate`, `view_clear` and the arm clearing
+the camera's view; "Locate: camera" and the depth picture in Real's panel; What's new's "The cell
+finds its parts"). LW-010 done; FR-011 done for the cell too.
+Measured: 216 of 216 parts found by the camera and placed, each seen within 1.5 mm in plan and 4.1
+deg, left within 1.6 mm of its slot (1.1 known); a run's first part 2.4 s slower while the arm clears.
+On the way: from its home pose the Panda hangs its wrist 5 cm under the cell's camera, which sees
+nothing else - so the arm clears the view first.
+Unfinished: the camera's pose is exact and its turn reading is not used; latency is not modelled.
+
 ## 2026-11-04 · Claude (Cowork) · FR-007: the cell fed by a conveyor
 Did: ADR 0068 (friction rollers in `fields/conveyor.py`, a `Line` laid out anywhere; the cell's
 conveyor feeder in `factory/scene.py` and `factory/controller.py`; "Conveyor: on" in Real's panel;
