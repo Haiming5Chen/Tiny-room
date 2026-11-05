@@ -1798,3 +1798,13 @@ Suites on MuJoCo 3.10.0: 1152 passed with a display, 1087 headless.
 
 Not claimed: a camera's calibration error, holes or flying pixels; latency; the turn it sees used for
 the grasp; a part found anywhere but round the source's place.
+
+## The Fetch squeezed by current, side by side — 2026-11-05
+
+ADR 0070 (OPEN LW-041; FR-037). The Fetch as it is against closed fully at 7 N by current, paired set-up
+by set-up (`docs/sweeps/2026-11-05-the-fetch-squeezed-by-current.md`): on 71 tuning set-ups and 59 held-out draws
+every goal met either way, no pair broken or mended; the squeeze at 7 N 5.2 to 12.2 N, its spread six
+times the ramp's; the cube in the bin 0.7 s later. Not adopted:
+the program keeps its ramp. No code changed; the suites are 5f41dd9's.
+
+Not claimed: a squeeze other than 7 N, or one set for where the cube sits; a measured force at a pad.

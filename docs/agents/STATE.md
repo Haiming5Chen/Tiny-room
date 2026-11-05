@@ -7,7 +7,7 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
   owner's decision. Not yet on GitHub; the owner publishes it.
-- **Decision records** 0001 to 0069. The newest: 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
+- **Decision records** 0001 to 0070. The newest: 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
   (FR-038), 0062 the search
   mixes words and meaning (OPEN LW-027), 0061 how close to slipping (FR-036), 0060 once it
   holds, an alarm is not heard (OPEN LW-033), 0059 how near it is to tipping (FR-005), 0058 a motor

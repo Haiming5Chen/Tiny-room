@@ -308,6 +308,8 @@ change the design, try again.** A desktop robotics sandbox on
   the setting; where a part sits along the rotary jaws still sets how hard it is held. What's new's
   *A squeeze set in newtons* runs the Fetch at 7 N: the grip's friction in use peaks at 60 %, where
   the closing ramp's own squeeze peaks at 80 % ([ADR 0066](docs/adr/0066-the-jaws-squeeze-by-current.md)).
+  Side by side on 130 set-ups, the Fetch's own program keeps its ramp: squeezing by current met no
+  goal more, squeezed less evenly and took 0.7 s longer ([ADR 0070](docs/adr/0070-the-fetch-keeps-its-ramp.md)).
 - **A roller conveyor.** A new test field: nine powered 50 mm steel rollers carry two 160 mm pallets,
   the kit's cube on each, at 0.1 m/s to a stop plate - the first comes to rest against it, the next
   queues behind - carried within 0.1 % of the rollers' speed. Parts this short ride on pallets, as

@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-05 · Claude (Cowork) · OPEN LW-041: the Fetch keeps its ramp
+Did: ADR 0070 - the Fetch as it is against closed fully at 7 N by current, paired on its 71 tuning
+set-ups and 59 held-out draws (seed 20261103, now in the ledger); no code changed. FR-037 done; LW-041
+done.
+Measured: every goal met either way on all 130 pairs, none broken or mended (exact McNemar p = 1.0);
+set to 7 N the squeeze reached the cube as 5.2 to 12.2 N - its spread six times the ramp's - and the
+cube was in the bin 0.7 s later; the grip's friction in use at most fell from 95 to 82 %.
+For the owner: not adopted - a squeeze set as a torque reaches the cube as more force the deeper the
+jaws pull it in, so it varies more than the ramp's; the block stays for programs that want it.
+
 ## 2026-11-04 · Claude (Cowork) · OPEN LW-010: the cell finds its parts with its camera
 Did: ADR 0069 (`camera_eye`, `FactoryCycle(eye=)` with `locate`, `view_clear` and the arm clearing
 the camera's view; "Locate: camera" and the depth picture in Real's panel; What's new's "The cell
