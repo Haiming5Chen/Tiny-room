@@ -35,6 +35,12 @@ class Demo:
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('felt', 'It feels the cube under its jaw',
+         'The cube is moved 5 cm just after the camera looked, and a jaw comes down on it. The arm\'s '
+         'servos feel the shoulder fall behind where it was sent, and the arm rises at once - it used '
+         'to press the cube into the table for 2 s - then looks again and fetches it.',
+         'about 16 s in the cube jumps; a second later the Program panel says "Felt something reaching down"',
+         'cube moved 5 cm sideways, 2 s later', 'ADR 0071'),
     Demo('seen', 'The cell finds its parts',
          "In Real mode the Panda's cell looks for each part with its overhead depth camera, a "
          "RealSense D435's pixels and noise, instead of reading where it is from the simulation. The "
@@ -104,10 +110,10 @@ DEMOS = (
          'the line under the cell says how far from its slot each part landed and how long it took',
          '', 'ADR 0019, 0056', where='factory'),
     Demo('look_again', 'Watch it look again',
-         'The cube is moved 5 cm just after the camera looked. The jaws come down beside it, rise, '
-         'look again and fetch it from where it went.',
-         'about 16 s in, the cube jumps 5 cm; at 20 s the arm rises and the camera looks again',
-         'cube moved 5 cm sideways, 2 s later', 'ADR 0033, 0037, 0051'),
+         'The cube is moved 5 cm just after the camera looked. A jaw comes down on it; the arm rises, '
+         'looks again and fetches it from where it went.',
+         'about 16 s in, the cube jumps 5 cm; at 17 s the arm rises and the camera looks again',
+         'cube moved 5 cm sideways, 2 s later', 'ADR 0033, 0037, 0051, 0071'),
     Demo('frozen', 'A camera that freezes',
          'The camera stops sending new pictures as the cube is moved. The program sees its pictures '
          'are old and stops before it reaches for a cube that is not there.',

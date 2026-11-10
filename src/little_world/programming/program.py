@@ -22,6 +22,18 @@ REGRASPS=1      # times a program that looked may look again and reach again (AD
 REACHING=.02    # m: an aimed pose this close to where a looked-at object was planned reaches for the object itself
 MOVED=.01       # m: seen this much further from where the look saw it, the object has been moved
 LIT=.5          # share of a picture's pixels with depth below which the camera is dark (ADR 0038)
+# degrees: late in a reach for the object - from CATCHING of its travel on, where its joints' goals
+# slow towards their ends and a free joint catches up with its goal - a joint that falls this much
+# further behind its goal than it has been since has met something; read as a servo reports it,
+# Present Position against Goal Position (ADR 0048, 0071). Free, the Fetch's joints lag at most 1.8
+# degrees and late in the reach only catch up; held back by the cube moved under a jaw, the reach
+# was felt 0.2 s after the jaw met it.
+FELT_LAG=.5
+# A servo following a smooth move lags its goal by about its own time constant: its lag peaks that
+# long after the move's fastest point, the middle. Past three quarters of the travel a free joint only
+# catches up while that time is under a quarter of the travel's - the kit arm's 60 ms against the
+# Fetch reach's 1.3 s.
+CATCHING=.75
 # What the program says of a camera whose picture it cannot use (ADR 0038).
 # What a program that looked does when its reach goes wrong (FR-023): looks again and reaches
 # where it now sees the object (ADR 0033) - or, as baselines for that, reaches again where it saw
@@ -204,6 +216,8 @@ class Runner:
         self.above=None;self.rising=None;self.frame=None;self.faults=[]
         self.after_look=None;self.earlier=None
         self.felt=None      # the grasp check that last found the object held, by its block (OPEN LW-033)
+        self.least={}       # each joint's smallest lag behind its goal since the middle of the reach (ADR 0071)
+        self.bumps=[]       # (block, seconds into it) where a reach felt something and the program looked again
     def start(self,program,single=False):
         if not program.blocks:raise ValueError('Add a program block first')
         self.stop();self.program=program;self.state='running';self.single=single;self.message='Running'
@@ -376,6 +390,23 @@ class Runner:
             self.offset=(self.earlier[0]+dx*cos(turn)-dy*sin(turn),self.earlier[1]+dx*sin(turn)+dy*cos(turn),self.offset[2])
             self.earlier=None
         return True
+    def met(self,angles,sent,travel):
+        """Whether a reach has met something (ADR 0071): late in its travel (CATCHING of it on),
+        where its joints' goals slow towards their ends and a free joint catches up with its goal,
+        one of them has instead fallen FELT_LAG degrees further behind it than it has been since.
+        A joint's lag is measured along the way it is sent - a joint not sent anywhere, either way.
+        `sent`: where the joints are sent now (degrees)."""
+        if travel<=0 or self.elapsed+1e-9<CATCHING*travel:return False
+        hit=False
+        for a,goal in self.pose_goal:
+            if a not in angles or a not in sent:continue
+            for k,(s,g) in enumerate(zip(self.pose_from[a],goal)):
+                if k>=len(angles[a]):continue
+                way=(g>s)-(g<s)
+                behind=(sent[a][k]-angles[a][k])*way if way else abs(sent[a][k]-angles[a][k])
+                least=min(self.least.get((a,k),behind),behind);self.least[(a,k)]=least
+                hit=hit or behind-least>FELT_LAG
+        return hit
     def travel(self,block):
         """Seconds a pose's slowest joint needs at the pose's speed, from where it started."""
         goal=self.pose_goal or block.angles
@@ -443,7 +474,7 @@ class Runner:
                     if gone and self.regrasp('Moved since the look: looking again'):
                         return output
                 self.pose_from={a:tuple(angles[a])[:len(goal)] for a,goal in b.angles}
-                self.pose_goal=b.angles
+                self.pose_goal=b.angles;self.least={}
                 if self.reaches_for(b):     # where to rise back to if the reach goes wrong (ADR 0037)
                     self.above=(b.value,b.duration,tuple((a,self.pose_from[a]) for a,_ in b.angles))
                 # Its object was seen elsewhere: solve the pose for there before moving - and if
@@ -459,6 +490,14 @@ class Runner:
             travel=self.travel(b)
             u=smoothstep(self.elapsed/travel) if travel>0 else 1.
             output['pose']={a:tuple(s+(g-s)*u for s,g in zip(self.pose_from[a],goal)) for a,goal in self.pose_goal}
+            # Reaching for the object, the arm's servos feel a jaw come down on something - the
+            # object moved under it since the last picture - and the program rises and looks
+            # again at once, instead of pressing it into the table until the pose times out
+            # (ADR 0071; it waited the pose's 2 s, OPEN LW-029).
+            if self.checks and self.reaches_for(b) and self.met(angles,output['pose'],travel):
+                at=(self.index,round(self.elapsed,3))
+                if self.regrasp('Felt something reaching down: looking again',rise=True):
+                    self.bumps.append(at);return output
         elif b.kind=='goto':
             if base is None:self.fail('No drive base to drive to a point');return output
             if self.driver is None:
@@ -509,7 +548,7 @@ class Runner:
                 # Aimed at a point: arrived where the joints were sent, is the tool there?
                 better=aim(self.aimed(b),self.pose_goal) if b.point and aim is not None and self.corrections<self.limit else None
                 if better:
-                    self.corrections+=1;self.elapsed=0.;self.pose_goal=tuple(better)
+                    self.corrections+=1;self.elapsed=0.;self.pose_goal=tuple(better);self.least={}
                     self.pose_from={a:tuple(angles.get(a,goal))[:len(goal)] for a,goal in self.pose_goal}
                 else:self.advance()
             elif self.elapsed+1e-9>=self.travel(b)+b.duration:

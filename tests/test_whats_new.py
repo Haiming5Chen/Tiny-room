@@ -20,17 +20,18 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping', 'hot_motor',
-                                     'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping',
+                                     'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt', 'fetch',
-                                        'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1.] * 6 + [16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt',
+                                        'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1.] * 7 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 4 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['conveyor'] * 2 + ['hand'] * 12
-    assert [d.sensing for d in DEMOS] == ['camera'] + ['known'] * 13
+    assert [d.product for d in DEMOS] == ['Small block'] * 5 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 0., 7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['hand'] + ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['known', 'camera'] + ['known'] * 13
+    assert BY_ID['felt'].disturbance == BY_ID['look_again'].disturbance, "the same cube, moved: now felt"
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
         assert demo.disturbance == '' or demo.disturbance in labels, demo.disturbance
@@ -123,19 +124,31 @@ def test_the_program_panel_says_what_the_program_sees_and_what_its_jaws_feel(mon
     from little_world.control.feel import Jaw
     bench = SimpleNamespace(runner=SimpleNamespace(seen=[], faults=[]), eye=None, tool_motion=None, backend=None,
                             joint_control=None)
-    assert ProgramWorkspace.senses(bench) == ('Camera: this program does not look', 'Jaws: no servos to read')
+    assert ProgramWorkspace.senses(bench) == ('Camera: this program does not look', 'Jaws: no servos to read',
+                                              'Arm: no joints to read')
     bench.eye, bench.tool_motion = object(), SimpleNamespace(jaws=('jaw_left', 'jaw_right'))
     registers = [Jaw(100, 100, 0, 0), Jaw(100, 100, 0, 0)]       # at their goals, still: on nothing
     monkeypatch.setattr(feel, 'read', lambda backend, control, actuators: tuple(registers))
-    assert ProgramWorkspace.senses(bench) == ('Camera: it has not looked yet', 'Jaws: nothing between them')
+    assert ProgramWorkspace.senses(bench)[:2] == ('Camera: it has not looked yet', 'Jaws: nothing between them')
     bench.runner.seen.append(('objects/fetch_cube', (1., 0., .7), (1., .048, .7)))
     registers[:] = [Jaw(90, 120, 0, 30), Jaw(91, 120, 0, 31)]   # stopped 30 pulses short, pushing
-    assert ProgramWorkspace.senses(bench) == ('Camera: saw the fetch_cube 4.8 cm from the plan',
-                                              'Jaws: holding - stopped on it, pushing (81 mA)')
+    assert ProgramWorkspace.senses(bench)[:2] == ('Camera: saw the fetch_cube 4.8 cm from the plan',
+                                                  'Jaws: holding - stopped on it, pushing (81 mA)')
     registers[0] = Jaw(90, 120, 40, 30)
     assert ProgramWorkspace.senses(bench)[1] == 'Jaws: moving'
     bench.runner.faults.append('stale')
     assert ProgramWorkspace.senses(bench)[0] == 'Camera: its picture is not new', "a frozen camera, not its last sighting"
+    # The arm's servos: how far the joints stand from where they are sent, and a reach felt (ADR 0071).
+    from math import radians
+    stands = {'shoulder': 29., 'elbow': -80.}
+    bench.joint_control = SimpleNamespace(targets={'shoulder': radians(30.), 'elbow': radians(-80.2)},
+                                          display_position=lambda a: (stands[a], 'deg'))
+    bench.tool_motion.joints = [('arm', 'shoulder', 0, 0, -1., 1.), ('arm', 'elbow', 1, 1, -1., 1.)]
+    assert ProgramWorkspace.senses(bench)[2] == 'Arm: 1.0 deg from where it is sent'
+    stands['shoulder'] = 30.
+    assert ProgramWorkspace.senses(bench)[2] == 'Arm: 0.2 deg from where it is sent'
+    bench.runner.bumps, bench.runner.rising = [(6, 1.13)], (20., 2., ())
+    assert ProgramWorkspace.senses(bench)[2] == 'Arm: felt something reaching down - rising to look again'
 
 
 # -- in the window: each demonstration started as a user starts it ---------------------------
@@ -221,6 +234,47 @@ def test_one_click_from_the_top_bar_the_cube_moved_after_the_look_is_looked_for_
     app.run(seconds=600)
     assert step['n'] == 4 and order == ['moved', 'looked again'], order
     assert app.live_note.startswith('cube moved 5 cm sideways, 2 s later - at ')
+
+
+@WINDOW
+def test_the_cube_moved_under_a_jaw_is_felt_and_the_arm_rises_at_once_in_the_window(tmp_path, monkeypatch):
+    """ADR 0071 in the window: the jaw comes down on the moved cube, the Program panel says it felt
+    something within 1.5 s of the move - where the pose waited 2 s past its travel - and the cube
+    is fetched."""
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {'moved': None, 'felt': None}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'It feels the cube under its jaw')
+        elif n == 2:
+            assert app.live_disturbance.label == 'cube moved 5 cm sideways, 2 s later' and app.runner.state == 'running'
+            assert app.status.startswith('It feels the cube under its jaw: ')
+        elif n == 3:
+            r = app.runner
+            if app.live_note and seen['moved'] is None:
+                seen['moved'] = app.state.time
+            if r.message == 'Felt something reaching down: looking again' and seen['felt'] is None:
+                seen['felt'] = app.state.time
+            if r.state == 'running':
+                assert app.state.time < 80, r.message
+                return
+            assert r.state == 'completed' and goals(app) == FETCHED, (r.message, goals(app))
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    assert step['n'] == 4 and seen['moved'] is not None and seen['felt'] is not None, seen
+    assert 0. < seen['felt'] - seen['moved'] < 1.5, seen
+    assert app.runner.bumps and app.runner.regrasps == 1
 
 
 @WINDOW

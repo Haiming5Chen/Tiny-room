@@ -328,6 +328,13 @@ change the design, try again.** A desktop robotics sandbox on
   corner of the view, the part green. Every part it looked for it found and the cell placed, 216 of
   216, each seen within 1.5 mm of where it was. What's new's *The cell finds its parts* runs it
   ([ADR 0069](docs/adr/0069-the-cell-finds-its-parts.md)).
+- **A reach that feels what it meets.** Reaching down for the cube, the program reads the arm's
+  servos as it reads the jaws': where each joint stands against where it was sent. A cube moved
+  under a jaw since the last picture holds the arm back, and the program rises and looks again
+  0.2 s after the jaw met it - it pressed the cube into the table for 2.4 s before, until the reach
+  timed out - and fetches it 2.4 s sooner. Undisturbed, no reach is felt. The Program panel says how
+  far the arm's joints stand from where they are sent, and when a reach felt something. What's new's
+  *It feels the cube under its jaw* runs it ([ADR 0071](docs/adr/0071-a-reach-that-feels-what-it-meets.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

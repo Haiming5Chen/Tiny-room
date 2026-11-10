@@ -95,8 +95,12 @@ def test_a_reach_down_that_is_blocked_looks_again():
     def blocked(runner):
         return runner.program.blocks[runner.index] is AT                 # every time it reaches down
     runner, aimed, actions, log = run(FETCH, lambda t: (1.84, 0., .14), lambda aimed: True, blocked=blocked)
-    assert 'Blocked reaching down: looking again' in log and runner.regrasps == 1
+    # The arm's servos feel the joint fall behind late in the reach (ADR 0071); unchecked, the
+    # pose waits out its 2 s and is found blocked, as before.
+    assert 'Felt something reaching down: looking again' in log and runner.regrasps == 1
     assert runner.state == 'failed' and runner.message == 'Timed out: pose did not settle'   # blocked again: no second try
+    runner, aimed, actions, log = run(FETCH, lambda t: (1.84, 0., .14), lambda aimed: True, Runner(checks=False), blocked=blocked)
+    assert 'Blocked reaching down: looking again' in log and runner.regrasps == 1
 
 
 def test_once_only_and_only_where_it_looked():

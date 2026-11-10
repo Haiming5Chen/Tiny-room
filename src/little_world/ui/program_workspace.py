@@ -415,9 +415,10 @@ class ProgramWorkspace:
         else:text('Drag blocks to reorder. Space stops program.',x+16,wh-65,10,(.6,.74,.77),294)
 
     def senses(self):
-        """What a running program has to go on, said plainly, as two lines: its camera - what it
-        last saw where it looked (ADR 0032), or what is wrong with its pictures (ADR 0038) - and
-        what its jaw servos' registers say (ADR 0048)."""
+        """What a running program has to go on, said plainly, as three lines: its camera - what it
+        last saw where it looked (ADR 0032), or what is wrong with its pictures (ADR 0038) - what
+        its jaw servos' registers say (ADR 0048), and its arm's: how far its joints stand from
+        where they are sent, or that a reach felt something and the arm is rising (ADR 0071)."""
         from little_world.control.feel import CURRENT_UNIT,holding,read
         from little_world.programming.program import TROUBLE
         seen=self.runner.seen[-1] if self.runner.seen else None
@@ -434,4 +435,14 @@ class ProgramWorkspace:
         elif holding(jaws):feels=f'Jaws: holding - stopped on it, pushing ({1000*CURRENT_UNIT*min(j.current for j in jaws):.0f} mA)'
         elif any(j.moving for j in jaws):feels='Jaws: moving'
         else:feels='Jaws: nothing between them'
-        return sees,feels
+        control=getattr(self,'joint_control',None)
+        joints=[a for _,a,*_ in getattr(motion,'joints',())] if motion is not None and control is not None else []
+        joints=[a for a in joints if a in getattr(control,'targets',{}) and control.display_position(a)[1]=='deg']
+        if getattr(self.runner,'bumps',None) and getattr(self.runner,'rising',None):
+            arm='Arm: felt something reaching down - rising to look again'
+        elif not joints:arm='Arm: no joints to read'
+        else:
+            from math import degrees
+            off=max(abs(degrees(control.targets[a])-control.display_position(a)[0]) for a in joints)
+            arm=f'Arm: {off:.1f} deg from where it is sent' if off>=.05 else 'Arm: where it is sent'
+        return sees,feels,arm

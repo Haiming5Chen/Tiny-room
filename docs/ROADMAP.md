@@ -141,7 +141,8 @@ heavier until it slides out measures how much weight a grasp carries (ADR 0061).
 and its hand squeezes and moves as the real one does (ADR 0065). The kit's jaws squeeze by
 current, a setting in newtons (ADR 0066). A roller conveyor field carries pallets to a stop (ADR 0067), and feeds the factory cell on
 friction rollers (ADR 0068). The cell finds its parts with its overhead depth camera (ADR 0069). The Fetch keeps its closing
-ramp: a squeeze by current, side by side on 130 set-ups, was not worth it (ADR 0070).
+ramp: a squeeze by current, side by side on 130 set-ups, was not worth it (ADR 0070). A reach for the cube
+stops when the arm's servos feel it meet something, and the program looks again at once (ADR 0071).
 Next: what the owner picks from the frontier proposals - among them the DC-motor actuator for the kit's gearmotor
 and one real servo calibrated with the system identification toolbox; moving surfaces and the PID
 actuator need a release past 3.10.

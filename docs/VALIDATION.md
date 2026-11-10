@@ -1808,3 +1808,17 @@ times the ramp's; the cube in the bin 0.7 s later. Not adopted:
 the program keeps its ramp. No code changed; the suites are 5f41dd9's.
 
 Not claimed: a squeeze other than 7 N, or one set for where the cube sits; a measured force at a pad.
+
+## A reach that feels what it meets — 2026-11-06
+
+ADR 0071 (OPEN LW-029). The Fetch as it was against its arm read as servos - a joint that falls 0.5 deg
+further behind its goal late in a reach has met something - paired set-up by set-up
+(`docs/sweeps/2026-11-06-a-reach-that-feels.md`): with the cube moved 5 cm 2 s after the look, the arm
+rose 0.21 s after a jaw met the cube, not 2.44 s, pressed it 2.35 N over 50 ms for 0.22 s, not 3.11 N
+for 2.45 s, and delivered 2.4 s sooner, every goal met 9 of 9 either way; under the other disturbances
+and undisturbed - 63 disturbed runs, 71 tuning set-ups and 59 fresh draws - no reach was felt.
+Checked in `tests/test_felt_reach.py` (6) and a window test in `tests/test_whats_new.py`.
+Suites on MuJoCo 3.10.0: 1159 passed with a display, 1093 headless.
+
+Not claimed: a reach faster than its servo's lag allows for (under a quarter of the travel's time);
+a jaw meeting the object after the reach's travel; what was met; joints read in pulses.

@@ -109,7 +109,7 @@ def test_a_reach_blocked_on_the_cube_rises_the_way_it_came_before_going_back():
     def stuck(runner, sent):                        # the first reach down stops at (15, 5)
         return runner.program.blocks[runner.index] is AT and not runner.regrasps and sent[0] > 15.
     runner, log, after = run(Camera(lambda t: (1.84, 0., .14)), stuck=stuck)
-    assert 'Blocked reaching down: looking again' in log and runner.state == 'completed', log
+    assert 'Felt something reaching down: looking again' in log and runner.state == 'completed', log   # ADR 0071
     up = after.index((10., 10.))                    # back where it reached down from
     assert all(elbow <= 10. + 1e-9 for _, elbow in after[:up])         # not swung out on the way
     assert after[up + 1:] and max(elbow for _, elbow in after[up:]) == 50.   # then to the approach

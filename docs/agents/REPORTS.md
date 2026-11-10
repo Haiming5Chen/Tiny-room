@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-06 · Claude (Cowork) · OPEN LW-029: a reach that feels what it meets
+Did: ADR 0071 - the runner reads the arm's joints as their servos report them, Present Position
+against the goal it sends: late in a reach for the object (from three quarters of its travel), a
+joint that falls 0.5 deg further behind its goal than it has been since has met something, and the
+program rises and looks again at once. What's new: 'It feels the cube under its jaw'. LW-029 done.
+Measured: the cube moved 5 cm 2 s after the look, 9 set-ups paired: the arm rose 0.21 s after a jaw
+met the cube (2.44 s before), pressing it 2.35 N over 50 ms for 0.22 s (3.11 N for 2.45 s); every goal
+met either way, the cube in the bin 2.4 s sooner; no reach felt in the other 63 disturbed runs, the 71
+tuning set-ups or the 59 fresh draws (seed 20261106). Suites: 1159 passed with a display, 1093 headless.
+Unfinished: a reach faster than a quarter of its travel's time behind its servo could be felt for
+nothing - the Fetch's reach is 1.3 s against 60 ms; a jaw that meets the object only after the
+reach's travel is not felt (the grasp check finds it).
+For the owner: nothing to decide here.
+
 ## 2026-11-05 · Claude (Cowork) · OPEN LW-041: the Fetch keeps its ramp
 Did: ADR 0070 - the Fetch as it is against closed fully at 7 N by current, paired on its 71 tuning
 set-ups and 59 held-out draws (seed 20261103, now in the ledger); no code changed. FR-037 done; LW-041
