@@ -73,3 +73,12 @@ at a stop where the program looked, once a run. The jaws are read as the kit's X
 robot model's own gripper servo is not read ("no servos to read"). The top bar's button needs a
 window at least 1168 pixels wide; narrower, What's new is in the Guide. The list is written by hand:
 later work is added to it when it can be watched.
+
+**2026-11-06: in pages.** Fifteen demonstrations and what the picked one shows no longer fitted the
+window as it opens, 1200 by 780: the last lines ran under the Guide's own button at its foot and off
+the window. The list is now paged when it does not fit above what the picked one shows - eight to a
+page at 780, under them "< Newer", "1 of 2" and "Older >" - and on one page in a window tall enough
+(`ui/whats_new.demo_pages`). A demonstration just started, from its button or from
+`little-world demo NAME`, is shown on its own page. `tests/test_whats_new.py` draws every page with every demonstration
+picked: every word and button is above the Guide's button, and the pages hold each demonstration
+once, newest first. Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.

@@ -39,6 +39,54 @@ def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_
             "the Guide shows all of it"
 
 
+def page_drawn(page, wh, picked=None, started=False):
+    """What What's new draws on one of its pages in a window `wh` high: its buttons as (label,
+    top, bottom, enabled) and its words as (text, top), with the picked demonstration's words;
+    `started`: that demonstration has only just been started."""
+    from little_world.ui.whats_new import WhatsNew
+    buttons, words = [], []
+    page_of = SimpleNamespace(demo_page=page, demo=picked, demo_paged=None if started else picked, live_disturbance=None,
+                              start_demo=lambda n: None, arm_disturbance=lambda label: None)
+
+    def button(label, x, y, w, action, enabled=True, active=False, h=32, tone=None):
+        buttons.append((label, y, y + h, enabled))
+
+    def text(words_, x, y, size=14, color=None, max_width=None):
+        words.append((words_, y, y + size + 2))
+
+    def section(title, y):
+        words.append((title, y, y + 14))
+    WhatsNew.draw_whats_new(page_of, None, button, text, section, 1200, wh)
+    return buttons, words
+
+
+def test_whats_new_fits_a_window_780_high_in_pages_and_a_tall_one_on_one():
+    """The window opens 1200 by 780: fifteen demonstrations and what the picked one shows ran
+    under the Guide's own button at its foot. Paged, every word and button above it is clear of
+    it, and the pages hold every demonstration once, newest first."""
+    from little_world.ui.whats_new import demo_pages
+    rows, pages = demo_pages(780)
+    assert pages >= 2 and rows * pages >= len(DEMOS) > rows * (pages - 1)
+    listed = []
+    for page in range(pages):
+        for picked in (None, *[d.id for d in DEMOS]):
+            buttons, words = page_drawn(page, 780, picked)
+            foot = next(top for label, top, _, _ in buttons if label == 'Lessons: the first hour')
+            assert all(bottom <= foot for label, _, bottom, _ in buttons if label != 'Lessons: the first hour'), (page, picked)
+            assert all(bottom <= foot for _, _, bottom in words), (page, picked, [w for w in words if w[2] > foot])
+        titles = [label for label, _, _, _ in buttons if label in {d.title for d in DEMOS}]
+        listed += titles
+        newer, older = (next(e for label, _, _, e in buttons if label == name) for name in ('< Newer', 'Older >'))
+        assert newer == (page > 0) and older == (page < pages - 1)
+    assert listed == [d.title for d in DEMOS]
+    assert demo_pages(1100) == (len(DEMOS), 1)
+    buttons, _ = page_drawn(0, 1100)
+    assert not any(label in ('< Newer', 'Older >') for label, _, _, _ in buttons), "one page: no pager"
+    # A demonstration just started is shown on its own page, whichever page was open - then the pager turns it.
+    buttons, _ = page_drawn(0, 780, DEMOS[-1].id, started=True)
+    assert DEMOS[-1].title in [label for label, _, _, _ in buttons] and DEMOS[0].title not in [label for label, _, _, _ in buttons]
+
+
 class Bench(LiveDisturbance):
     """The window's parts a live disturbance reads: its field, machine, state and goals' clock."""
 
@@ -165,9 +213,24 @@ def window(tmp_path):
 
 
 def click(app, label):
-    b = next(b for b in app.active_workspace.buttons if b.label.startswith(label))
+    """Press the button whose label starts so - or, for a demonstration on another of What's new's
+    pages, turn to that page and press it there."""
+    b = next((b for b in app.active_workspace.buttons if b.label.startswith(label)), None)
+    if b is None and any(d.title.startswith(label) for d in DEMOS):
+        from little_world.ui.whats_new import demo_pages
+        demo = next(d for d in DEMOS if d.title.startswith(label))
+        rows, _ = demo_pages(glfw_height(app))
+        app.demo_page = DEMOS.index(demo) // rows
+        app.active_workspace.events.append(lambda: app.start_demo(demo.id))
+        return
+    assert b is not None, label
     assert b.enabled, label
     app.active_workspace.events.append(b.action)
+
+
+def glfw_height(app):
+    import glfw
+    return glfw.get_window_size(app.window)[1]
 
 
 def enabled(app, label):
@@ -390,6 +453,7 @@ def test_the_factory_demonstration_runs_reals_cell_and_says_where_each_part_land
         n = step['n']
         if n == 0:
             app.show_whats_new()
+            app.demo_page = 1                         # an older one: on What's new's second page
         elif n == 1:
             button = next(b for b in app.active_workspace.buttons if b.label == 'Six parts, measured')
             button.action()                       # Real's cell draws from here on

@@ -1822,3 +1822,12 @@ Suites on MuJoCo 3.10.0: 1159 passed with a display, 1093 headless.
 
 Not claimed: a reach faster than its servo's lag allows for (under a quarter of the travel's time);
 a jaw meeting the object after the reach's travel; what was met; joints read in pulses.
+
+## What's new in pages — 2026-11-06
+
+ADR 0055, amended: at the window's own 1200 by 780, What's new shows its demonstrations eight to a
+page with "< Newer" and "Older >" under them, and what the picked one shows above the Guide's own
+button; a tall window shows them all on one page. Checked in `tests/test_whats_new.py` by drawing every
+page with every demonstration picked. Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.
+
+Not claimed: a window narrower than the panel's 288 pixels; text sizes other than the panel's own.

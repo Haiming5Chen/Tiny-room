@@ -133,6 +133,22 @@ DEMOS = (
 )
 BY_ID = {d.id: d for d in DEMOS}
 
+# The Guide's What's new page, top to bottom: the list from LIST_TOP, a ROW for each
+# demonstration; under it what the one picked shows - at most SHOWN high, with its eight lines
+# of what it shows and four of what to watch for - and the Guide's own button, whose top is FOOT
+# above the window's foot (px).
+LIST_TOP, ROW, SHOWN, FOOT = 146, 28, 257, 122
+
+
+def demo_pages(wh):
+    """How the list is paged in a window `wh` high: (demonstrations a page, pages). All on one
+    page when they fit above what the one picked shows; else a row of them goes to the pager."""
+    room = (wh - FOOT - SHOWN - LIST_TOP) // ROW
+    if room >= len(DEMOS):
+        return len(DEMOS), 1
+    rows = max(1, room - 1)
+    return rows, -(-len(DEMOS) // rows)
+
 # Where a demonstration is watched from: the Fetch table, from the cart's left and above - what
 # happens there is the point, and from behind the cart its arm hides the cube. (lookat, distance,
 # azimuth, elevation); F turns the chase view back on.
@@ -245,11 +261,26 @@ class WhatsNew:
 
     def draw_whats_new(self, ui, button, text, section, ww, wh):
         section('WHAT\'S NEW  /  one press runs it', 122)
-        y = 146
-        for demo in DEMOS:
-            button(demo.title, 12, y, 264, lambda n=demo.id: self.start_demo(n), h=28,
+        y = LIST_TOP
+        rows, pages = demo_pages(wh)
+        picked = getattr(self, 'demo', None)
+        if picked != getattr(self, 'demo_paged', None):
+            # A demonstration just started - from the command line too: the list opens on its page.
+            self.demo_paged = picked
+            if picked in BY_ID:
+                self.demo_page = DEMOS.index(BY_ID[picked]) // rows
+        page = min(max(getattr(self, 'demo_page', 0), 0), pages - 1)
+        for demo in DEMOS[page * rows:(page + 1) * rows]:
+            button(demo.title, 12, y, 264, lambda n=demo.id: self.start_demo(n), h=ROW - 4,
                    active=getattr(self, 'demo', None) == demo.id)
-            y += 32
+            y += ROW
+        if pages > 1:
+            # Fifteen and more do not fit a window 780 high above what the one shown is: pages of
+            # them, newest first.
+            button('< Newer', 12, y, 80, lambda: setattr(self, 'demo_page', page - 1), enabled=page > 0, h=ROW - 4)
+            text(f'{page + 1} of {pages}', 122, y + (ROW - 4 - 16) / 2, 12, MUTED, 56)
+            button('Older >', 196, y, 80, lambda: setattr(self, 'demo_page', page + 1), enabled=page < pages - 1, h=ROW - 4)
+            y += ROW
         shown = BY_ID.get(getattr(self, 'demo', None), DEMOS[0])
         section('WHAT IT SHOWS', y + 10)
         y += 34
