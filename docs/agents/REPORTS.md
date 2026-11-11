@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-06 · Claude (Cowork) · measured, not decided: a cube on its side, elliptic cones
+Did: no code. OPEN LW-034 and LW-039 measured (docs only).
+Measured: a cube lying with its 40 mm length across the Fetch's jaws (0 and 20 deg) is grasped by
+its ends and lost on the drive to the bin; at 45 deg and more the jaws turn it along the fingers and
+it is delivered. Gripping lower or squeezing by current does not keep it, and a stop beside its line
+turns the jaws by at most 34 deg. With elliptic cones in every scene 16 of the 1087 headless tests
+fail: a held cube slides 7.6 mm out of the grip in 10 s, the cell's hand no longer squares a part
+fed turned 10 deg, the Fetch delivers 2 to 3 s later, a squeeze in newtons reads 7 % high.
+Unfinished: LW-034 needs a wrist that turns, or a way to stand the cube up first.
+For the owner: I would not switch to elliptic cones for the slope creep alone - they stop it, but
+the grip and the cell get worse; say if you want them anyway.
+
 ## 2026-11-06 · Claude (Cowork) · OPEN LW-029: a reach that feels what it meets
 Did: ADR 0071 - the runner reads the arm's joints as their servos report them, Present Position
 against the goal it sends: late in a reach for the object (from three quarters of its travel), a
