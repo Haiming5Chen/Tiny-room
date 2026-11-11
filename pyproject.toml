@@ -4,18 +4,33 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "little-world"
-version = "0.1.0"
-description = "Compositional macroscopic world simulation"
+dynamic = ["version"]
+description = "Build a robot from parts, run the physics, watch it fail, change the design, try again: a desktop robotics sandbox on MuJoCo"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Haiming5Chen/Tiny-room"
+Documentation = "https://github.com/Haiming5Chen/Tiny-room/tree/main/docs"
+
+[project.scripts]
+little-world = "little_world.cli:main"
 
 [project.optional-dependencies]
 mujoco = ["mujoco==3.10.0"]
 workshop = ["mujoco==3.10.0", "Pillow>=11,<13", "PyOpenGL>=3.1,<4"]
 dev = ["pytest>=8,<10"]
 
+[tool.setuptools.dynamic]
+version = {attr = "little_world.__version__"}
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: took 2 s or more when the suite was timed (tests/slow.txt), or opens a window; `pytest -m 'not slow'` is the quick tier (ADR 0073)",
+    "window: opens the app's window; runs only with LITTLE_WORLD_TEST_RENDER=1",
+]
 
 [tool.setuptools.package-data]
 "little_world.assets" = ["data/*.rgb.gz", "data/lab_*.png", "data/SOURCES.json", "robots/*/*", "robots/*/assets/*", "samples/*"]

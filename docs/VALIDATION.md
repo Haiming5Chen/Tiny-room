@@ -1831,3 +1831,33 @@ button; a tall window shows them all on one page. Checked in `tests/test_whats_n
 page with every demonstration picked. Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.
 
 Not claimed: a window narrower than the panel's 288 pixels; text sizes other than the panel's own.
+
+## From a clone to a running window — 2026-11-11
+
+ADR 0072 (the owner's request of 10 Nov). From a clean clone into a new environment, the README's
+three commands: `pip install '.[workshop]'` 26 s, then `little-world` opens the window with What's
+new on the left; `little-world doctor` finds the installation ready - nine checks, a note instead of
+a failure where there is no display - and a window command that cannot import says what failed and to
+run the doctor. The README is 114 lines; its feature list and manual are `docs/FEATURES.md` and
+`docs/MANUAL.md`, moved whole. Checked in `tests/test_cli.py` (10, one a window test).
+Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.
+
+Not claimed: anything published - GitHub has the import of 24 Sep until the owner pushes; macOS,
+Apple silicon or Windows run with this command; an installer; a licence to use it.
+
+## Evidence anyone can measure again — 2026-11-11
+
+ADR 0073 (the owner's request of 10 Nov). `little-world evidence` measures 31 quantities for twelve
+headline claims and prints each beside its record: all 31 hold on the machine they were recorded on,
+in 3.5 min (`--quick`: 10 in 33 s); a run repeated is the same to the last bit, and the 71 Fetch
+set-ups of ADR 0070 and ADR 0071, a week apart, agree to the millisecond. The quick tier
+(`pytest -m "not slow"`) is 1,048 tests in 76 s; the 64 slow ones, 35.9 of the suite's 37.2 min,
+are listed in `tests/slow.txt`. Every relative link in 158 Markdown pages leads to a file. Measured
+for `docs/EVALUATION.md`: on MuJoCo 4.0.0, 20 of 1,087 headless tests fail (13 in the robot importer);
+with elliptic friction cones, 16; with NumPy's AVX-512 paths switched off on the same machine, 29
+of the 31 quantities are the same to the last digit, the Fetch's delivery moves 4 ms, and the quick
+tier and the 64 slow tests pass. Checked in `tests/test_evidence.py` (9).
+Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.
+
+Not claimed: a record from any machine but one; tolerances that are more than judgment; workflows
+that have run - they were written without GitHub's runners; the other claims, which the tests hold.

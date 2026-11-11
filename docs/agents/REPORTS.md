@@ -11,6 +11,32 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-11 · Claude (Cowork) · easy to get from GitHub and use, and the project re-evaluated
+Did: the owner's request of 10 Nov. ADR 0072 - a `little-world` command (the window with What's new,
+`demo`, `build`, `doctor`), designs kept in the user's own folder, the README cut from 1,158 lines to
+114 with its lists moved to docs/FEATURES.md and docs/MANUAL.md, docs/TROUBLESHOOTING.md. ADR 0073 -
+`little-world evidence` (twelve headline claims measured again against their records), a quick test
+tier (`pytest -m "not slow"`), two GitHub workflows, a link check, and docs/EVALUATION.md. What's new
+in pages (ADR 0055 amended). On the Mac: `build/publish.sh`, which publishes in one step.
+Measured: GitHub has the import of 24 Sep and nothing since - 89 commits never pushed (OPEN LW-044).
+A clean clone installs in 26 s and opens its window. Evidence: 31 of 31 measurements hold where they
+were recorded, in 3.5 min. Quick tier: 1,048 tests in 76 s; the whole headless suite is 37 min of
+test time, 64 tests taking 35.9. On MuJoCo 4.0.0, on Linux, 20 of 1,087 tests fail; 4.0.0 does not
+lift the pin - its engine wheel, `mujoco-core`, has none for Intel Macs (OPEN LW-046). With NumPy's
+AVX-512 paths switched off on the same machine, 29 of the 31 measurements are the same to the last
+digit and the Fetch delivers 4 ms earlier; every test passes there (OPEN LW-045). The bundle, cloned
+afresh: the quick tier passes on Python 3.11 and 3.13. Suites: 1179 passed with a display, 1112
+headless.
+Corrected before publishing: the first draft of this work said 4.0.0 has an Intel Mac wheel again and
+that the pin's reason was gone. It took a wrapper wheel for the engine's; the weekly reading of 9 Nov
+had checked it and I had not read it first.
+Unfinished: nothing is published - that needs the owner. The workflows have never run; Apple silicon
+and Windows are untried (OPEN LW-045). The weekly reading of 9 Nov is not merged into the frontier.
+For the owner: (1) publish: `sh ~/Tiny-room/build/publish.sh`; (2) choose a licence - all rights are
+reserved now, so people may read this and may not use it; (3) docs/EVALUATION.md lists where the
+project went wrong, the first being that I reported "shipped" for seven weeks without checking that
+anything had reached GitHub.
+
 ## 2026-11-06 · Claude (Cowork) · measured, not decided: a cube on its side, elliptic cones
 Did: no code. OPEN LW-034 and LW-039 measured (docs only).
 Measured: a cube lying with its 40 mm length across the Fetch's jaws (0 and 20 deg) is grasped by

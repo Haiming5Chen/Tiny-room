@@ -1,0 +1,805 @@
+# The manual
+
+How the window is used, part by part. Start with the [README](../README.md)'s quick start; what each
+feature is for and how it was measured is in [FEATURES.md](FEATURES.md).
+
+## Overview
+
+A compositional macroscopic world simulator. Objects and robots share reusable
+parts and a versioned JSON Blueprint. MuJoCo handles initial mechanical physics;
+the world representation remains independent of the solver and user interface.
+
+The current interactive workshop lets you select and edit an assembly in a furnished
+room, add parts, change materials and motor strength, save a Blueprint, and test it
+with MuJoCo. Stop returns to the design so you can modify it and try again.
+Thermal physics, fluids, cross-physics coupling and AI remain future work.
+
+## Run
+
+Python 3.11+ and MuJoCo 3.10.0. The app is used on an Intel Mac with Python 3.13; the
+test suites run on Linux with Python 3.11. From the repository root on a fresh checkout:
+
+```sh
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python -e '.[workshop,dev]'
+```
+
+Or use `python3 -m venv .venv` and `.venv/bin/python -m pip install -e '.[workshop,dev]'`.
+Core-only installation: `pip install -e .` (no MuJoCo dependency).
+MuJoCo is pinned to 3.10.0, the newest release with a ready-made wheel for an Intel Mac
+(from 3.11.0 on, pip would build MuJoCo from source there), with one contact per convex
+pair ([ADR 0027](adr/0027-mujoco-3-10-one-contact-per-convex-pair.md)). An
+environment made for 3.3.7 needs the install line above run again.
+`requirements-lock.txt` records tested dependencies.
+
+The installed **Little World Builder** app opens in **Real** mode for robot
+experiments and programming. Use the top **Real / Anime** switch to move between
+the robot lab and custom assembly building in the same window. Each workspace
+retains its work and pauses when you leave it.
+
+Open the **interactive workshop** directly in Anime mode (including macOS):
+
+```sh
+.venv/bin/python examples/workshop.py
+```
+
+The default launch opens the **Robot Workbench** with a hardware mobile base:
+open chassis rails, gearmotors, treaded wheels and swivel casters. Browse **Ready to build** or **Advanced**, search by name, inspect the 3D preview, choose an
+attachment target and mounting face, then click **Add component**. The centre
+viewport shows only your assembly; orbit, pan, zoom and click its components there.
+Clicking a subpart also makes it the insertion target; adding a part preserves that
+target for repeated assembly operations. **Dimensions** and **Connections** open
+the existing precision tools. **Back to room** keeps your design and returns to
+simulation. The room's **Build** button reopens it.
+
+`--classic` starts the original simple robot in the room. **Files → Hardware mobile
+base** loads the new example; **Robot example** retains the original one. Both are
+undoable starting points. The workbench opens inside the same application window.
+
+The room starts in **BUILD**, with physics stopped. The left panel contains the
+construction controls, grouped into **Edit**, **Add**, **Connect**, and **Files** tabs. Run/stop,
+undo/redo and save remain in the top toolbar:
+
+1. Click a machine part in the scene or the assembly list. Selected parts have a thin outline; their material stays visible.
+2. Move in 5 cm increments, rotate around the parent's Z axis, resize, or assign
+   metal, wood, rubber or plastic. **Exact dimensions & pose** accepts millimetres
+   and XYZ rotations in degrees. Transforms are relative to the parent; moving a root moves
+   its attached parts. Resizing a part does not reposition its children.
+3. Open **Add** for a 115-entry library, filter by category, and select a part.
+   Inspect it in the 3D preview (drag to rotate, scroll to zoom), choose a mounting
+   face, and click **Add selected part**. Select a powered wheel in Edit to change
+   its torque limit. The **Quick tools** button retains the earlier shortcuts.
+   Delete removes a selected part and its descendants.
+4. Click **SIMULATE**, then hold WASD to drive compatible powered wheel groups.
+   Release to brake. **P** pauses. **STOP / RETURN TO BUILD** restores the saved
+   design poses; simulated motion never overwrites the Blueprint. A machine that can
+   drive gets a test drive: the camera chases it (drag to look around, scroll to zoom,
+   **F** for the room), the **Drive** tab shows its speed, each motor's speed and
+   torque against its sourced limits, wheel slip and what it touches, and its path is
+   drawn on the floor. A machine with a camera also shows what that camera sees.
+5. Stop shows a **run report** - distance, top speed, tilt, time at the motor limit,
+   slip, what it touched, and the change from the previous run - with **Redesign in
+   Build stage**, **Run again** and, when the drive assist set the top speed,
+   **Adjust drive assist**. Use **Undo / Redo**, **Save / Load**, and try again.
+6. **Field** (above the room view) chooses where to test: the workshop room, a sprint
+   lane, a slalom of bollard gates, 8 / 14 / 20 degree ramps, 10 / 20 / 35 mm curbs,
+   a 4 kg crate to push, or a pick-and-place table. Each field's goals are drawn on
+   the floor, ticked off live in the Drive tab and listed with times in the run
+   report, which compares runs in the same field ([ADR 0013](adr/0013-test-fields.md)).
+
+In **Files**, **Start with block** replaces the design with one ordinary body (undoable). Add a
+left wheel, reselect `base`, and add a right wheel to make a motorized assembly.
+The initial robot example includes passive supports; your own design may tip or
+fail, which is part of the experiment. **Robot example** restores that example.
+
+Save writes `designs/my_machine.json` atomically; Load reads it. Each launch starts
+with the example, so use Load to continue a saved design. Choose another file with
+`--design path/to/design.json`. Saves contain the assembly Blueprint, not the room
+or a simulation checkpoint. Scroll over the part list in Edit to see additional parts.
+
+Mouse drag orbits, right drag pans, and scroll zooms. **Room view / Focus**
+change the framing. **F** follows the assembly, **C** toggles the onboard camera,
+**Home** restores the close view, and **Enter** switches build/simulate.
+
+### Contact friction
+
+Friction belongs to a pair of surfaces, so each material names the real surface it
+stands for (`Material.surface`: rubber, PTFE, aluminium, steel, wood, ABS, HDPE,
+concrete) and every contact between two named surfaces uses the sourced coefficient
+for that pair - rubber on concrete 0.95 (Xu et al., *Wear* 2025), wood on wood 0.36
+(Villar-Garcia et al., *Forests* 2022), PTFE on steel 0.10 (Chemours) and 23 more,
+each cited in [CONTACT_PAIRS.md](CONTACT_PAIRS.md). Pairs with no source keep
+MuJoCo's own rule (the larger coefficient) and are reported as unsourced. The table
+is the fix for a measurable defect: the kit's 0.01 skids used to drag at the floor's
+0.8, and the two-wheel robot moved 2 cm in four seconds at 0.2 Nm. With the sourced
+skid pair it moved 1.15 m; with its tyres' rolling resistance added (below), 0.36 m.
+
+### Drivetrain and axle losses
+
+Wheels used to have one loss, a viscous damping of 0.01 N m s/rad on every hinge, and
+it set everything: the kit gearmotor's bare shaft spun at 477 rpm, the mobile
+platform coasted down at 0.33 g and its caster wheels did not turn. Now the kit
+gearmotor is the Pololu 37D 30:1 at 12 V: its speed-torque line runs through the
+datasheet's stall torque and no-load speed, and its own friction, 0.052 Nm at the
+output, comes from the 0.2 A it draws with no load. Wheels roll against b x N, where
+N is the load the solver found at the tread that step and b is a published lever arm
+(rubber 1.2 mm, a labelled analogue from polyurethane; steel 0.5 mm). The bare
+gearmotor now runs at 330 rpm and the platform coasts down at 0.15 g. Tyres are rigid,
+rotor inertia is not published and not modelled, and loose rolling bodies (a ball)
+have no rolling resistance yet - see [ADR 0011](adr/0011-drivetrain-and-axle-losses.md)
+and [validation](VALIDATION.md).
+
+Catalog insertion uses preset mounting positions; **Connect** resolves precise
+face-to-face alignment afterward. Free placement gizmos, closed-loop mechanisms,
+editing room furniture, and general controller assignment are not implemented yet.
+Materials affect density, contact friction (see *Contact friction* above) and surface appearance. Wood uses CC0
+image textures; metal, rubber and plastic use procedural surface textures with
+approximate specular response. No thermal, chemical, deformation or calibrated
+PBR behavior is implied. See [workshop decision](adr/0002-workshop.md).
+
+### Real robot: Franka Panda
+
+Select **Real**, then use the **Robot** picker. The **Franka Panda + gripper**
+card includes the seven-axis arm and gripper. FR3, Kinova Gen3 and UR5e are also
+available as sourced arm-only models. Drag it
+into the build area or click **Add component** for an anchored arm. Click
+**Arm controls**, then **Start simulation**. Default joint pairs are Q/E, R/V,
+T/B, Y/N, U/J, I/K, O/L; G/H closes/opens the gripper. Release a key to hold the
+target. Bindings and movement speeds can be edited. Program Move blocks use degrees
+for arm joints and 0–100 percent closed for this gripper.
+
+To mount the arm on a cart, select the cart's deck, click **Mount position**,
+choose **Top**, then click **Add component**. The arm model adds 17.45 kg: small kit bases may
+tip or struggle to drive. Compatibility here means a simulated rigid mounting,
+not verified real-world mounting hardware.
+
+This is the Apache-2.0 Menagerie Panda model, with original visual/collision meshes,
+link inertias, joint ranges, position actuator gains and force caps, and the original
+tendon/equality-coupled gripper. Its starting pose and servo targets reset together.
+It is a complete fixed-size model; its internal links cannot yet be replaced or
+resized in the builder. Whole assemblies support mounting, placement, duplication,
+removal, JSON save/load and undo. There is no VLA integration or physical calibration
+claim. Upstream revision, hashes and license are bundled under
+`src/little_world/assets/robots/panda/` and documented in THIRD_PARTY.md.
+
+### Real and Anime workspaces
+
+The top-level **Real / Anime** switch changes workflow in the same native window.
+Real focuses on complete robots, experiments and programming. Its Robot picker
+contains Panda, FR3, Kinova Gen3 and UR5e. Use Joint lab for operation/programs;
+Panda also supports the editable pick-and-place experiment. Anime keeps custom
+component construction, generic equipment, inventory and Python tooling.
+Switching preserves each workspace and pauses the one you leave. Desktop launch
+opens Real by default; `--mode Anime` opens the builder. There are no nested style
+tabs in the component library and no separate Factory process.
+
+Drag a part into the workspace to see its full-size 3D geometry, including real
+robot meshes. The preview follows the cursor on the ground or snaps to compatible
+mounts; green indicates an accepted placement and red an unavailable mount.
+Release places it at the displayed pose. Free-standing catalog bases and arms can
+also be dragged again after placement. Escape cancels without modifying the design;
+a drop creates one undo revision. Preview geometry is temporary and is never stepped
+as part of the running simulation. Mount compatibility is not a collision-free or
+real hardware fit guarantee.
+
+### Laboratory equipment
+
+The generic equipment collection includes mobile platforms, workbenches, a pedestal, rotary
+indexing table, passive roller conveyor, bins, pallet, payload, V-block fixture,
+camera gantry, and complete Panda mobile/tabletop workcells. All have model
+previews and purpose guides. These are generic assemblies with estimated limits;
+the Panda subassemblies retain their sourced models. See [equipment and controls](LAB_EQUIPMENT.md).
+
+### Robot component library
+
+**85 kit modules, 26 generic lab assemblies and four sourced robot models** are included. The default **Ready to build** library emphasizes usable assemblies. Ten new modules
+include four- and six-wheel rover bases, a delivery base, three arm-and-gripper
+assemblies, powered tilting forks, a scoop, a tipping tray and a pan-tilt camera.
+Drop complete bases into the build area; attach arms and tools to compatible mounts.
+Drive and joint controls are assigned automatically. The procedural assemblies remain
+editable down to their individual parts; the Panda is a complete fixed-size model.
+
+Bare motors, shafts and fasteners are available under **Advanced**. The hardware collection includes:
+
+- Actuators: 37 mm gearmotor with driven output shaft, servo housing/horn with a
+  limited joint, and a 42 mm square motor module.
+- Structure: 200/400 mm slotted extrusions and an open chassis with deck standoffs.
+- Hardware: motor clamp, pillow bearing block, flanged hub, shaft coupler,
+  hex-style standoff and socket screw.
+- Motion: open-spoke tread wheel and a caster with independent swivel/rolling axes.
+
+The original 22 structural, motion, sensor and enclosure modules remain available
+under **Advanced**. Rings and extrusion slots use separated geometry, so openings
+are real voids rather than painted circles. Motors retain editable internal joints
+and output attachment frames. Catalog mounting now uses the entire module's initial
+geometry envelope. Dimensions are illustrative, not vendor CAD tolerances.
+
+Parts remain editable Body/Hinge/Motor/Camera components after insertion, with
+namespaced references and undo support. Enclosures do not simulate electronics;
+a tray does not simulate a battery; the bumper is rigid; the support foot is not
+a rolling caster. Drive motors are ideal torque actuators, not vendor gearmotor
+models. Structural modules are genuine collision geometry, not decorative meshes.
+
+Use a left and right powered wheel on one base for keyboard differential drive.
+Other mounting orientations and passive mechanisms can be tested physically but
+are not automatically wired into a general controller. Arbitrary CAD/mesh imports,
+persistent mating constraints, springs, pistons, and powered grippers remain future work.
+See [catalog and surfaces](CATALOG.md) for capability and provenance details.
+
+### Managing assemblies
+
+The workbench's **Assembly** tab shows the body hierarchy. Expand/collapse branches,
+search by ID, select a parent, or scroll/page through the list. The **Library** tab
+returns to the component catalog. Clicking a tree row selects that exact subpart.
+
+Viewport picking defaults to **component**, selecting the nearest catalog assembly
+root instead of individual screws or tread blocks. Toggle **Pick: detail** to work
+on those smaller pieces. **Focus selected** (F) frames the selected subtree.
+
+**Duplicate** (Cmd/Ctrl+D) copies the selected part and everything attached to it.
+Enter an XYZ offset in millimetres, relative to the parent. The copy preserves
+materials, internal joints, motors, cameras and attachment frames with fresh IDs.
+Fully contained controller descriptors are copied; controllers spanning outside
+that subtree are not. The room still drives the first compatible differential
+controller; copying a complete robot does not add automatic multi-robot controls.
+
+**Delete subtree**, **Undo**, and **Redo** are available in the workbench. Each
+clone/delete is one undo operation. Cmd/Ctrl+Z undoes; Shift+Cmd/Ctrl+Z redoes.
+Duplication does not automatically prevent collisions, so choose an appropriate
+offset or adjust placement before simulation.
+
+### Precise connections and joints
+
+1. Select the part to move, then open **Connect**. Choose its parent (type to search),
+   its local face and the parent's local face. Set a gap in millimetres and press
+   **Snap faces**. This aligns face centres and opposing normals, moving the whole
+   selected subtree. Named Blueprint attachment frames also appear in the selectors.
+2. Choose **Fixed** or **Hinge**. **Axis, pivot & limits** sets the child-local axis,
+   pivot in millimetres, damping in Nm s/rad and angular bounds in degrees. Leave
+   bounds empty for unrestricted rotation. The gold line shows the hinge axis.
+3. **Add motor** or edit its torque limit. Simulate, then **Pulse - / Pulse +** tests
+   the selected motor for 0.5 simulation seconds at 25% of its torque limit. Space,
+   pause, focus loss and returning to build cancel the pulse.
+4. Use **Exact dimensions & pose** in Edit or Connect for numeric placement,
+   rotation and shape dimensions. Click a field and type comma-separated numbers;
+   Tab selects the next field, Enter applies, and Esc cancels. Each Apply is one
+   undoable edit. Dimensions change the selected body, not its children's offsets.
+
+Snap frames are local to each body: a wheel's local Z is its axle. Curved-surface
+frames are tangent points. Snapping is a resolved placement operation, not a
+persistent mating constraint, automatic collision check or closed-loop solver.
+Changing Fixed removes that part's hinge, motors and dependent controller references;
+Undo restores them. See [connection design](adr/0003-precise-connections.md).
+
+### Mechanical drive demo
+
+Open the earlier drive-only room:
+
+```sh
+.venv/bin/python examples/two_wheel_robot.py
+```
+
+- **Hold W/A/S/D or arrow keys** to drive; release to brake.
+- **Space / X**: brake. **P**: pause/resume. **R**: reset.
+- **F**: toggle follow camera. **C**: toggle onboard camera.
+- **Home**: restore the outside view. **Esc**: close.
+- Left mouse drag: orbit; right drag: pan (disables follow); scroll: zoom.
+
+Controls are also displayed inside the window. The view follows the robot by
+default. Driving uses bounded wheel-speed feedback with physical braking torque;
+release is not an instantaneous stop. Losing focus clears held input. The
+inspection window uses MuJoCo rendering with its own GLFW input handlers, so drive
+keys cannot toggle the native simulate application's wireframe/debug modes.
+No additional dependencies are needed: GLFW ships with the MuJoCo Python dependency.
+Older `mjpython` launch commands restart automatically with Python on macOS.
+`--seconds 3` provides a bounded viewer smoke run.
+
+Run without a viewer (no graphics context needed unless capturing the camera):
+
+```sh
+.venv/bin/python examples/two_wheel_robot.py --headless --seconds 2
+.venv/bin/python examples/two_wheel_robot.py --headless --left -.5 --right .5
+.venv/bin/python examples/two_wheel_robot.py --headless --camera /tmp/robot.ppm
+.venv/bin/python examples/two_wheel_robot.py --headless --save-blueprint /tmp/robot.json
+.venv/bin/python examples/two_wheel_robot.py --headless --load-blueprint /tmp/robot.json
+```
+
+The drive example expects `left_motor`, `right_motor`, `chassis`, and `camera` IDs;
+these are example conventions, not Entity requirements. Capture produces RGB PPM.
+Other examples: `examples/empty_room.py` and `examples/sliding_block.py`, run with
+Python on macOS as well. They use the same core, adapter and inspection viewer.
+
+## Design and lifecycle
+
+```python
+from little_world import Entity, World
+from little_world.core.scene import Scene
+from little_world.physics.mujoco_backend import MujocoBackend
+from little_world.robots.two_wheel import two_wheel_blueprint
+from little_world.scenes.room import room_entity
+
+robot = Entity("robot", two_wheel_blueprint())
+with World(MujocoBackend(), Scene((room_entity(), robot))) as world:
+    world.start()  # BUILD → SIMULATE: compile the immutable design
+    state = world.step({"robot/left_motor": .5, "robot/right_motor": .5})
+    world.reset()  # restore initial state and return to BUILD
+    world.set_scene(Scene((room_entity(), robot)))  # replace designs while stopped
+```
+
+The factory creates ordinary Body/Hinge/Motor/Camera components. Box/beam/wheel
+helpers return data; there is no special Robot class. Geometry uses full dimensions,
+SI units, and Z-up; cylinder dimensions are radius and full length. See
+[architecture](ARCHITECTURE.md) for frames, materials, lifecycle and limitations.
+Controller descriptors serialize. The workshop recognizes the two-actuator
+`differential_torque` descriptor for keyboard driving and `keyboard_position`
+for limited joint control; arbitrary controller kinds
+are not automatically executed. Task,
+Controller, Embodiment and Interaction protocols remain extension seams.
+
+## Verification
+
+```sh
+.venv/bin/python -m pytest -q
+LITTLE_WORLD_TEST_RENDER=1 .venv/bin/python -m pytest -q
+```
+
+Tests cover schema roundtrip, references, cycles, units, lifecycle, solver separation,
+fall/contact, driving, turning, reset, repeated assembly, and command validation. Workshop tests also cover edits, undo, adding powered
+wheels, motor configuration, save/load, and the build/simulate/return workflow.
+Camera and drive-window tests are opt-in because they create OpenGL contexts. Mechanical tests
+skip when MuJoCo is not installed; core tests still run. These are regression checks,
+not real-world accuracy calibration. See [validation](VALIDATION.md).
+
+The workshop UI uses a Pillow font atlas and batched OpenGL drawing. Pillow is
+only part of the `workshop` extra; core and the earlier drive demo do not need it.
+For a bounded, real-window responsiveness check, run:
+
+```sh
+.venv/bin/python scripts/benchmark_workshop.py
+```
+
+Start with [vision](VISION.md), [architecture](ARCHITECTURE.md),
+[source matrix](SOURCE_MATRIX.md), [roadmap](ROADMAP.md),
+[third-party register](../THIRD_PARTY.md), and [development rules](../AGENTS.md).
+
+
+For the more detailed mobile base and focused workbench benchmark:
+
+```sh
+.venv/bin/python scripts/benchmark_workshop.py --hardware
+```
+
+Hardware realism is currently geometry and rigid mechanics. Motor models use ideal
+torque, not winding/gear efficiency or electrical control; the servo uses a limited
+hinge, not a position-control driver. Bearings/couplers/fasteners omit compliance,
+thread engagement and calibrated friction. See [hardware details](CATALOG.md).
+
+
+## Arm, gripper and keyboard actions
+
+```sh
+.venv/bin/python examples/workshop.py --arm
+.venv/bin/python examples/programmed_pickup.py
+```
+
+The arm lab opens with a four-axis arm, a two-finger contact gripper and a small
+cube on a stand. Click **Start simulation**. Hold **G** for about one second to
+close the fingers, then hold **R** briefly to lift; **H** opens and releases.
+
+| Keys | Action |
+| --- | --- |
+| Q / E | Base yaw |
+| R / V | Shoulder up / down |
+| T / B | Elbow up / down |
+| Y / N | Wrist up / down |
+| G / H | Gripper close / open |
+
+Release a joint key to hold its target angle. Space clears held keys; P pauses.
+Joint limits and motor torque limits still apply. Stop restores the original design.
+The gripper uses frictional contact, so placement, load and approach matter.
+These are approximate original mechanical modules, not calibrated vendor hardware.
+
+In BUILD, open **Keyboard**, select a powered component, and choose **Bind selected**.
+A housing can bind all motors inside it; selecting a joint body binds its own motor.
+Choose an action name, two keys, target speed and position/damping gains. Existing
+actions can be selected and edited or removed. Bindings save with the Blueprint
+and support undo. Reserved navigation/drive keys and overlapping motor assignments
+are rejected. The catalog also includes a separate arm link and powered wrist.
+
+`examples/programmed_pickup.py` demonstrates timed actions in Python with the same
+saved controller: `press(key)`, step the world with `step_commands(dt)`, then
+`release(key)`. There is no in-app code editor or sequence editor yet. Portable
+`KeyboardPositionControl` accepts scalar joint observations; the MuJoCo adapter
+adds model bias compensation before clamping commanded motor torque. Each command is
+a `Torque` that also carries its damping slope (-kd), which the MuJoCo adapter
+integrates implicitly so the damping acts on the speed within the step
+([ADR 0014](adr/0014-servo-damping-integrated-implicitly.md)).
+
+
+## Gripper options and mobile arms
+
+Select a gripper (or one of its parts), then **Configure gripper** in the room,
+or **Gripper setup** in the workbench. Choose flat, rounded or narrow contact pads,
+then rubber, metal, plastic or wood. The final form sets sliding friction, torque
+limit per jaw in Nm, and pad length (20–90 mm). Material presets affect contact
+friction, density and appearance. Custom friction belongs to this gripper and does
+not change other rubber wheels or pads. The operation is saved and undoable.
+Where both touching surfaces have a sourced pair, that pair's coefficient is used
+([ADR 0010](adr/0010-sourced-contact-pairs.md)); otherwise MuJoCo's larger-of-two
+rule applies. Torque is motor strength, not electrical power or a guaranteed grasp force.
+
+The library includes compact (~244 mm), standard (375 mm) and long (525 mm) arms,
+measured from yaw axis to tool mount at full extension. Geometry, pivots, attachment
+frames and motor limits scale together. All can be attached to a cart like other
+catalog modules. Choose the cart's mounting deck as the target, add the arm on Top,
+then attach a gripper to its wrist tool frame through Connections. Use Keyboard to
+bind the new joints. The prepared cart example already includes drive and arm keys:
+
+```sh
+.venv/bin/python examples/workshop.py --cart-arm
+```
+
+Or open **Files → Arm on moving cart**. Start simulation; WASD drives the cart,
+Q/E rotates the base, R/V raises/lowers the shoulder, T/B controls the elbow, Y/N
+controls the wrist and G/H closes/opens the gripper. The arm and cart form one
+dynamic assembly: payload and extended reach affect balance. These remain
+illustrative modules, with no calibrated payload rating.
+
+The workbench's **Assembly** tab opens on **Modules**: the cart reads as a base, two
+37 mm drives each carrying a tread wheel, two casters, the arm (keys Q/E R/V T/B Y/N)
+and its gripper (G/H), each with its mass; click one to select it, or switch to
+**Parts** for every body. The Build stage header says how the design will stand -
+"Rests on 2 wheels and 1 support, tilted 2.8 deg; centre of mass 3.4 cm inside" for
+this cart, whose casters sit 6.5 mm above the tread wheels - and the Drive tab shows
+the live stance margin next to the arm's joint angles while it runs
+([ADR 0015](adr/0015-machine-structure-and-stance.md)).
+
+<p align="center">
+  <img src="media/mobile-arm-modules.png" width="80%" alt="The mobile manipulator in the build stage, listed as modules with roles, masses and keys">
+</p>
+
+## Sourced motor study (not hardware validated)
+
+```sh
+.venv/bin/python examples/workshop.py --motor-study
+```
+
+Select a powered joint, open **Connect → Choose motor model**, then choose
+ROBOTIS XH430-W210 or XH430-W350 at 12 V. Set an **assumed operating torque cap**.
+The default 30% of stall is a modeling assumption, not a continuous-duty rating or
+verified safe operating limit. Choose **Ideal motor / remove profile** to return
+to the original motor. Profiles and source snapshots save with the Blueprint.
+
+Manufacturer endpoints are 2.5 Nm / 50 rpm for W210 and 3.4 Nm / 30 rpm for W350,
+at 12 V. Sources: [W210](https://emanual.robotis.com/docs/en/dxl/x/xh430-w210/),
+[W350](https://emanual.robotis.com/docs/en/dxl/x/xh430-w350/), checked 2026-09-14.
+The speed-dependent torque envelope is a linear estimate between endpoints; the
+backend enforces it for all command paths. Braking remains a capped approximation.
+The motor-study arm can droop when its assumed cap cannot support the custom links.
+That is a simulation result for these assumptions, not a measured payload rating.
+
+**Applying a motor profile does not replace the housing, mass or mounting geometry.**
+Firmware control, backlash, electrical current, temperature and continuous torque
+are not modeled. Nothing is marked physically measured yet. A calibrated real kit
+requires matched mechanics, sourced mounting interfaces and measured load tests.
+
+**Files → Export parts / assumptions** writes a `.parts.csv` beside the design.
+It lists candidate motors, source dates, operating assumptions, unassigned motors
+and custom geometry separately. This is a design inventory, not a complete shopping
+list: fasteners, electronics, wiring, fabrication details and compatibility remain
+unresolved. Read `docs/REAL_PART_VALIDATION.md` for the measurement workflow.
+
+
+## Build, Program and Test workflow
+
+The same top bar stays visible in every workspace: **Build workspace**, **Program**,
+**Test**, **Inventory**, and **Save**. Green action buttons emphasize saving,
+starting simulation, running programs, and adding components. Program **Run**,
+**Pause**, and **Stop** sit above the sequence; **Step** runs one block.
+Switching to **Build workspace** stops and resets an active simulation while
+preserving the authored design and program. Inventory pauses simulation.
+Secondary editing controls stay below the navigation, with destructive actions
+marked separately. All navigation works with mouse clicks, including at 1040×740.
+
+
+```sh
+.venv/bin/python examples/workshop.py --program
+```
+
+The Program workspace opens with an editable pickup sequence. Click **Run** or
+press **F6**. **Step** executes one complete block and pauses before the next;
+**Pause** freezes simulation time; **Stop** removes program input while joint
+controllers hold their targets. Space stops the program. Return to BUILD resets
+physics. Focus loss pauses a running program. Manual drive/joint keys are ignored
+while a program owns control. Change the trigger to F7/F8 and set whole-sequence
+repeat count in Settings.
+
+Use **Add**, **Edit**, **Delete**, drag rows to reorder, and program-specific
+Undo/Redo. Blocks support timed joint actions, left/right wheel-speed targets,
+waits, and joint target angles with timeouts. Sensor blocks wait for contact or a
+body-centre distance threshold. **If contact** executes the next block when true
+and skips it otherwise. **Move to pose** moves several joints together so they arrive
+at once (taught from the robot controls), and **Check grasp** fails the program when
+the jaws hold nothing, so a missed grasp stops instead of carrying air. This is a
+sequential block editor, not an arbitrary graph, nested-loop language. The separate
+Python workspace authors designs; conditions use ideal simulation observations; a
+timeout fails and pauses instead of silently continuing.
+
+**Pick and place** (next to the pickup template) builds a complete program for the arm
+in the **Pick and place** field: close on the cube, check the grasp, lift, carry it over
+the tray, lower, open and retract, every waypoint solved for this arm. Run it and the
+field judges the result from the physics: the arm lab lifts the cube at 1.9 s and has
+it resting in the tray at 5.7 s.
+
+<p align="center">
+  <img src="media/arm-pick-and-place.png" width="80%" alt="The arm lab has set the cube in the tray; both field goals are done and the program is complete">
+</p>
+
+**Drive to** moves the base's drive axle to a point and heading in the field (ideal
+position sensing, no path planning). In the **Fetch** field the same button reads
+**Fetch program**: for the mobile manipulator it drives to the table, picks up the cube,
+backs away, drives to the bin and lets it go, each stop and arm waypoint solved for the
+machine as it stands ([ADR 0018](adr/0018-fetch-drive-to-a-point.md)).
+
+<p align="center">
+  <img src="media/fetch-done.png" width="80%" alt="The mobile manipulator has fetched the cube into the bin; all four Fetch goals are done">
+</p>
+
+The Fetch table has a depth camera on a stand behind it, so the program first **looks for
+the cube** - here moved 5 cm to the cart's left once the cart had stopped - and brings the
+jaws down where it was seen. The corner of the view shows the camera's depth picture: near
+warm, far cool, the cube green ([ADR 0032](adr/0032-a-camera-at-the-table.md)).
+
+<p align="center">
+  <img src="media/fetch-camera.png" width="80%" alt="The cart's jaws come down over the cube the table camera found 5 cm from where it was planned; the depth picture is in the corner">
+</p>
+
+Programs are versioned `.program.json` files beside the Blueprint. Main **Save**
+saves both; main **Load** reads both (or starts an empty program when no sidecar
+exists). Program-panel Save/Load handles the program alone. References are checked
+before Run, so deleting a bound motor or sensor body cannot silently retarget a
+program. Programs contain data only. A repeat does not reset the robot or props.
+The pickup template is prepared for the tabletop lab, not arbitrary cart placement.
+
+**Guide** offers tabletop pickup, mobile pickup and driving-cart starters, plus
+contextual suggestions for decks, wrists and driven shafts. Suggested additions
+are undoable. Build checks flag absent controls, multiple moving roots and estimated
+hardware properties. Suggestions match available attachment frames; they do not
+certify physical mounting compatibility. **Build workspace** opens the searchable
+catalog and assembly tree; **Program** and **Test** keep the scene visible beside
+their controls.
+
+**Test** displays contact, centre distance, bilateral jaw contact, base tilt, joint
+target versus actual angle, and applied torque. Use the joint pager for additional
+motors. Torque-limited motion is highlighted. A possible-slip indication means
+bilateral contact disappeared while the jaw target did not open; this is a heuristic,
+not a measured friction coefficient or proof of failure. The 30-degree tilt warning
+is also a heuristic. Export the current values with **Export test snapshot**.
+Contact work arrays come from the preceding native solve (up to one timestep old).
+
+**Guide → Matched arm families** provides compact, standard and long-reach arm
+assemblies with a common mounting deck, matching-size contact grippers and joint
+bindings. Three new catalog modules are available independently: arm mounting deck,
+compact gripper and wide gripper. These are original procedural families; vendor
+interfaces, bearings, fasteners and electronics still require real-world design
+and validation. No new family is claimed to be a validated purchasable robot kit.
+
+## Open without a terminal (this Mac)
+
+Double-click **Little World** on the Desktop, or open
+`~/Applications/Little World.app`. Drag the app into the Dock for one-click access.
+The launcher opens the saved `designs/my_machine.json` and its program when present;
+otherwise it opens the pickup lab. Click the Program panel's **Run** button—no
+function key is needed. The app launcher uses this checkout's virtual environment,
+so keep the checkout at its current path. Startup errors are logged to
+`~/Library/Logs/Little World.log`.
+
+## Design inventory and build comparisons
+
+Click **Inventory** in the workshop or workbench. **Save current version** stores
+a named snapshot of the complete design and program, with **draft** or **finished**
+status and notes. Each save makes a separate version. Search/filter saved designs;
+use **Name / status / notes** to update their labels. Finished means you marked it
+finished, not that the robot has passed physical validation. Data stays locally in
+`designs/inventory` for the default workspace, including across app restarts.
+
+Select a saved version to compare it with the current workspace. **Overview** shows
+two 3D previews, estimated total/moving mass, motor counts and automatic strengths
+and limitations. Analysis uses the actual primitive dimensions, densities, motor
+caps, control coverage and gravity-only torque at the authored starting pose. It
+ignores payload, acceleration and supporting contacts when estimating gravity load.
+It cannot establish real payload capacity, purchase compatibility or grasp reliability.
+**Parts changes** lists additions/removals and saved-to-current parameter values,
+including geometry, materials, motor settings and controller changes.
+
+**Performance** runs two independent five-second trials in a background worker:
+
+- **Drive / hold trial:** commanded wheel speed 3 rad/s for two seconds, then stop;
+  bound arm joints hold their initial targets. A fixed base only performs the hold.
+- **Test current program:** run the exact current program on both designs. Its
+  references must exist in both; a program may still be unfinished after five seconds.
+
+Both trials use the same room, props, timestep and solver version. Compare base
+displacement, peak joint target error, peak tilt and absolute mechanical work.
+Results are simulated observations, not physical measurements or battery estimates.
+Metrics are task-dependent; there is no fabricated overall winner score. Results
+save with design/program/environment fingerprints. Changed designs, programs, room
+or solver versions cannot silently reuse incompatible comparisons.
+
+**Load selected** returns a saved snapshot to the workbench. A different current
+workspace is first preserved as a recovery snapshot, including its program. Loading
+requires BUILD mode. Merely opening Inventory pauses a running simulation; close
+Inventory and explicitly resume when ready. The comparison trials do not alter your
+interactive world. Refresh updates the list if another app window saved a design.
+
+## Drag parts onto compatible sockets
+
+In **Build workspace**, drag a library part onto the assembly. Hover a target body
+and release on a green named socket. Green means the kit permits that connection;
+red means incompatible or occupied. Clicking a red socket explains the refusal.
+A translucent preview shows the proposed placement. Existing catalog components
+can also be dragged to another socket with their attached descendants; release
+commits one undoable change. Escape cancels a drag. Drag empty space to orbit and
+right-drag to pan. Precision/custom connections remain in **Connections**.
+
+Wheel insertion makes the containing base mobile and raises it out of the floor.
+A left/right **drive module** pair gets WASD control without losing arm key bindings.
+**Small free wheel**, **Large free wheel**, and **100 mm tread wheel** are passive:
+they roll freely on chassis sockets and become rigidly coupled when docked to a
+motor's **output** socket. They do not supply propulsion by themselves. Powered
+modules are also visible in the Advanced library.
+
+For older builds, **Free base + ground** releases the anchored root, places the
+assembly clear of the floor, and repairs a missing drive binding for a recognized
+powered wheel pair. **Anchor base** restores a fixed base. The workbench labels
+which mode the assembly uses. Two wheels form one axle; tall or front-heavy robots
+may still need fore/aft skids or casters for stability. These are simulator kit
+mounting rules, not certification that commercial parts will physically fit.
+
+### Immersive build stage
+
+Build opens on a larger 3D stage with a decorative 10 cm grid. **Hide parts** gives
+more room to the robot; **Details** opens the precision inspector and part preview.
+**View** offers perspective, front, side and top views; **Frame all** recenters the
+assembly. Socket labels appear while dragging, or stay visible with **Sockets**.
+The stage and view controls do not change collision geometry or the saved design.
+
+The parts tray now uses illustrated cards: each title has a miniature of its
+catalog geometry below it, plus dimensions and powered/passive or joint details.
+The entire card, including its picture, is draggable. The part follows the cursor
+until a compatible mount previews its installed position. Either wheel side can
+be chosen directly by dropping on its green marker or label; passing over an
+installed wheel keeps its supporting block available as the target.
+
+
+### Parts browser and component changes
+
+The Build workspace has an inline **Search parts** field. Results update while
+writing and search within the selected library; clear with **X**. The scrollbar can
+be dragged, and trackpad/wheel scrolling moves continuously through clipped cards.
+Click any illustration to select it, or drag it onto a compatible socket.
+
+Select a component in the scene, then use **Replace** in the top toolbar to choose
+another member of its family. Compatible connections and control IDs are retained;
+unsupported remounts are rejected. **Delete** removes a leaf component in one edit.
+If other components depend on it, review the branch count before removing the
+whole branch, or keep it and remove the attached components first. **Undo** restores
+the operation. The extra catalog variants include wheel diameters, chassis sizes,
+beam lengths, and micro/medium/XL arms; they are procedural models, not calibrated
+commercial hardware.
+
+
+### Mechanical kit: purpose and useful connections
+
+Use **Part guide** beside **Add component** for an illustrated explanation of what
+a part does, where it connects, a build example and its simulation limits. Cards
+label complete assemblies, individual components and hardware. **Find matching
+parts** filters the library to useful companion parts.
+
+Wheel sockets include left/right center and front/rear positions. For a four-wheel
+base, use the four front/rear sockets rather than adding wheels around occupied
+center sockets. Adjacent wheels need enough clearance; use smaller wheels or a
+longer chassis when a mount is blocked. Newly mounted wheels orient their outer
+faces automatically, and all left/right motor pairs receive WASD/Program drive.
+Existing saved wheel poses are retained; drag a wheel to its socket to remount it.
+
+For a mechanism built from components: attach a **37 mm gearmotor**, select it,
+then drag a **crank**, **drive roller**, **flywheel**, **spool**, **rotating plate**,
+**passive wheel**, **hub** or **coupler** onto **output**. The builder locates the
+moving shaft inside the motor. Loads move with that shaft, without an extra free
+joint. Hubs and couplers also expose an output for a subsequent load. Spools are
+rotating rigid shapes; cable winding is not simulated.
+
+Design references and implementation boundaries are recorded in
+[Mechanical kit research](MECHANICAL_KIT_RESEARCH.md).
+
+### Free wheel placement and drive assistance
+
+Named wheel sockets are starting points. Select an installed wheel and choose
+**Mount position** to set any longitudinal coordinate along its chassis, in mm.
+Choose a wheel in the catalog first to add one at a specified coordinate. There is
+no fixed wheel-count limit. The adjustable extra clearance defaults to 5 mm and can
+be reduced to zero; overlapping tires and centers beyond the frame are rejected.
+Full XYZ/rotation editing remains in the precision Details workspace.
+
+**Drive assist** offers Gentle, Balanced, Responsive and Custom settings. WASD
+commands the two sides; the computer drives every registered motor, including
+unequal motor counts. Settings control speed, acceleration, torque fraction,
+feedback gain and an optional overspeed limiter. Passive wheels receive no torque
+unless connected to a motor output. Mount a gearmotor on each chassis side and
+attach a passive wheel to each output to create this alternative drivetrain.
+The assistance is a simple robotics controller, not an automotive ECU or a
+calibrated traction-control model. Tank belts/caterpillar tracks are not simulated.
+
+All arm sizes now receive defaults on insertion: **Q/E** yaw, **R/V** shoulder,
+**T/B** elbow and **Y/N** wrist; grippers use **G/H**. Servos and wrist turntables
+also get defaults. Additional modules receive unused key pairs; inspect and change
+these in **Keyboard**. Release holds the target position with bounded torque and
+gravity compensation. Existing saved designs retain their existing controls.
+
+### Python builder inside the app
+
+Choose **Python** in the top navigation. The editor includes templates, typing,
+line navigation, indentation, copy/paste, code undo, **Save script**, **Run build**,
+**Cancel build** and **View build**. Cmd/Ctrl+Enter runs; Cmd/Ctrl+S saves.
+A successful run applies one undoable design change; syntax errors, invalid models
+and the eight-second timeout leave the previous robot intact. Scripts run as local
+Python in a worker process, not a security sandbox. Saved JSON never executes code.
+
+```python
+from little_world.scripting import RobotBuilder
+
+robot = RobotBuilder.chassis(length=0.65, width=0.28, height=0.04)
+for side in ("Left", "Right"):
+    for x in (-0.21, 0, 0.21):
+        robot.wheel("drive_100", side=side, x=x, clearance=0.005)
+robot.drive(max_speed=0.5, acceleration=0.7, torque_fraction=0.8)
+blueprint = robot.blueprint
+```
+
+Python uses metres and seconds. Assign the finished `Blueprint` to `blueprint`.
+`current` contains the starting design, so scripts may also use `AssemblyEditor`
+and all existing construction APIs to edit it. Scripts save next to the design as
+`.build.py` files; robot JSON and visual sequence programs remain separate files.
+
+### Easier manual robot operation
+
+Click **Operate robot** in Build (including mobile manipulators), or **Operate**
+in the room toolbar. Each joint has **− / +** buttons and its current position.
+Choose **1°, 5° or 15°** increments. The first click starts simulation automatically.
+Panda's **Open / Close** buttons remain visible across pages and change closure by
+10% per click; keyboard bindings still work. With multiple grippers, click the
+gripper selector to cycle between them. **Pause / Resume** freezes/continues the
+scene; **Stop simulation** restores the saved design. Manual clicks stop an active
+program.
+
+Switch the panel from **Joints** to **Tool** to move the gripper instead of single
+joints: **Up / Down / Forward / Back / Left / Right** in 1, 2 or 5 cm steps along the
+arm's own forward and left, with the tool held at its angle (**Hold tool angle**). Each
+step is solved for the arm's joints by damped least squares and handed to the servos,
+so contact and torque limits still apply; a step out of reach changes nothing and says
+how far short it is. **Teach pose** adds where the arm is as a program step
+([ADR 0016](adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md)). Registered
+robot models keep joint-level control here; the Panda's own planner is in the factory
+cell.
+
+<p align="center">
+  <img src="media/arm-tool-mode.png" width="80%" alt="Robot controls in Tool mode: straight steps for the gripper, the tool target, and Teach pose">
+</p>
+
+### Automated Factory starter cell
+
+Select **Real**, then **Pick and place** with Panda. Choose a block and output bin, preview the
+path, then run the complete pick-and-place task or execute one stage at a time.
+The Panda computes joint targets automatically and grasps through physical finger
+contact. An overhead camera view is available. This first cell uses explicitly
+labeled **known-object sensing**, not image recognition. Drag trays in **Arrange**, then click source and destination in **Set task**.
+**How picking works** explains a real cycle one stage at a time. Save cell and Undo
+preserve your layout and recipe. **Run 6 parts** runs the cell as a production run:
+the input tray's part, then five from a stock shelf fed onto the input tray one by one,
+each into its own slot of the destination tray, with parts placed, failures, seconds
+per part and parts per minute counted (the feeder is a teleport, not a mechanism). In the
+**Joint lab**, **Tool** mode moves a robot's hand in straight steps. Robot and camera
+remain fixed; conveyors and arbitrary production lines are future work. The experiment
+shares the app window with Anime and retains the separate robot build when you switch
+modes. See [Factory](FACTORY.md).

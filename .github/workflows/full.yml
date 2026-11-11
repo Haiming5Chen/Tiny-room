@@ -1,0 +1,75 @@
+# Everything, on pushes to main, weekly and on request (ADR 0073): the whole suite without a
+# window in two halves, the window tests on a virtual display, and the dozen headline
+# measurements against the recorded numbers. The measurements' file is kept as an artifact.
+name: full
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: suite without a window, half ${{ matrix.half }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        half: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y libgl1 libegl1
+      - run: python -m pip install -e ".[workshop,dev]"
+      - name: Every other test file, from file ${{ matrix.half }}
+        run: python -m pytest -q $(ls tests/test_*.py | awk "NR%2==${{ matrix.half }}%2")
+
+  evidence:
+    name: the headline measurements, against the recorded numbers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y libgl1 libegl1
+      - run: python -m pip install -e ".[workshop]"
+      - run: python -m little_world evidence --json evidence.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence
+          path: evidence.json
+
+  window:
+    name: window tests on a virtual display (reported, not required)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libgl1 libglx-mesa0 libgl1-mesa-dri
+      - run: python -m pip install -e ".[workshop,dev]"
+      - name: The tests that open the window
+        run: xvfb-run -a -s "-screen 0 1600x1000x24" python -m pytest -q -m window
+        env:
+          LITTLE_WORLD_TEST_RENDER: '1'

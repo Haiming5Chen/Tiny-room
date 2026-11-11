@@ -87,10 +87,14 @@ or a graphical builder in milestone one. Do not add dependencies for future phas
 
 ```sh
 python3 -m venv .venv && .venv/bin/python -m pip install -e '.[workshop,dev]'
+.venv/bin/little-world doctor                         # is this installation able to run? (ADR 0072)
+.venv/bin/python -m pytest -q -m "not slow"           # the quick tier: about 1,000 tests in a minute or two (ADR 0073)
 .venv/bin/python -m pytest -q                         # headless suite, no display needed
 LITTLE_WORLD_TEST_RENDER=1 xvfb-run -a -s "-screen 0 1600x1000x24" \
     .venv/bin/python -m pytest -q                     # adds the OpenGL window tests (Linux)
-.venv/bin/python examples/workshop.py                 # the app, in Anime (builder) mode
+.venv/bin/little-world                                # the app, What's new on the left; `build`: the builder; `demo NAME`
+.venv/bin/little-world evidence                       # the headline measurements here, against the recorded ones (ADR 0073)
+python scripts/check_links.py                         # every relative link in the Markdown leads to a file
 python scripts/agent_status.py                        # branch, tree, open items, proposals, last report, log
 python scripts/agent_status.py --new codex            # only the log lines codex has not read (no git)
 .venv/bin/python -m little_world.radar brief          # the radar's section of docs/agents/FRONTIER.md
@@ -100,8 +104,11 @@ ruff check --select F src tests scripts               # optional; not a project 
 
 MuJoCo is pinned to 3.10.0 (`pyproject.toml`, ADR 0027): the newest release with wheels
 for the owner's Intel Mac. The adapter turns multiccd off (one contact per convex pair);
-a different release moves physics results (docs/RADAR.md). The headless suite takes about
-seven minutes on two cores.
+a different release moves physics results (docs/RADAR.md). The headless suite is 37 minutes of
+test time - about 25 on two cores, in two processes - and the window tests another 14; 64 tests
+take all but two of those minutes and are listed in `tests/slow.txt` (rewrite it with
+`scripts/test_times.py --write` from a timed run). Commits are judged by the whole suites, not
+the quick tier.
 
 ## Conventions
 
@@ -110,9 +117,11 @@ seven minutes on two cores.
   solve it? Can we wrap it?* · *Unique contribution* · *Blueprint and builder* · *Result*
   (numbers, and the tests that hold them) · *Boundaries* (what is not claimed).
 - A physical claim has a number, a reason and a test that holds it.
-- Documents that follow a change: a `README.md` bullet for what users see, a dated section
+- Documents that follow a change: a `docs/FEATURES.md` paragraph for what users see (the
+  `README.md` is the short way in and stays under 200 lines: a test holds it), a dated section
   in `docs/VALIDATION.md` (what is checked, test counts, what is not claimed),
-  `docs/ARCHITECTURE.md` for a new module, the `docs/ROADMAP.md` paragraph.
+  `docs/ARCHITECTURE.md` for a new module, the `docs/ROADMAP.md` paragraph. A headline number
+  worth a stranger's re-measuring goes into `little_world/evidence.py` with its record.
 - Commits: one decision each; subject `Topic: what changed`; the body says what was measured
   before and after. Both suites pass at every commit.
 
@@ -132,7 +141,10 @@ seven minutes on two cores.
 | `src/little_world/factory/` | the automated factory cell |
 | `src/little_world/ui/` | the one-window app: workshop, build, program, test drive, factory |
 | `src/little_world/radar/` | the frontier radar (ADR 0021) and its research collection (ADR 0034); reads documents, never designs |
-| `tests/` | one file per area; window tests run only with `LITTLE_WORLD_TEST_RENDER=1` |
+| `src/little_world/cli.py`, `doctor.py`, `userdata.py` | the `little-world` command, its installation check and where a user's designs are kept (ADR 0072) |
+| `src/little_world/evidence.py` | the headline claims with their recorded numbers, measured again by `little-world evidence` (ADR 0073) |
+| `tests/` | one file per area; window tests run only with `LITTLE_WORLD_TEST_RENDER=1`; `tests/slow.txt` lists what the quick tier leaves out |
+| `.github/workflows/` | `quick` on every push, `full` on main and weekly (ADR 0073) |
 | `docs/adr/` | the decision records, 0001 onwards |
 
 ## Things that have bitten before

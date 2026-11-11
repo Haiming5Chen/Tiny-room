@@ -34,3 +34,28 @@ def own_robot_library(tmp_path_factory, monkeypatch):
 def own_lesson_progress(tmp_path_factory, monkeypatch):
     """No test reads or writes the user's lesson progress (ADR 0046)."""
     monkeypatch.setenv('LITTLE_WORLD_PROGRESS', str(tmp_path_factory.mktemp('lessons') / 'lessons.json'))
+
+
+def _slow_list():
+    """tests/slow.txt as {'test_file.py::test_name[param]': seconds} (scripts/test_times.py writes it)."""
+    path = os.path.join(os.path.dirname(__file__), 'slow.txt')
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as lines:
+        rows = [line.split(None, 1) for line in lines if line.strip() and not line.startswith('#')]
+    return {name.strip(): float(seconds) for seconds, name in rows}
+
+
+def pytest_collection_modifyitems(config, items):
+    """The quick tier (ADR 0073): tests listed in tests/slow.txt, and every window test, are marked
+    `slow`, so that `pytest -m "not slow"` answers in a couple of minutes; with no `-m` everything
+    runs, as before. Window tests are also marked `window`."""
+    listed = _slow_list()
+    for item in items:
+        name = f'{os.path.basename(str(item.fspath))}::{item.name}'
+        window = any('LITTLE_WORLD_TEST_RENDER' in str(m.args) or str(m.kwargs.get('reason', '')).startswith('requires')
+                     for m in item.iter_markers('skipif'))
+        if window:
+            item.add_marker(pytest.mark.window)
+        if window or name in listed:
+            item.add_marker(pytest.mark.slow)
