@@ -8,6 +8,11 @@ judges, which is the first thing to hold against it. To lean on memory as little
 everything in the first table was measured again for this page; the rest is read from the
 repository's own records and says where.
 
+*Since, 12 November:* the owner published the branch (`main` at 44e0a0c, release v0.2.0), and the
+quick workflow's first run on GitHub's machines passed on Linux and on Apple silicon - the install,
+the doctor, the quick tier and the five quick measurements - and failed its quick tier on Windows
+(OPEN LW-044 done, LW-045).
+
 ## What was measured again
 
 | Looked at | How | Found |
