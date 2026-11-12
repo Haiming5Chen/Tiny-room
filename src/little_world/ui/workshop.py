@@ -904,6 +904,7 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
                             else:
                                 active.motor_test=None
                         active.state=active.world.step(commands)
+                        if getattr(active,'physics_watch',None) is not None:active.watch_physics()
                         accumulator-=active.world.timestep
                         if active.paused:break
                 active.check_lessons()

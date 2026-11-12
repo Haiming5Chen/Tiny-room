@@ -30,6 +30,8 @@ NOSLIP_ITERATIONS = 2
 # at 1.6). Flip this only to compare.
 MULTICCD = False
 SHAPES = ('plane', 'height field', 'sphere', 'capsule', 'ellipsoid', 'cylinder', 'box', 'mesh', 'sdf')  # mjtGeom, in order
+_CONTACT_ROWS = np.array([int(mj.mjtConstraint.mjCNSTR_CONTACT_FRICTIONLESS), int(mj.mjtConstraint.mjCNSTR_CONTACT_PYRAMIDAL),
+                          int(mj.mjtConstraint.mjCNSTR_CONTACT_ELLIPTIC)])
 
 
 def dry_friction_solref(timestep):
@@ -261,6 +263,8 @@ class MujocoBackend:
         self._pair_mu = None
         self._any_sourced = False
         self._energy_sensor = False
+        self._name_list = None       # every body's name by its id, made when first asked (FR-040)
+        self._speeds_before = None   # every joint's speed when the last step began (FR-040)
         self._base_frictionloss = None
         self._roll = None  # rolling-resistance tables, or None when nothing rolls on a sourced tread
         self._affine = np.zeros(0, dtype=np.intp)  # kit motors: their slope, if any, is integrated implicitly
@@ -483,6 +487,7 @@ class MujocoBackend:
         self._base_frictionloss = model.dof_frictionloss.copy()
         self._roll = roll
         self.model, self.data = model, data
+        self._name_list = self._speeds_before = None
         self._body_ids = {n: model.body(n).id for n in body_names}
         self._motor_ids = {n: model.actuator(n).id for n in motor_names}
         self._camera_ids = {n: model.camera(n).id for n in camera_names}
@@ -684,6 +689,59 @@ class MujocoBackend:
         return {pair: (tuple(sorted(kinds)), n, multi.get(pair, ((), 0))[1])
                 for pair, (kinds, n) in sorted(now.items())}
 
+    def contact_work(self):
+        """The work the contacts between each pair of touching bodies did on them in the last step
+        (FR-040): ((body, body, joules, deepest, metres), ...), one row a pair. A contact is a spring
+        and a damper: it pushes two bodies apart as they press into each other, and while they touch
+        the work it does on them is what it gives back less what it took - never more than nothing,
+        unless the engine made energy. Each contact's forces as the solver found them, times how
+        fast its two points moved apart along them over the step - the speeds the step left, which
+        are the speeds it moved the bodies at - so it only reads the step and changes nothing.
+        The speeds are the step's mean - the semi-implicit step moves a body by its new speed, and
+        a force times that overstates its work by F^2 dt^2 / 2m a step: 6.3 of the 40 mJ a 81 g block
+        dropped 5 cm gives a slab. With the mean, the work is what the bodies' energies show.
+        `deepest` is how far the pair's deepest contact point sinks in, 0 at a touch."""
+        self._ready()
+        m, d = self.model, self.data
+        ncon, nefc = d.ncon, d.nefc
+        if not ncon or not nefc:
+            return ()
+        rows = np.nonzero(np.isin(d.efc_type[:nefc], _CONTACT_ROWS))[0]
+        speeds = d.qvel if self._speeds_before is None or len(self._speeds_before) != m.nv else (self._speeds_before + d.qvel) / 2
+        apart = np.zeros(nefc)
+        mj.mj_mulJacVec(m, d, apart, speeds)
+        power = np.bincount(d.efc_id[rows], weights=d.efc_force[rows] * apart[rows], minlength=ncon)[:ncon]
+        active = d.contact.efc_address[:ncon] >= 0
+        if not active.any():
+            return ()
+        pairs = np.sort(m.geom_bodyid[d.contact.geom[:ncon]], axis=1)[active]
+        keys, which = np.unique(pairs[:, 0] * m.nbody + pairs[:, 1], return_inverse=True)
+        joules = np.bincount(which, weights=power[active] * m.opt.timestep, minlength=len(keys))
+        deepest = np.zeros(len(keys))
+        np.maximum.at(deepest, which, -d.contact.dist[:ncon][active])
+        names = self._names()
+        return tuple((names[k // m.nbody], names[k % m.nbody], float(w), float(z))
+                     for k, w, z in zip(keys.tolist(), joules.tolist(), deepest.tolist()))
+
+    def _names(self):
+        if self._name_list is None:
+            self._name_list = [self.model.body(i).name for i in range(self.model.nbody)]
+        return self._name_list
+
+    def moving_mass(self, body):
+        """How much a push on `body` sets moving, kg: the bodies from its highest ancestor that can
+        move down - all of a cart from one of its wheels, a hinged roller alone - or None when it is
+        fixed to the world (FR-040)."""
+        self._ready()
+        m = self.model
+        idx = m.body(body).id
+        if idx == 0 or m.body_weldid[idx] == 0:
+            return None
+        top = idx
+        while m.body_parentid[top] and m.body_weldid[m.body_parentid[top]] != 0:
+            top = int(m.body_parentid[top])
+        return float(m.body_subtreemass[top])
+
     def step(self, commands):
         self._ready()
         unknown = commands.keys() - self._motor_ids.keys()
@@ -725,6 +783,7 @@ class MujocoBackend:
         if self._affine.size:
             self.model.actuator_biasprm[self._affine,0]=bias[self._affine,0]
             self.model.actuator_biasprm[self._affine,2]=bias[self._affine,1]
+        self._speeds_before = self.data.qvel.copy()     # the step's work is read at its mean speeds (FR-040)
         staged_step(self.model, self.data, self._contact_policy, self._energy_sensor)
         if self._roll is not None:
             apply_rolling_resistance(self.model, self.data, self._roll, self._base_frictionloss)
@@ -834,6 +893,7 @@ class MujocoBackend:
 
     def reset(self):
         self._ready()
+        self._speeds_before = None
         mj.mj_resetData(self.model, self.data)
         self.data.qpos[:]=self._initial_qpos
         self.data.ctrl[:]=self._initial_ctrl

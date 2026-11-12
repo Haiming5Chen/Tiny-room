@@ -3,12 +3,12 @@
 Written by `little-world evidence --markdown` from `src/little_world/evidence.py`; a test keeps the two the same.
 
 Every physical claim in this project has a number, a decision record that explains it and a test that holds
-it. This page lists a dozen headline claims with the numbers recorded for them
+it. This page lists thirteen headline claims with the numbers recorded for them
 (Linux x86_64, Python 3.13, MuJoCo 3.10.0, 10 Nov 2026) and the tolerance inside which a re-run still counts as holding. Run
 
 ```sh
 little-world evidence            # all of them, about four minutes on two cores
-little-world evidence --quick    # the five that take seconds
+little-world evidence --quick    # the six that take seconds
 little-world evidence --only fetch tilt --json mine.json
 ```
 
@@ -33,11 +33,14 @@ Why: [docs/adr/0013-test-fields.md](adr/0013-test-fields.md). Held by `tests/tes
 
 On all four wheels the kit cart clears a 10 mm curb, slowly - at 10.4 s - and not a 20 or 35 mm one.
 
+*A known flaw:* Before it climbs, the contact between a swivel caster's wheel and the curb's edge gives the cart energy it never took (FR-040, OPEN LW-047): one contact point between a cylinder and a box (multiccd off, ADR 0027), with noslip on. With multiccd on the check is clean and the curb is cleared at 11.4 s.
+
 | Measured | Recorded | Holds within |
 | --- | --- | --- |
 | 10 mm curb cleared at | 10.36 s | 1.5 s |
 | 20 mm curb cleared | no | the same |
 | 35 mm curb cleared | no | the same |
+| energy from nowhere at the 10 mm curb, as a lift of the cart | 4.59 mm | 2 mm |
 
 Why: [docs/adr/0041-the-cart-stands-on-all-four.md](adr/0041-the-cart-stands-on-all-four.md). Held by `tests/test_fields.py::test_on_all_four_wheels_the_cart_stalls_at_a_curb_and_gets_over_only_slewed_onto_a_drive_wheel`. Again: `little-world evidence --only curb` (about 14 s).
 
@@ -110,6 +113,17 @@ The cube moved 5 cm just after the camera looked: a jaw comes down on it, the ar
 | cube in the bin at | 40.83 s | 1.5 s |
 
 Why: [docs/adr/0071-a-reach-that-feels-what-it-meets.md](adr/0071-a-reach-that-feels-what-it-meets.md). Held by `tests/test_felt_reach.py::test_the_cube_moved_under_a_jaw_is_felt_at_once_and_not_pressed_for_two_seconds`. Again: `little-world evidence --only fetch-felt` (about 45 s).
+
+## `physics`
+
+A contact gives back no more energy than it took: a block dropped onto a slab is given none of its fall back; one started 5 mm inside the slab is pushed out with as much as lifting it 5 mm takes, and the check flags it.
+
+| Measured | Recorded | Holds within |
+| --- | --- | --- |
+| dropped 5 cm onto a slab: given back | 0 mm | 0.05 mm |
+| started 5 mm inside it: pushed out with | 4.99 mm | 0.2 mm |
+
+Why: [docs/adr/0074-energy-from-nowhere.md](adr/0074-energy-from-nowhere.md). Held by `tests/test_artifacts.py::test_a_block_started_inside_a_slab_is_pushed_out_with_energy_from_nowhere_and_flagged`. Again: `little-world evidence --only physics` (about 2 s).
 
 ## `slope-creep`
 

@@ -11,6 +11,28 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-12 · Claude (Cowork) · energy from nowhere: a physics check in every run (FR-040)
+Did: the weekly reading of 9 Nov merged into the frontier (FR-040 to FR-044, 7e59722); the roadmap's
+last MuJoCo 4 sentence corrected (4ef38b3); ADR 0074 - every run checks that no contact gave back more
+energy than it took (`MujocoBackend.contact_work`, `inventory/artifacts.py`, `Run.physics`, the drive
+panel and the run's report, What's new's "Energy from nowhere", the evidence's `physics` claim). The
+cloud workspace was lost at about 06:23 UTC on 12 Nov with all three unshipped (the first two had
+been committed as 115733d and e5a369e): they were made again from this session's record, and their
+tests and field runs run again.
+Measured: the check against the bodies' own energy (to 1 %), its controls (a block started 2 mm or more
+inside a slab is flagged, one dropped 5 cm is not). On the Curb run a caster's wheel against the 10 mm
+curb gives the kit cart 78 mJ from nowhere before it climbs, gone with multiccd on (cleared a second
+later) - OPEN LW-047. Just past the line: the Panda's fingers as they close on a part in Real's cell
+(2.6 mm's worth at 2 ms steps, 0.7 at 1 ms) and a finger holding one when the conveyor feeds it (3.8).
+Over the Fetch's 71 tuning set-ups and the 59 draws ADR 0049 held out, every goal is met in all 130; in 21 (16 %; 10 to 24 % at 95 %) a jaw's contact with the cube passes the line - in 15 as the jaws close on it, mostly the left pad (a contact that comes on with the pad already in the cube: a step's doing), in 6 while they hold it - by as much as 1.8 mJ, 11.5 mm's worth; the median set-up's most is 0.26 mm's worth. With elliptic cones the jaws give the cube 10 to 12 mm's worth from nowhere: another
+reason not to switch (OPEN LW-039). Suites: 1188 pass with a display, 1120 headless.
+Unfinished: this is not published yet - GitHub has 44e0a0c (v0.2.0), which the owner published
+today; its quick workflow passed on Linux and Apple silicon and failed its quick tier on Windows
+(OPEN LW-045). The line (2 mm) is judgment.
+LW-048 (the curb run's report says the cart tipped) found, not traced.
+For the owner: whether to turn multiccd back on (LW-047): it takes the curb's energy away and moves
+every wheel result a little.
+
 ## 2026-11-11 · Claude (Cowork) · easy to get from GitHub and use, and the project re-evaluated
 Did: the owner's request of 10 Nov. ADR 0072 - a `little-world` command (the window with What's new,
 `demo`, `build`, `doctor`), designs kept in the user's own folder, the README cut from 1,158 lines to

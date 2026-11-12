@@ -1,14 +1,15 @@
 """`little-world evidence`: the project's headline measurements, re-run here (ADR 0073).
 
 The documents make physical claims with numbers; the tests hold them inside tolerances and
-say pass or fail. This runs a dozen of them again on the machine in front of you and prints
+say pass or fail. This runs thirteen of them again on the machine in front of you and prints
 each number beside the one that was recorded - on Linux, MuJoCo 3.10.0, where every number
 in the documents was measured - so that anyone can see what holds on their own machine and
-what moved. One claim is a known flaw, kept in the list on purpose (the slope creep, OPEN
-LW-039).
+what moved. Two record known flaws, kept in the list on purpose: the slope creep (OPEN LW-039)
+and the energy a curb's contact gives the cart from nowhere (OPEN LW-047). One checks the
+physics check itself (FR-040).
 
     little-world evidence               every claim, about four minutes on two cores
-    little-world evidence --quick       the five that take seconds
+    little-world evidence --quick       the six that take seconds
     little-world evidence --only fetch tilt
     little-world evidence --list        what is claimed, without running anything
     little-world evidence --json FILE   also write what was measured, to attach to a report
@@ -86,8 +87,33 @@ def sprint():
 
 def curb():
     r = _run('curbs', 'mobile_platform')
+    nowhere = [a for a in (r.physics.flagged if r.physics else ()) if 'field/curb_10mm' in a.bodies]
     return {'10 mm curb cleared at': _when(r, 'curb_10'), '20 mm curb cleared': _when(r, 'curb_20') is not None,
-            '35 mm curb cleared': _when(r, 'curb_35') is not None}
+            '35 mm curb cleared': _when(r, 'curb_35') is not None,
+            'energy from nowhere at the 10 mm curb, as a lift of the cart': 1000 * max((a.lifted for a in nowhere), default=0.)}
+
+
+def physics():
+    """The physics check's controls (FR-040): a 5 cm block dropped 5 cm onto a fixed slab, and one
+    started 5 mm inside it; what the slab's contact gave back beyond what it took, as a lift of the block."""
+    from little_world import World
+    from little_world.components import Transform, box
+    from little_world.core.scene import Scene
+    from little_world.fields import field_entities, fixed
+    from little_world.inventory.artifacts import GIVE, Watch
+    from little_world.physics.mujoco_backend import MujocoBackend
+    out = {}
+    for name, lift in (('dropped 5 cm onto a slab: given back', .05), ('started 5 mm inside it: pushed out with', -.005)):
+        entities = field_entities([fixed('slab', (.6, .6, .04), 'slab', (0., 0., .3))],
+                                  [box('block', (.05, .05, .05), 'cube', dynamic=True, transform=Transform((0., 0., .345 + lift)))])
+        backend, watch = MujocoBackend(), Watch()
+        with World(backend, Scene(entities)) as world:
+            world.start()
+            for _ in range(750):
+                state = world.step({})
+                watch.update(backend, state.time)
+        out[name] = 1000 * GIVE * watch.result().worst
+    return out
 
 
 def tilt():
@@ -215,7 +241,11 @@ CLAIMS = (
           (Q('5 m from the start line', 11.85, .35, 's'), Q('stayed upright', True)), sprint, 17, quick=True),
     Claim('curb', 'On all four wheels the kit cart clears a 10 mm curb, slowly - at 10.4 s - and not a 20 or 35 mm one.',
           '0041-the-cart-stands-on-all-four.md', 'test_fields.py::test_on_all_four_wheels_the_cart_stalls_at_a_curb_and_gets_over_only_slewed_onto_a_drive_wheel',
-          (Q('10 mm curb cleared at', 10.36, 1.5, 's'), Q('20 mm curb cleared', False), Q('35 mm curb cleared', False)), curb, 14),
+          (Q('10 mm curb cleared at', 10.36, 1.5, 's'), Q('20 mm curb cleared', False), Q('35 mm curb cleared', False),
+           Q('energy from nowhere at the 10 mm curb, as a lift of the cart', 4.59, 2., 'mm')), curb, 14,
+          flaw='Before it climbs, the contact between a swivel caster\'s wheel and the curb\'s edge gives the cart energy it never '
+               'took (FR-040, OPEN LW-047): one contact point between a cylinder and a box (multiccd off, ADR 0027), with noslip on. '
+               'With multiccd on the check is clean and the curb is cleared at 11.4 s.'),
     Claim('tilt', 'On the tilt table the arm on its cart goes over at 54.6 deg, a degree before the 55.6 its design predicts.',
           '0029-tilt-test-squares-the-machine.md', 'test_tipping.py::test_on_the_tilt_table_the_angle_runs_out_as_the_arm_cart_goes_over',
           (Q('went over at', 54.61, 1., 'deg'), Q('its design predicts', 55.58, .05, 'deg')), tilt, 22),
@@ -238,6 +268,11 @@ CLAIMS = (
           '0071-a-reach-that-feels-what-it-meets.md', 'test_felt_reach.py::test_the_cube_moved_under_a_jaw_is_felt_at_once_and_not_pressed_for_two_seconds',
           (Q('every goal met', True), Q('the arm rose off the cube at', 17.44, .5, 's'), Q('why', 'felt it'),
            Q('cube in the bin at', 40.83, 1.5, 's')), fetch_felt, 45),
+    Claim('physics', 'A contact gives back no more energy than it took: a block dropped onto a slab is given none of its fall back; '
+          'one started 5 mm inside the slab is pushed out with as much as lifting it 5 mm takes, and the check flags it.',
+          '0074-energy-from-nowhere.md', 'test_artifacts.py::test_a_block_started_inside_a_slab_is_pushed_out_with_energy_from_nowhere_and_flagged',
+          (Q('dropped 5 cm onto a slab: given back', 0., .05, 'mm'), Q('started 5 mm inside it: pushed out with', 4.99, .2, 'mm')),
+          physics, 2, quick=True),
     Claim('slope-creep', 'A block resting on a slope inside its friction angle should stand still. It creeps: 0.2 mm/s on 5 deg, '
           '1.4 mm/s on 15 deg.',
           '0061-how-close-to-slipping.md', 'test_friction_use.py::test_a_block_on_a_slope_uses_tan_theta_over_mu_of_its_friction_until_it_slides',
@@ -308,10 +343,10 @@ def markdown():
     lines = ['# Evidence: what is claimed, where it was measured, and how to measure it again', '',
              'Written by `little-world evidence --markdown` from `src/little_world/evidence.py`; a test keeps the two the same.', '',
              'Every physical claim in this project has a number, a decision record that explains it and a test that holds',
-             'it. This page lists a dozen headline claims with the numbers recorded for them',
+             'it. This page lists thirteen headline claims with the numbers recorded for them',
              f'({RECORDED_ON}) and the tolerance inside which a re-run still counts as holding. Run', '',
              '```sh', 'little-world evidence            # all of them, about four minutes on two cores',
-             'little-world evidence --quick    # the five that take seconds',
+             'little-world evidence --quick    # the six that take seconds',
              'little-world evidence --only fetch tilt --json mine.json', '```', '',
              'and each number is measured again on your machine and printed beside the recorded one. A physics engine',
              'is deterministic on one machine and build, not across processors, operating systems or MuJoCo releases:',

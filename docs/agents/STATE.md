@@ -1,16 +1,16 @@
 # State
 
-Updated 2026-11-11 by Claude (Cowork). `python scripts/agent_status.py` prints the live
+Updated 2026-11-12 by Claude (Cowork). `python scripts/agent_status.py` prints the live
 branch, commits and tree; this file says what they mean. What each agent is doing right
 now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what is new).
 
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
-  owner's decision. **Not on GitHub**: `git ls-remote` on 11 Nov shows one branch there, `main`,
-  at the import of 24 Sep (eef1a37) - 93 commits behind this branch (OPEN LW-044). The owner
-  publishes it: `sh ~/Tiny-room/build/publish.sh` on the Mac. Codex's merge of 23 Oct (the Mac's
-  `main`, 7456609) is a third line, unpushed too.
-- **Decision records** 0001 to 0073. The newest: 0073 evidence anyone can measure again and 0072 from a clone to a running window (the owner's request of 10 Nov: easy to get and use, and re-evaluated - docs/EVALUATION.md), 0071 a reach that feels what it meets (OPEN LW-029), 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
+  owner's decision. **On GitHub** (`git ls-remote`, 12 Nov): `main` and this branch at 44e0a0c,
+  tagged v0.2.0 - the owner published it on 12 Nov (`sh ~/Tiny-room/build/publish.sh` on the Mac);
+  the commits since, from 7e59722 on, wait for the next. Codex's merge of 23 Oct (the Mac's `main`,
+  7456609) is a third line, unpushed.
+- **Decision records** 0001 to 0074. The newest: 0074 energy from nowhere - every run checks that no contact gave back more than it took (FR-040), 0073 evidence anyone can measure again and 0072 from a clone to a running window (the owner's request of 10 Nov: easy to get and use, and re-evaluated - docs/EVALUATION.md), 0071 a reach that feels what it meets (OPEN LW-029), 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
   (FR-038), 0062 the search
   mixes words and meaning (OPEN LW-027), 0061 how close to slipping (FR-036), 0060 once it
   holds, an alarm is not heard (OPEN LW-033), 0059 how near it is to tipping (FR-005), 0058 a motor
@@ -20,8 +20,8 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
   the first hour, checked by the app (FR-033); 0045 the tool travels its line (FR-032), both by
   the focused reading's ranking; 0044 robots from their own files (FR-031, the owner's request of
   21 Oct).
-- **Tests**: on MuJoCo 3.10.0, 1179 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 1112 headless; each test runs with an empty robot library of its own.
+- **Tests**: on MuJoCo 3.10.0, 1188 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 1120 headless; each test runs with an empty robot library of its own.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac (4.0.0's engine, `mujoco-core`, has none either: OPEN LW-046); multiccd off. The
   owner's Mac reinstalls after publishing.
@@ -29,12 +29,12 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
   FR-018, FR-020, FR-021, FR-022 (how late is too late), FR-024, FR-025 (measured, not adopted), FR-028 (latency), FR-029 (the factory's process window), FR-019 (a motor run hot), FR-005 (the force-angle measure), FR-036 (friction use), FR-038 (where runs fail), FR-039 (planned draws), FR-026 (a grasp the program feels), FR-023 (the retreat baseline), FR-027 (held-out draws), FR-030 (a contact census), FR-031 (a robot library from URDF and MJCF files, the
   owner's request of 21 October), FR-032 (the tool moved, not the joints) and FR-033 (an
   interactive first hour) done; FR-004, FR-007, FR-008 and FR-012 to FR-014
-  wait for the owner (FR-019 from the
-  weekly reading of 5 October, FR-022 to FR-026 from that of 19 October, FR-027 to FR-030 from
-  that of 21 October, FR-031 to FR-035 from the focused reading of 21 October); FR-040 to FR-044,
-  from the weekly reading of 9 November, are proposed and none is started - a physics-artifact watch,
-  set-up fingerprints, capability boundaries, a grasp bench, an import check, to be taken in that
-  order (the owner, 2 Nov: decide by the reading); FR-034 (network
+  wait for the owner (FR-019 from the weekly reading of 5 October, FR-022 to FR-026 from that of
+  19 October, FR-027 to FR-030 from that of 21 October, FR-031 to FR-035 from the focused reading
+  of 21 October); FR-040 to FR-044 come from the weekly reading of 9 November: FR-040 (a physics
+  check in every run) is done, and FR-041 to FR-044 - set-up fingerprints, capability boundaries, a
+  grasp bench, an import check - are proposed, to be taken in that order (the owner, 2 Nov: decide
+  by the reading); FR-034 (network
   and an optional dependency) and FR-035 (an MCP server, which the owner said to delay) are the
   owner's to start; FR-009 and FR-010 not now (the owner).
 - **Uncommitted**: nothing.

@@ -145,10 +145,13 @@ ramp: a squeeze by current, side by side on 130 set-ups, was not worth it (ADR 0
 stops when the arm's servos feel it meet something, and the program looks again at once (ADR 0071).
 One command opens the window and a doctor says what an installation lacks (ADR 0072); the headline
 numbers can be measured again on any machine, and an evaluation says where the project went wrong (ADR 0073).
+Every run checks that no contact gave back more energy than it took; on the Curb run it catches a
+caster's wheel against a curb's edge given 78 mJ from nowhere (ADR 0074).
 Next, by the evaluation of 11 November (docs/EVALUATION.md): the branch published - GitHub still has
 the import of 24 September; a licence chosen; the evidence run on the owner's Mac; one servo checked
 against hardware (FR-010) before another feature; the machine decided before the engine - MuJoCo 4.0
-has no engine wheel for Intel Macs either, and on Linux 20 of 1,087 tests fail on it. Then what the
+has no engine wheel for Intel Macs either, and on Linux 20 of 1,087 tests fail on it; whether to turn
+multiccd back on, which takes the curb's energy from nowhere away (OPEN LW-047). Then what the
 owner picks from the frontier proposals -
 among them the DC-motor actuator for the kit's gearmotor; moving surfaces and the PID actuator need a
 release past 3.10.

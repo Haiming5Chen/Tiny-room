@@ -599,6 +599,15 @@ force over its coefficient, summed); `inventory/handling.grip_use` makes a grip'
 only the machine touches; `Runner.carrying` and `Run.grip` follow it while a program carries what it
 holds. `MujocoBackend.scale_mass` makes a body heavier for a run (`run(masses=...)`), undone by a reset.
 
+Energy from nowhere (ADR 0074): `MujocoBackend.contact_work()` gives, for each pair of bodies touching
+after a step, the work their contacts did on them in it - each contact row's force times how fast its
+two points moved apart along it (`mj_mulJacVec` at the step's mean speeds) - and how deep they sank in;
+`MujocoBackend.moving_mass(body)` is what a push on a body sets moving. `inventory/artifacts.py`
+(standard library) adds the work up for each touch and flags one that gave back more than lifting the
+lighter body `GIVE` takes (`Watch`, `Checked`, `Artifact`); `sweep.run` keeps one for every run
+(`Run.physics`) and the reports say what it found; the test drive keeps one while a run goes
+(`TestDrive.physics_watch`, updated each physics step) and its report keeps the result.
+
 `inventory/stages.py` (ADR 0063, standard library) reads where a group of runs failed: how many met each
 goal and every goal before it, the first goal each missed, and - from `Run.stopped`, the block a program
 gave up at - what it was doing; a table for the sweep reports, two short lines for the panels.

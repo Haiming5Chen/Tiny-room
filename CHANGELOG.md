@@ -4,6 +4,16 @@ What changed for someone who uses Little World, newest first. Every change has a
 in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 [docs/FEATURES.md](docs/FEATURES.md).
 
+## 0.3.0 - 12 November 2026
+
+- A physics check in every run: a contact that gives back more energy than it took is the engine
+  making energy, and the drive panel, the run's report and every sweep report say so. On the Curb
+  run it gives the kit cart 78 mJ at a curb's edge; What's new shows it (ADR 0074).
+- `little-world evidence` measures thirteen headline claims: the physics check's controls are the
+  thirteenth, and the Curb run's claim records the energy its climb is given, as a flaw.
+- The frontier holds the weekly reading of 9 November (FR-040 to FR-044); the roadmap no longer
+  says MuJoCo 4.0 has a wheel for Intel Macs.
+
 ## 0.2.0 - 11 November 2026
 
 The first version since the import of 24 September, with seven weeks of work in it.

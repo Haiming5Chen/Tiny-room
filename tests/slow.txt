@@ -42,6 +42,7 @@
   21.7 test_cell_conveyor.py::test_a_run_fed_by_the_conveyor_places_each_part_each_arriving_within_its_nest
   20.9 test_straight_descent.py::test_tall_blocks_now_go_into_their_slots_and_the_tool_keeps_to_the_vertical
   19.5 test_more_fields.py::test_the_doorway_program_takes_the_platform_through_without_touching_the_frame
+  15.1 test_artifacts.py::test_on_the_curb_run_the_casters_contact_with_the_curb_gives_the_cart_energy_it_never_took
    7.2 test_fields.py::test_the_sprint_is_timed_by_the_drive_assist_speed
    7.2 test_more_fields.py::test_the_tilt_table_turns_on_schedule_under_a_machine
    7.1 test_census.py::test_a_sweep_run_hands_its_probe_every_step
@@ -57,6 +58,7 @@
    3.6 test_fields.py::test_every_field_compiles_with_a_sky_and_the_machine_settles_where_it_would_at_home
    3.5 test_test_drive.py::test_touching_the_room_is_reported_by_name_and_the_floor_is_not
    3.4 test_conveyor.py::test_pallets_ride_at_the_rollers_speed_to_the_stop_and_queue
+   3.1 test_artifacts.py::test_reading_the_contacts_work_changes_nothing_in_a_run
    3.0 test_catalog.py::test_catalog_compiles_and_steps[franka_fr3]
    2.8 test_test_drive.py::test_telemetry_reads_speed_motors_and_what_limits_the_top_speed
    2.5 test_grip_friction.py::test_a_held_cube_stays_in_the_grip

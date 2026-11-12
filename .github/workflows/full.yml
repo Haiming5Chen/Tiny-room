@@ -1,5 +1,5 @@
 # Everything, on pushes to main, weekly and on request (ADR 0073): the whole suite without a
-# window in two halves, the window tests on a virtual display, and the dozen headline
+# window in two halves, the window tests on a virtual display, and the thirteen headline
 # measurements against the recorded numbers. The measurements' file is kept as an artifact.
 name: full
 

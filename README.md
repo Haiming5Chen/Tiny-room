@@ -55,7 +55,8 @@ an OpenGL window, and for anything missing prints the one line that mends it. Mo
   sensor's noise; the grasp and the reach are read from servo registers, not from the
   simulator's contacts; a program that finds the world changed looks again.
 - **Sweeps that try to break a design** - varied set-ups, disturbances, paired runs, held-out
-  draws - and say where the runs failed.
+  draws - and say where the runs failed. Every run checks that no contact gave back more energy
+  than it took: the engine's own mistakes are flagged, not believed.
 - **Parts with sources.** Gearmotor and servo limits come from datasheets, robot models from
   MuJoCo Menagerie with their licences, and your own robot from its URDF or MJCF file.
 
@@ -69,8 +70,8 @@ This is a simulation, and nothing in it has been checked against hardware. What 
 claims with numbers, and you can measure them again:
 
 ```sh
-little-world evidence                    # a dozen headline measurements, here against recorded: 4 min
-little-world evidence --quick            # the five that take seconds
+little-world evidence                    # thirteen headline claims, here against recorded: 4 min
+little-world evidence --quick            # the six that take seconds
 python -m pip install -e '.[workshop,dev]'
 python -m pytest -q -m "not slow"        # the quick tier: about 1,000 tests in a minute or two
 python -m pytest -q                      # everything without a window: about 25 min on two cores

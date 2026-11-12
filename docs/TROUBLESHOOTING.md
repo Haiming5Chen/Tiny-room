@@ -8,7 +8,7 @@ the line that mends it:
 ```
 
 ```
-Little World 0.2.0 on Linux x86_64, Python 3.13.16
+Little World 0.3.0 on Linux x86_64, Python 3.13.16
   ok    Python        3.13.16
   ok    MuJoCo        3.10.0
   ok    NumPy         2.5.3
@@ -107,3 +107,10 @@ operating systems or releases, so:
   ([OPEN LW-026](agents/OPEN.md));
 - on Linux x86_64 with MuJoCo 3.10.0, every number should hold: if one does not, please open an
   issue with the file `little-world evidence --json mine.json` writes.
+
+**The drive panel or a report says "energy from nowhere"** (*seen*, on the Curb run). A contact in
+the run gave back more energy than it took - as much as lifting the lighter body 2 mm or more - which
+physics does not do: the simulator made it. The line names the two bodies and when. Read that run's
+result with it in mind; it is not a fault in your design. Known: a caster's wheel against a curb's
+edge, one contact point with MuJoCo's multiccd off ([ADR 0074](adr/0074-energy-from-nowhere.md),
+[OPEN LW-047](agents/OPEN.md)); and, in about one Fetch set-up in six, a jaw's pad as the jaws close on the cube or the palm stop holding it - at most 1.8 mJ: a contact that comes on with the pad already in the cube within one 2 ms step.

@@ -162,6 +162,9 @@ the quick tier.
   late (ADR 0014); a controller that returns a plain float loses that.
 - MuJoCo does not filter contacts between a child and a parent welded to the world: moving
   field parts must clear their stands (ADR 0020).
+- A contact can give back energy it never took. A caster's wheel, a cylinder, against a curb's
+  edge has one contact point with multiccd off, and with the noslip pass on it gives the kit cart
+  78 mJ from nowhere on the Curb run. Every run is checked for it (`Run.physics`, ADR 0074).
 - Window tests must wait on simulated progress, never on the wall clock.
 - The repository is public: no personal data, keys or paths in code, docs or reports;
   third-party assets are listed with their licences in `THIRD_PARTY.md`.

@@ -20,17 +20,17 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip', 'tipping',
-                                     'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
+    assert [d.id for d in DEMOS] == ['nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
+                                     'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch', 'tilt',
-                                        'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1.] * 7 + [16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch',
+                                        'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1.] * 8 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 5 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 0., 7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['hand'] + ['conveyor'] * 2 + ['hand'] * 12
-    assert [d.sensing for d in DEMOS] == ['known', 'camera'] + ['known'] * 13
+    assert [d.product for d in DEMOS] == ['Small block'] * 6 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 0., 0., 7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['hand'] * 2 + ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['known'] * 2 + ['camera'] + ['known'] * 13
     assert BY_ID['felt'].disturbance == BY_ID['look_again'].disturbance, "the same cube, moved: now felt"
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
@@ -61,7 +61,7 @@ def page_drawn(page, wh, picked=None, started=False):
 
 
 def test_whats_new_fits_a_window_780_high_in_pages_and_a_tall_one_on_one():
-    """The window opens 1200 by 780: fifteen demonstrations and what the picked one shows ran
+    """The window opens 1200 by 780: fifteen demonstrations (sixteen now) and what the picked one shows ran
     under the Guide's own button at its foot. Paged, every word and button above it is clear of
     it, and the pages hold every demonstration once, newest first."""
     from little_world.ui.whats_new import demo_pages
@@ -465,6 +465,50 @@ def test_the_factory_demonstration_runs_reals_cell_and_says_where_each_part_land
     monkeypatch.setattr(app, 'draw', exercise)
     app.run(seconds=600)
     assert step['n'] == 4
+
+
+@WINDOW
+def test_energy_from_nowhere_drives_the_cart_at_the_curbs_and_the_panel_flags_the_casters_contact(tmp_path, monkeypatch):
+    """What's new's 'Energy from nowhere' (ADR 0074): the kit cart driven at the Curb run's curbs by
+    one drive block. The drive panel's physics check says nothing from nowhere until the caster's
+    contact with the 10 mm curb has given back more than it took - at about 6 s - and then names
+    the curb and the wheel; after Stop the run's report says the same, 78 mJ by 7.7 s."""
+    import glfw
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'Energy from nowhere')
+        elif n == 2:
+            assert app.field_id == 'curbs' and not app.building and app.active_tab == 'Edit' and app.demo == 'nowhere'
+            assert app.runner.state == 'running' and app.physics_watch is not None
+        elif n == 3:
+            if app.runner.state == 'running':
+                return
+            app.events.append(app.simulate)             # Stop: the report on the left
+        elif n == 4:
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    live = said(app, monkeypatch, 'draw_test_drive_panel')
+    report = said(app, monkeypatch, 'draw_run_report')
+    app.run(seconds=600)
+    assert step['n'] == 5
+    assert 'physics check: nothing from nowhere' in live, "quiet until the curb"
+    flags = [w for w in live if w.startswith('energy from nowhere at ')]
+    assert flags and 'curb 10mm / swivel caster 2 wheel' in live
+    assert 4.5 < float(flags[0].split(' at ')[1].split(' s')[0]) < 7.
+    assert 'energy from nowhere at 7.7 s: 78.2 mJ' in report and 'curb 10mm / swivel caster 2 wheel' in report
+    record = app.run_report
+    assert record.physics.flagged[0].bodies == ('field/curb_10mm', 'machine/swivel_caster_2_wheel')
+    assert {g.id: g.status for g in record.goals}['curb_10'] == 'met'
 
 
 @WINDOW

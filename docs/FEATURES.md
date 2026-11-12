@@ -337,12 +337,21 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   assets, a second of physics, an OpenGL window - and prints the line that mends whatever is
   missing. Designs are kept in your own Little World folder
   ([ADR 0072](adr/0072-from-a-clone-to-a-running-window.md)).
-- **Evidence you can measure again.** `little-world evidence` runs a dozen of the project's
+- **Evidence you can measure again.** `little-world evidence` runs thirteen of the project's
   headline measurements on your machine and prints each beside the number recorded for it -
-  holds, or differs; one of them is a flaw kept in the list. `pytest -m "not slow"` is a quick
+  holds, or differs; two of them are flaws kept in the list. `pytest -m "not slow"` is a quick
   tier of about 1,000 tests in a minute; two GitHub workflows run it and the rest. What was found
   by looking at the whole project again is in [EVALUATION.md](EVALUATION.md)
   ([ADR 0073](adr/0073-evidence-anyone-can-measure-again.md)).
+- **Energy from nowhere.** Every run now checks its contacts: a contact gives back the energy two
+  bodies put into it as they press together, never more, and one that gives back more than lifting
+  the lighter of them 2 mm would take is the engine making energy. The drive panel says so under
+  *touching* while the run goes, and the run's report after Stop; every sweep report has a physics
+  check. On the Curb run it catches the engine at it: a caster's wheel against the 10 mm curb's
+  edge gives the kit cart 78 mJ it never took before the cart climbs over - What's new's *Energy
+  from nowhere* shows it. Just past its line it also flags the Panda's fingers as they close on a
+  part in Real's cell, and the Fetch's jaws on its cube in about one set-up in six - at most 1.8 mJ
+  ([ADR 0074](adr/0074-energy-from-nowhere.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

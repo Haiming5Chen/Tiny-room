@@ -61,6 +61,7 @@ class RunRecord:
     # A static test (ADR 0020): (highest reading, where it went over or None, predicted,
     # predicted at the trip rail, the gauge's top), in degrees.
     static: tuple | None = None
+    physics: object = None      # the physics check: did a contact give back more than it took (FR-040)
 
 
 class TestDrive:
@@ -85,6 +86,7 @@ class TestDrive:
         self.inset_camera = None
         self.inset_rect = None      # window coordinates of the inset, for its frame and label
         self.static = None          # a static test's live reading: [peak, predicted, at the rail]
+        self.physics_watch = None   # every contact's work while a run goes (FR-040), None between runs
 
     def drivable(self):
         """A machine the chase view suits: a drive to steer and a free base to move."""
@@ -104,6 +106,8 @@ class TestDrive:
             tip = stance.tip(field.side) if stance is not None and field.side else None
             self.static = [0., tip, None if tip is None else railed(tip, stance.height)]
         self.run_log = RunLog()
+        from little_world.inventory.artifacts import Watch
+        self.physics_watch = Watch()
         self.drive_sample = None
         self.drive_touching = set()
         self.drive_view = None
@@ -138,7 +142,8 @@ class TestDrive:
                 static = (peak, over, predicted, at_rail, FIELDS[self.field_id].gauge_top)
             record = RunRecord(self.run_count, self.field_id, self.run_log.summary(), goals,
                                self.telemetry.speed_limit() if self.telemetry.channels else None,
-                               anchored=self.telemetry.anchored, static=static)
+                               anchored=self.telemetry.anchored, static=static,
+                               physics=self.physics_watch.result() if self.physics_watch is not None else None)
             self.runs = (self.runs + [record])[-HISTORY:]
             self.run_report = record
             self.last_goals = goals
@@ -151,9 +156,24 @@ class TestDrive:
             self.follow = follow
         self.build_camera = None
         self.drive_view = None
-        self.telemetry = self.run_log = self.goal_tracker = None
+        self.telemetry = self.run_log = self.goal_tracker = self.physics_watch = None
         if hasattr(self, 'end_live_disturbance'):
             self.end_live_disturbance()
+
+    def watch_physics(self):
+        """One physics step of a run: its contacts' work (FR-040)."""
+        if self.physics_watch is not None and self.state is not None:
+            self.physics_watch.update(self.backend, self.state.time)
+
+    def physics_lines(self, text, checked, y, bottom):
+        """The physics check's lines in the left panel: warned when a contact gave back more than it took."""
+        lines = checked.brief() if checked is not None else ()
+        for k, line in enumerate(lines):
+            if y + 16 > bottom:
+                break
+            text(line, 16, y, 12 if k == 0 else 11, WARN if not checked.clean else MUTED, 256)
+            y += 18 if k == 0 else 16
+        return y + (4 if lines else 0)
 
     def sample_drive(self):
         if self.telemetry is None:
@@ -429,7 +449,9 @@ class TestDrive:
         # A vehicle touching things is news; an arm touching things is its job.
         text('touching: ' + touching if touching else 'touching nothing', 16, y, 12,
              WARN if touching and not anchored else (.86, .90, .93) if touching else MUTED, 256)
-        y += 28
+        y += 20
+        y = self.physics_lines(text, self.physics_watch.result() if self.physics_watch is not None else None, y, bottom)
+        y += 8
         if self.goal_tracker is not None:
             section('GOALS  /  ' + self.field_title(), y)
             y = self.draw_goal_lines(text, self.goal_tracker.results(), y + 20, bottom) + 8
@@ -549,7 +571,8 @@ class TestDrive:
         touched = ', '.join(r.touched)
         text('touched: ' + touched if touched else 'touched nothing', 16, y, 12,
              WARN if touched and not record.anchored else (.86, .90, .93) if touched else MUTED, 256)
-        y += 22
+        y += 20
+        y = self.physics_lines(text, record.physics, y, wh - 250) + 2
         if r.tipped:
             text('It tipped over.', 16, y, 12, WARN)
             y += 20

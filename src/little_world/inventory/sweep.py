@@ -54,6 +54,7 @@ class Run:
     grip: tuple = ()                # while the program carried what it held, in the air: (from, to, the most of
                                     # its grip's friction in use, when, the median) (FR-036); () if it carried nothing
     stopped: tuple = ()             # where a program that gave up stopped: (its block, the block's kind) (FR-038)
+    physics: object = None          # the physics check: artifacts.Checked, how its contacts' work came out (FR-040)
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -185,7 +186,8 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     servo commands and readings cross the bus that late (FR-028); None or zero, at once, as before.
     `masses` makes bodies heavier or lighter for the run, {body: factor}, as a payload is a condition
     (FR-036). While the program carries what it holds, the share of its grip's friction in use is
-    followed (`Run.grip`)."""
+    followed (`Run.grip`). Every contact's work is watched for energy it gives back without having
+    taken it (`Run.physics`, FR-040)."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -212,6 +214,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     backend = MujocoBackend()
     scene = field.scene(Entity('machine', bp))
     from little_world.inventory.handling import Watching
+    from little_world.inventory.artifacts import Watch
     with World(backend, scene, **({'timestep': timestep} if timestep else {})) as world:
         state = world.start()
         table = friction(variation)
@@ -225,11 +228,13 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
         runner = None
         kick = Disturbing(disturbance, _root(bp)) if disturbance is not None else None
         watching = tuple(Watching(part) for part in handled_parts(field))
+        physics = Watch()
 
         def watch(state):
             tracker.update(state)
             for w in watching:
                 w.update(backend, state, world.timestep)
+            physics.update(backend, state.time)
             if kick is not None:
                 kick.tick(backend, state, state.time - tracker.start, tracker.met)
             if trace is not None:
@@ -244,6 +249,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             from little_world.control.tool_motion import ToolMotion
             for _ in range(round(SETTLE * .002 / world.timestep)):
                 state = _hold(world, drive, control, field, state)
+                physics.update(backend, state.time)         # a start that springs apart is an artifact too (FR-040)
             tracker = GoalTracker(field.goals, _root(bp))
             obs = Observations(backend.model, backend.data, getattr(backend, 'robot_jaws', ()))
             try:
@@ -357,7 +363,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened), carried(grip),
                       (runner.index, program.blocks[runner.index].kind)
                       if runner.state == 'failed' and runner.index < len(program.blocks) else ())
-                     if protocol == 'program' else ()))
+                     if protocol == 'program' else ()), physics=physics.result())
 
 
 def carried(grip):
@@ -651,6 +657,11 @@ def _handling(runs):
     return lines
 
 
+def physics_lines(checks):
+    from little_world.inventory.artifacts import lines
+    return lines(checks)
+
+
 def _felt(runs):
     """What the program felt at its grasp checks against what the contacts showed (ADR 0048),
     as report lines; [] when no run made a grasp check."""
@@ -774,6 +785,7 @@ def disturbed_markdown(result):
     lines += stage_profile([(label, runs) for label, _, runs in result.groups])
     lines += _handled_by_disturbance(result)
     lines += _felt([r for _, _, runs in result.groups for r in runs])
+    lines += physics_lines([r.physics for _, _, runs in result.groups for r in runs])
     lines += ['', 'What each disturbance does:', '']
     lines += [f'- **{label}**: {description}.' for label, description, _ in result.groups[1:]]
     first = [x.label.lower() for x in undisturbed[0].results] if undisturbed and undisturbed[0].results else []
@@ -810,7 +822,18 @@ def _run(r):
                r.get('regrasped', 0), r.get('message', ''), r.get('event'),
                tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())),
                tuple(tuple(x) for x in r.get('alarm', ())), tuple(r.get('recovered', ())),
-               tuple(tuple(x) for x in r.get('listening', ())), tuple(r.get('grip', ())), tuple(r.get('stopped', ())))
+               tuple(tuple(x) for x in r.get('listening', ())), tuple(r.get('grip', ())), tuple(r.get('stopped', ())),
+               _physics(r.get('physics')))
+
+
+def _physics(c):
+    from little_world.inventory.artifacts import Artifact, Checked
+    if c is None:
+        return None
+    return Checked(c['touches'], c['pairs'], c['worst'],
+                   tuple(Artifact(tuple(a['bodies']), a['began'], a['at'], a['gave'], a['allowed'], a['deepest'],
+                                  a.get('lighter', '')) for a in c['flagged']),
+                   (tuple(c['deepest'][0]), c['deepest'][1]) if c['deepest'] else ())
 
 
 def _handled(h):
@@ -949,6 +972,7 @@ def markdown(sweep):
         lines += stage_profile([('as designed and drawn', ran)])
     lines += _handling(ran)
     lines += _felt(ran)
+    lines += physics_lines([r.physics for r in ran])
     from little_world.inventory.jitter import lines as knife_edge
     lines += knife_edge(drawn(sweep), sweep.jitter)
     nominal = next((r for r in ran if r.variation.nominal), None)

@@ -22,7 +22,8 @@ class Demo:
     disturbance: str    # the Fetch field's disturbance armed for the run, '' for none
     adr: str
     where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
-                            # 'factory': Real's cell; 'conveyor': beside the roller conveyor
+                            # 'factory': Real's cell; 'conveyor': beside the roller conveyor;
+                            # 'curbs': the kit cart driven at the Curb run's curbs (FR-040)
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
@@ -35,6 +36,12 @@ class Demo:
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('nowhere', 'Energy from nowhere',
+         'Every run now checks its contacts: one gives back what two bodies put into it as they press '
+         'together, never more. On the Curb run one does - the kit cart pushes a caster against the '
+         '10 mm curb, and their contact gives the cart energy it never took, enough to lift it 4.6 mm.',
+         'at about 6 s the drive panel\'s physics check turns orange: the curb and a caster\'s wheel',
+         '', 'ADR 0074', where='curbs', tab='Edit'),
     Demo('felt', 'It feels the cube under its jaw',
          'The cube is moved 5 cm just after the camera looked, and a jaw comes down on it. The arm\'s '
          'servos feel the shoulder fall behind where it was sent, and the arm rises at once - it used '
@@ -173,6 +180,9 @@ class WhatsNew:
         if demo.where in ('tilt', 'conveyor'):
             self.start_tilt_demo(demo)
             return
+        if demo.where == 'curbs':
+            self.start_curb_demo(demo)
+            return
         if not self.building:
             self.simulate()             # back to build: the demonstration sets up its own machine
         self.close_bench()
@@ -229,6 +239,24 @@ class WhatsNew:
         self.simulate()
         self.home(True)
         self.active_tab = 'Edit'            # the drive panel: speed, stance, degrees from tipping
+        self.demo = demo.id
+        self.status = f'{demo.title}: {demo.watch}.'
+
+    def start_curb_demo(self, demo):
+        """The kit cart driven straight at the Curb run's curbs by a one-block program, the drive
+        panel open, where the physics check says what each contact did (FR-040)."""
+        from little_world.programming.program import Block, Program
+        from little_world.robots.mobile_platform import mobile_platform_blueprint
+        if not self.building:
+            self.simulate()
+        self.close_bench()
+        self.stop_program()
+        self.edit(lambda: self.editor.load(mobile_platform_blueprint()))
+        self.set_field('curbs')
+        self.arm_disturbance(None)
+        self.program_edit(Program((Block('drive', value=12., secondary=12., duration=13.),)))
+        self.start_program()
+        self.active_tab = 'Edit'
         self.demo = demo.id
         self.status = f'{demo.title}: {demo.watch}.'
 

@@ -1861,3 +1861,28 @@ Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.
 
 Not claimed: a record from any machine but one; tolerances that are more than judgment; workflows
 that have run - they were written without GitHub's runners; the other claims, which the tests hold.
+
+## Energy from nowhere — 2026-11-12
+
+ADR 0074 (FR-040, first in the weekly reading of 9 November). Every run checks that no contact gave
+back more energy than it took: the work each pair of touching bodies' contacts did on them, added up
+from the moment they touched, may not come to more than lifting the lighter body 2 mm takes.
+Checked against the bodies' own energy: a block dropped 5 cm onto a slab gives the slab the 40 mJ it
+fell, to 1 %, and is given none back; started 0.5 to 10 mm inside it is pushed out with as much as
+lifting it that far takes (0.49 to 9.99 mm's worth), flagged from 2 mm; a box set 3 mm into another,
+2.47 mJ, lifting it 3 mm (5 %). Reading it changes nothing, to the last bit. Over the headline
+claims' runs and the other fields, three touches pass the line. On the Curb run a swivel caster's
+wheel against the 10 mm curb's edge gives the kit cart 78 mJ from nowhere, 4.6 mm's worth, before
+it climbs over at 10.4 s; at 1 ms steps 66 mJ, with multiccd on none (cleared at 11.4 s), with
+elliptic cones or no noslip none and no climb in 13 s (OPEN LW-047). In Real's cell the Panda's
+fingers pass it as they close on a part (2.6 mm's worth at 2 ms steps, 0.7 at 1 ms) and, fed by the
+conveyor, as one holds a part (3.8). Over the Fetch's 71 tuning set-ups and the 59 draws ADR 0049 held out, every goal is met in all 130; in 21 (16 %; 10 to 24 % at 95 %) a jaw's contact with the cube passes the line - in 15 as the jaws close on it, mostly the left pad (a contact that comes on with the pad already in the cube: a step's doing), in 6 while they hold it - by as much as 1.8 mJ, 11.5 mm's worth; the median set-up's most is 0.26 mm's worth. With elliptic cones the
+jaws' pads give the carried cube 1.9 and 1.6 mJ from nowhere (OPEN LW-039). In the window the drive
+panel and the run's report say what the check found; What's new runs the Curb run (*Energy from
+nowhere*). Checked in `tests/test_artifacts.py` (8), a window test in `tests/test_whats_new.py`, the
+evidence's `physics` claim.
+Suites on MuJoCo 3.10.0: 1188 passed with a display, 1120 headless.
+
+Not claimed: that the line is more than judgment; that a gain made a little at a time across many
+short touches would be caught; joint limits and other constraints; what the energy did - the
+cart climbs the 10 mm curb without it, with multiccd on, a second later.

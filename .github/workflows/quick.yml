@@ -45,5 +45,5 @@ jobs:
         run: python -m little_world doctor --no-window
       - name: The quick tier
         run: python -m pytest -q -m "not slow"
-      - name: The five quick measurements, against the recorded numbers
+      - name: The six quick measurements, against the recorded numbers
         run: python -m little_world evidence --quick
