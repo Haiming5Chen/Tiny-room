@@ -57,3 +57,16 @@ in part; the support's 1 cm catch is an assumption sized on the cart's caster ga
 The kit's machines never came near tipping in a hard stop; FR-005's check - that the angle runs out
 within 20 ms of a wheel lifting 2 mm when braking tips a machine - needs a machine that tips, and was
 not made. The support is taken flat; on a curb or a ramp's lip it is not.
+
+**Amended 12 November 2026 (OPEN LW-048): an estimate is not a tip.** The run report printed the
+force angle's fewest as "(it tipped)" whenever it reached zero, and the drive panel "(tipping)" for
+either estimate below zero. On the Curb run the kit cart leaned 3.7 deg at most and kept its upright
+goal while both fell far below zero: in a step at 9.28 s one drive wheel's treads on the curb were
+all it stood on (stance margin -13.1 cm), and at 8.43 s two casters - one pressed against the curb's
+edge, its normal 22 deg off vertical - tilted the estimated support plane 11 deg and left the rear
+caster out of it (-146 deg). Both readings are now labelled as estimates ("estimated: ..." in the
+report, "est." in the drive panel) and keep their warning colours, and the report says what was seen
+beside them - "seen: tilted N deg at most, did not tip" - when they say it was past tipping and it
+was not; only a tilt past 60 deg says it tipped over ("It tipped over.", as before).
+`RunSummary.stability_lines()`; held by `tests/test_test_drive.py::test_the_report_keeps_a_tip_it_estimated_apart_from_one_it_saw`.
+The estimates themselves are unchanged: the support is still one step's contacts (OPEN LW-049).

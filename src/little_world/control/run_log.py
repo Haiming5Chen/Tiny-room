@@ -55,7 +55,25 @@ class RunSummary:
 
     @property
     def tipped(self):
+        """Seen to go over: tilted past TIPPED, on its side."""
         return self.max_tilt > TIPPED
+
+    def stability_lines(self):
+        """What the run report says of tipping, as (text, warn) lines (LW-048). The stance margin and
+        the degrees from tipping (ADR 0059) are estimates, made each frame from what the machine stands
+        on, and are labelled so: at a curb a frame's support can be one wheel's treads, or two casters
+        with one pressed against the curb's edge, and both fall below zero while the machine stays
+        upright. What was seen follows them when they say it was past tipping: only the tilt it reached
+        says it went over (`tipped`), and the report says that on its own line."""
+        lines = []
+        if self.min_margin is not None:
+            lines.append((f'estimated: lowest stance margin {100 * self.min_margin:.1f} cm', self.min_margin < .01))
+        if self.min_tip is not None:
+            lines.append((f'estimated: fewest {self.min_tip:.0f} deg from tipping', self.min_tip < 10))
+        past = (self.min_margin is not None and self.min_margin < 0) or (self.min_tip is not None and self.min_tip <= 0)
+        if past and not self.tipped:
+            lines.append((f'seen: tilted {self.max_tilt:.0f} deg at most, did not tip', False))
+        return tuple(lines)
 
     @property
     def average_speed(self):

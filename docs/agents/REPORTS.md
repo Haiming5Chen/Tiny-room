@@ -11,6 +11,29 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-12 · Claude (Cowork) · LW-048: the Curb report's "it tipped" was an estimate
+Did: LW-048 as assigned in docs/agents/PRINT_ROOM_SYNC.md - base 4c0ea8f (published main), branch
+claude/lw-048-curb-report, head the one commit on it. The run report's tipping lines come from
+`RunSummary.stability_lines()`: the stance margin and the degrees from tipping labelled as estimates,
+their warnings kept, and "seen: tilted N deg at most, did not tip" beside them when they say past
+tipping and it was not; "It tipped over." stays the line for a tip seen (past 60 deg). The drive panel
+marks its two readings "est." and no longer says "(tipping)" on an estimate. One regression in
+tests/test_test_drive.py; ADR 0059 amended; OPEN LW-048 done, LW-049 new.
+Measured: before, on 4c0ea8f, the Curb run driven headless as a sweep drives it - tilt 3.7 deg at
+most, upright kept, stance margin -13.1 cm (a step with one drive wheel's treads its only support),
+force angle -145.8 deg (two casters, one against the curb's edge, tilting the estimated plane 11 deg);
+in a hidden window the report read "closest to tipping: -142 deg left (it tipped)". After: "estimated:
+fewest -125 deg from tipping", "seen: tilted 3 deg at most, did not tip". Suites 1189 with a
+display, 1121 headless (1188 / 1120 at the base); no known failures.
+Commands: `PYTHONPATH=src .venv/bin/python -m pytest -q tests/test_test_drive.py`; the two suites as
+AGENTS.md gives them (`pytest -q`; `LITTLE_WORLD_TEST_RENDER=1 xvfb-run -a ... pytest -q`), windows hidden.
+Unfinished: why the estimates fall so far at a curb (LW-049): changing the support estimate changes
+ADR 0059's measure - left for review. Not published; the solver, LW-047, LW-026 and the print/room
+work untouched. Seen in passing, not acted on: with Python's EncodingWarning turned on, the quick tier
+opens files without naming an encoding in 46 places (12 in src and scripts); on Windows those read
+and write in the locale's code page - a lead for the Windows quick tier's failure (OPEN LW-045).
+For the owner: nothing to decide for this fix; LW-049 when you want the estimates mended.
+
 ## 2026-11-12 · Claude (Cowork) · energy from nowhere: a physics check in every run (FR-040)
 Did: the weekly reading of 9 Nov merged into the frontier (FR-040 to FR-044, 7e59722); the roadmap's
 last MuJoCo 4 sentence corrected (4ef38b3); ADR 0074 - every run checks that no contact gave back more

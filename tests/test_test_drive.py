@@ -48,6 +48,20 @@ def test_tilt_saturation_share_and_what_was_touched():
     assert RunSummary(max_tilt=75.).tipped
 
 
+def test_the_report_keeps_a_tip_it_estimated_apart_from_one_it_saw():
+    """LW-048: on the Curb run the kit cart leaned 3.7 deg at most and kept its upright goal, while the
+    estimates made from each frame's support fell to -13.1 cm and -146 deg - one drive wheel's treads,
+    or two casters with one on the curb's edge, were all it stood on in a step - and the report said
+    "(it tipped)". The estimates are labelled and still warn; what was seen stands apart."""
+    curb = RunSummary(max_tilt=3.7, min_margin=-.131, min_tip=-145.8).stability_lines()
+    assert curb == (('estimated: lowest stance margin -13.1 cm', True), ('estimated: fewest -146 deg from tipping', True),
+                    ('seen: tilted 4 deg at most, did not tip', False))
+    over = RunSummary(max_tilt=75., min_margin=-.05, min_tip=-30.)
+    assert over.tipped and [warn for _, warn in over.stability_lines()] == [True, True], "a tip seen is the report's own line"
+    assert RunSummary(max_tilt=2., min_margin=.005, min_tip=8.).stability_lines() == (
+        ('estimated: lowest stance margin 0.5 cm', True), ('estimated: fewest 8 deg from tipping', True)), "a near miss still warns"
+
+
 def test_slip_is_the_tread_outrunning_the_floor():
     spinning = MotorSample("left", 60., 330., .5, .5, True, .26)
     rolling = MotorSample("left", 60., 330., .1, .5, False, .01)

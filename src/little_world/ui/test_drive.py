@@ -420,14 +420,15 @@ class TestDrive:
             text(f'{heading}  /  top {summary.top_speed:.2f} m/s  /  tilt {tilt:.0f} deg', 16, y, 12,
                  WARN if tilt > 20 else (.86, .90, .93), 256)
             stance = None if s is None else s.margin
+            # Both are estimates from this frame's support, not what it did: the tilt above is that (LW-048).
             stance_text = ('rocking on one support line' if stance is None else
-                           f'stance margin {100 * stance:.1f} cm' + ('  (tipping)' if stance < 0 else ''))
+                           f'est. stance margin {100 * stance:.1f} cm')
             text(f'{summary.distance:.2f} m  /  ' + stance_text, 16, y + 20, 12,
                  WARN if stance is not None and stance < .01 else LIGHT, 256)
             # Its accelerations counted: degrees before it tips (ADR 0059).
             tip = None if s is None else s.tip
             if tip is not None:
-                text(f'{tip:.0f} deg from tipping' + ('  (tipping)' if tip <= 0 else '  (close)' if tip < 10 else ''),
+                text(f'est. {tip:.0f} deg from tipping' + ('  (close)' if tip < 10 else ''),
                      16, y + 40, 12, WARN if tip < 10 else LIGHT, 256)
                 y += 20
             y += 40
@@ -560,13 +561,9 @@ class TestDrive:
             text(f'wheels slipping {100 * r.slip_share:.0f} % of the time', 16, 206, 12,
                  WARN if r.slip_share > .1 else (.86, .90, .93), 256)
             y = 226
-            if r.min_margin is not None:
-                text(f'lowest stance margin {100 * r.min_margin:.1f} cm' + ('  (near tipping)' if r.min_margin < .01 else ''),
-                     16, y, 12, WARN if r.min_margin < .01 else (.86, .90, .93), 256)
-                y += 20
-            if r.min_tip is not None:
-                text(f'closest to tipping: {r.min_tip:.0f} deg left' + ('  (it tipped)' if r.min_tip <= 0 else ''),
-                     16, y, 12, WARN if r.min_tip < 10 else (.86, .90, .93), 256)
+            # The two estimates labelled as such, and what was seen apart from them (LW-048).
+            for line, warn in r.stability_lines():
+                text(line, 16, y, 12, WARN if warn else (.86, .90, .93), 256)
                 y += 20
         touched = ', '.join(r.touched)
         text('touched: ' + touched if touched else 'touched nothing', 16, y, 12,

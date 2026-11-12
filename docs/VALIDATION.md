@@ -1886,3 +1886,18 @@ Suites on MuJoCo 3.10.0: 1188 passed with a display, 1120 headless.
 Not claimed: that the line is more than judgment; that a gain made a little at a time across many
 short touches would be caught; joint limits and other constraints; what the energy did - the
 cart climbs the 10 mm curb without it, with multiccd on, a second later.
+
+## An estimated tip apart from one seen — 2026-11-12
+
+OPEN LW-048, ADR 0059 amended. The run report said "(it tipped)" when the force angle's estimate
+reached zero. Reproduced on 4c0ea8f with the Curb run driven as a sweep drives it and the test
+drive's telemetry read every step: the kit cart leaned 3.7 deg at most and kept its upright goal,
+while the stance margin fell to -13.1 cm and the force angle to -145.8 deg - one step's support was
+one drive wheel's treads, another's two casters with one against the curb's edge. In a hidden window
+(What's new's *Energy from nowhere*) the report read "closest to tipping: -142 deg left (it tipped)";
+it now reads "estimated: fewest -125 deg from tipping" and "seen: tilted 3 deg at most, did not
+tip" (the window reads once a frame, so its fewest moves from run to run), and the drive panel marks
+both readings "est.". Checked in `tests/test_test_drive.py` (one more test).
+Suites on MuJoCo 3.10.0: 1189 passed with a display, 1121 headless.
+
+Not claimed: that the estimates are right at a curb - they are as they were (OPEN LW-049).
