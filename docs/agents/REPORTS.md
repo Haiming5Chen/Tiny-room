@@ -31,7 +31,8 @@ Corrected before publishing: the first draft of this work said 4.0.0 has an Inte
 that the pin's reason was gone. It took a wrapper wheel for the engine's; the weekly reading of 9 Nov
 had checked it and I had not read it first.
 Unfinished: nothing is published - that needs the owner. The workflows have never run; Apple silicon
-and Windows are untried (OPEN LW-045). The weekly reading of 9 Nov is not merged into the frontier.
+and Windows are untried (OPEN LW-045). The weekly reading of 9 Nov is in the frontier as FR-040 to
+FR-044 (41 sources in the collection); none is started.
 For the owner: (1) publish: `sh ~/Tiny-room/build/publish.sh`; (2) choose a licence - all rights are
 reserved now, so people may read this and may not use it; (3) docs/EVALUATION.md lists where the
 project went wrong, the first being that I reported "shipped" for seven weeks without checking that

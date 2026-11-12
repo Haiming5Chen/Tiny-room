@@ -6,8 +6,8 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
-  owner's decision. **Not on GitHub**: `git ls-remote` on 10 Nov shows one branch there, `main`,
-  at the import of 24 Sep (eef1a37) - 89 commits behind this branch (OPEN LW-044). The owner
+  owner's decision. **Not on GitHub**: `git ls-remote` on 11 Nov shows one branch there, `main`,
+  at the import of 24 Sep (eef1a37) - 93 commits behind this branch (OPEN LW-044). The owner
   publishes it: `sh ~/Tiny-room/build/publish.sh` on the Mac. Codex's merge of 23 Oct (the Mac's
   `main`, 7456609) is a third line, unpushed too.
 - **Decision records** 0001 to 0073. The newest: 0073 evidence anyone can measure again and 0072 from a clone to a running window (the owner's request of 10 Nov: easy to get and use, and re-evaluated - docs/EVALUATION.md), 0071 a reach that feels what it meets (OPEN LW-029), 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
@@ -31,7 +31,10 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
   interactive first hour) done; FR-004, FR-007, FR-008 and FR-012 to FR-014
   wait for the owner (FR-019 from the
   weekly reading of 5 October, FR-022 to FR-026 from that of 19 October, FR-027 to FR-030 from
-  that of 21 October, FR-031 to FR-035 from the focused reading of 21 October); FR-034 (network
+  that of 21 October, FR-031 to FR-035 from the focused reading of 21 October); FR-040 to FR-044,
+  from the weekly reading of 9 November, are proposed and none is started - a physics-artifact watch,
+  set-up fingerprints, capability boundaries, a grasp bench, an import check, to be taken in that
+  order (the owner, 2 Nov: decide by the reading); FR-034 (network
   and an optional dependency) and FR-035 (an MCP server, which the owner said to delay) are the
   owner's to start; FR-009 and FR-010 not now (the owner).
 - **Uncommitted**: nothing.
