@@ -147,7 +147,8 @@ One command opens the window and a doctor says what an installation lacks (ADR 0
 numbers can be measured again on any machine, and an evaluation says where the project went wrong (ADR 0073).
 Next, by the evaluation of 11 November (docs/EVALUATION.md): the branch published - GitHub still has
 the import of 24 September; a licence chosen; the evidence run on the owner's Mac; one servo checked
-against hardware (FR-010) before another feature; a study of MuJoCo 4.0, which has a wheel for Intel
-Macs again and on which 20 of 1,087 tests fail. Then what the owner picks from the frontier proposals -
+against hardware (FR-010) before another feature; the machine decided before the engine - MuJoCo 4.0
+has no engine wheel for Intel Macs either, and on Linux 20 of 1,087 tests fail on it. Then what the
+owner picks from the frontier proposals -
 among them the DC-motor actuator for the kit's gearmotor; moving surfaces and the PID actuator need a
 release past 3.10.
