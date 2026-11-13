@@ -1931,3 +1931,17 @@ with Python's `EncodingWarning` as an error (1,058).
 Suites on MuJoCo 3.10.0: 1192 passed with a display, 1124 headless.
 
 Not claimed: that Windows passes - its next run says.
+
+## The same start, checked — 2026-11-13
+
+ADR 0075 (FR-041). Every sweep run keeps a fingerprint of its set-up as the program takes over - the
+engine, the model with every change made to it, the joints before the first step and then, the
+program, the draw - exact and rounded, and the disturbed sweep's and the recovery report check their
+pairs before their statistics. The paired studies' starts, rebuilt and checked: ADR 0036 and 0051's
+63 pairs (9 set-ups, 7 disturbances) and ADR 0070's 130 (the program under test) began alike, exact;
+ADR 0052's slip reproduced - the payload where its own mass puts it - is flagged in 59 of 71 set-ups,
+every loaded one below the heaviest payload. On the same machine with NumPy's AVX-512 paths off the
+9 set-ups start the same to the bit. A fingerprint takes 15 to 23 ms. Checked in `tests/test_identity.py` (3).
+Suites on MuJoCo 3.10.0: 1195 passed with a display, 1127 headless.
+
+Not claimed: that runs which began alike ran alike; the window's test drives; the owner's Mac (OPEN LW-050).

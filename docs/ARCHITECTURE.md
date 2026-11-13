@@ -608,6 +608,14 @@ lighter body `GIVE` takes (`Watch`, `Checked`, `Artifact`); `sweep.run` keeps on
 (`Run.physics`) and the reports say what it found; the test drive keeps one while a run goes
 (`TestDrive.physics_watch`, updated each physics step) and its report keeps the result.
 
+The same start, checked (ADR 0075): `inventory/identity.py` (standard library) is a set-up's
+fingerprint - the MuJoCo release, the compiled model with every change made to it, the joints before
+the first step and as the program takes over, the program's blocks and the draw's values, each a
+digest, exact and rounded - and the check a paired statistic makes first (`check(pairs, grade,
+factor)`). `MujocoBackend.digests()` computes the digests (`mj_saveModel` for the model's bytes);
+`sweep.run` keeps one for every run (`Run.fingerprint`) and returns it alone with `until_start`; the
+disturbed sweep's report and `inventory/recovery.py` check their pairs.
+
 `inventory/stages.py` (ADR 0063, standard library) reads where a group of runs failed: how many met each
 goal and every goal before it, the first goal each missed, and - from `Run.stopped`, the block a program
 gave up at - what it was doing; a table for the sweep reports, two short lines for the panels.

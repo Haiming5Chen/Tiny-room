@@ -55,6 +55,7 @@ class Run:
                                     # its grip's friction in use, when, the median) (FR-036); () if it carried nothing
     stopped: tuple = ()             # where a program that gave up stopped: (its block, the block's kind) (FR-038)
     physics: object = None          # the physics check: artifacts.Checked, how its contacts' work came out (FR-040)
+    fingerprint: object = None      # the set-up as the program took over: identity.Fingerprint (FR-041); None before it
 
     def result(self, goal):
         return next((r for r in self.results if r.id == goal), None)
@@ -161,7 +162,7 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True, probe=None, recovery=None, alarm=None, latency=None, masses=None):
+        feel=True, probe=None, recovery=None, alarm=None, latency=None, masses=None, until_start=False):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -187,7 +188,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     `masses` makes bodies heavier or lighter for the run, {body: factor}, as a payload is a condition
     (FR-036). While the program carries what it holds, the share of its grip's friction in use is
     followed (`Run.grip`). Every contact's work is watched for energy it gives back without having
-    taken it (`Run.physics`, FR-040)."""
+    taken it (`Run.physics`, FR-040). The set-up is fingerprinted as the program takes over - the model
+    with every change made to it, the joints at the start and then, the program, the draw (`Run.fingerprint`,
+    FR-041); `until_start` returns that alone, without running, for a check of a paired study's starts."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
@@ -215,8 +218,10 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     scene = field.scene(Entity('machine', bp))
     from little_world.inventory.handling import Watching
     from little_world.inventory.artifacts import Watch
+    from little_world.inventory import identity
     with World(backend, scene, **({'timestep': timestep} if timestep else {})) as world:
         state = world.start()
+        start = (backend.data.qpos.copy(), backend.data.qvel.copy())     # before the first step (FR-041)
         table = friction(variation)
         if table:
             backend.vary_pair_friction(table)
@@ -287,6 +292,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
             actual = []         # where each looked-for object really was: measured, not seen
             alarmed, recovered, listened, recoveries = [], [], [], 0
             grip = []           # (time, friction use) while it carries what it holds, in the air (FR-036)
+            fingerprint = identity.fingerprint(backend, start, program, variation)    # as the program takes over
+            if until_start:
+                return Run(variation, fingerprint=fingerprint)
             for _ in range(steps):
                 contacts, distances = obs.program_inputs(program)
                 registers = feeling.read(backend, control, jaws) if readable else None
@@ -343,6 +351,9 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
         else:
             tracker = GoalTracker(field.goals, _root(bp))
             tracker.update(state)
+            fingerprint = identity.fingerprint(backend, start, None, variation)
+            if until_start:
+                return Run(variation, fingerprint=fingerprint)
             for _ in range(steps):
                 if protocol == 'drive':
                     commands = dict(drive.step_commands(AHEAD, world.timestep))
@@ -363,7 +374,7 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
                    *((tuple(alarmed), tuple(recovered), tuple(tuple(s) for s in listened), carried(grip),
                       (runner.index, program.blocks[runner.index].kind)
                       if runner.state == 'failed' and runner.index < len(program.blocks) else ())
-                     if protocol == 'program' else ()), physics=physics.result())
+                     if protocol == 'program' else ()), physics=physics.result(), fingerprint=fingerprint)
 
 
 def carried(grip):
@@ -737,6 +748,15 @@ def late(latency):
             f'its readings of them came {ms(latency.reading)} late.')
 
 
+def pairs_verified(result):
+    """Whether each disturbed run began from the same start as its set-up's undisturbed one (FR-041): the
+    pairs ADR 0036's statistics read as one run until the event. The disturbance comes after the start."""
+    from little_world.inventory.identity import check
+    undisturbed = result.groups[0][2]
+    return check((r.variation.label, u.fingerprint, r.fingerprint)
+                 for _, _, runs in result.groups[1:] for u, r in zip(undisturbed, runs))
+
+
 def disturbed_markdown(result):
     """A disturbance sweep as a short report: one row per disturbance."""
     field = FIELDS[result.field]
@@ -764,7 +784,7 @@ def disturbed_markdown(result):
     lines = [f'# {field.title}, disturbed: {result.design}', '',
              f'Each disturbance tried on the same {n} set-ups - the design as designed and {drawn_count} drawn at '
              f'random within the ranges of ADR 0024' + (f' with seed {result.seed}' if result.seed is not None else '')
-             + f' - {what}.{capped}', '',
+             + f' - {what}.{capped} ' + pairs_verified(result).line(), '',
              '| Disturbance | Every goal met | Drawn at random | Broken by it | Last goal, median change | Pushed |'
              ' Went back |' + (' Looked again | Camera saw it moved |' if looked else '') + ' Missed in |',
              '| --- | --- | --- | --- | --- | --- | --- |' + (' --- | --- |' if looked else '') + ' --- |']
@@ -823,7 +843,12 @@ def _run(r):
                tuple(_handled(h) for h in r.get('handled', ())), tuple(tuple(x) for x in r.get('felt', ())),
                tuple(tuple(x) for x in r.get('alarm', ())), tuple(r.get('recovered', ())),
                tuple(tuple(x) for x in r.get('listening', ())), tuple(r.get('grip', ())), tuple(r.get('stopped', ())),
-               _physics(r.get('physics')))
+               _physics(r.get('physics')), fingerprint=_fingerprint(r.get('fingerprint')))
+
+
+def _fingerprint(f):
+    from little_world.inventory.identity import from_dict
+    return from_dict(f)
 
 
 def _physics(c):

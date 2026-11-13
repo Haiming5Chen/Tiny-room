@@ -39,6 +39,15 @@ def rows(own, baseline):
     return tuple(out)
 
 
+def verified(own, baseline):
+    """Whether each pair began from the same start (FR-041): a recovery is a runner's setting, not the set-up's."""
+    from little_world.inventory.identity import check
+    theirs = {label: {r.variation.label: r for r in runs} for label, _, runs in baseline.groups}
+    return check((r.variation.label, r.fingerprint, theirs[label][r.variation.label].fingerprint)
+                 for label, _, runs in own.groups if label in theirs
+                 for r in runs if r.variation.label in theirs[label])
+
+
 def markdown(own, baselines):
     """The program's own recovery beside each baseline, as a short report."""
     from little_world.inventory.sweep import RECOVERED
@@ -49,7 +58,7 @@ def markdown(own, baselines):
     called = 'Looking again' if own.recovery in (None, 'look') else own.recovery.capitalize()
     for baseline in baselines:
         name = baseline.recovery or 'look'
-        lines += ['', f'## Against "{name}": {RECOVERED.get(name, "looked again")}', '',
+        lines += ['', f'## Against "{name}": {RECOVERED.get(name, "looked again")}', '', verified(own, baseline).line(), '',
                   f'| Disturbance | {called} | {name.capitalize()} | Rescued by {called.lower()}, beyond it | The other way | p |',
                   '| --- | --- | --- | --- | --- | --- |']
         for label, mine, theirs, n, rescued, other, p in rows(own, baseline):

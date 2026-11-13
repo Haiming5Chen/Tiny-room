@@ -352,6 +352,12 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   from nowhere* shows it. Just past its line it also flags the Panda's fingers as they close on a
   part in Real's cell, and the Fetch's jaws on its cube in about one set-up in six - at most 1.8 mJ
   ([ADR 0074](adr/0074-energy-from-nowhere.md)).
+- **The same start, checked.** A paired result reads set-up i's two runs as one until the thing it
+  tests. Every sweep run now keeps a fingerprint of its set-up - the model, where every joint started,
+  the program, the draw - and the disturbed sweep's and the recovery report say how many of their pairs
+  began from the same start before their statistics. The studies of ADR 0036, 0051 and 0070 check out,
+  63 and 130 pairs alike; ADR 0052's old slip, the payload placed elsewhere, is caught in 59 of 71 set-ups
+  ([ADR 0075](adr/0075-the-same-start-checked.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

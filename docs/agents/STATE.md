@@ -10,7 +10,7 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
   tagged v0.2.0 - the owner published it on 12 Nov (`sh ~/Tiny-room/build/publish.sh` on the Mac);
   the commits since, from 7e59722 on, wait for the next. Codex's merge of 23 Oct (the Mac's `main`,
   7456609) is a third line, unpushed.
-- **Decision records** 0001 to 0074. The newest: 0074 energy from nowhere - every run checks that no contact gave back more than it took (FR-040), 0073 evidence anyone can measure again and 0072 from a clone to a running window (the owner's request of 10 Nov: easy to get and use, and re-evaluated - docs/EVALUATION.md), 0071 a reach that feels what it meets (OPEN LW-029), 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
+- **Decision records** 0001 to 0075. The newest: 0075 the same start, checked - every run's set-up fingerprinted before a paired statistic (FR-041), 0074 energy from nowhere - every run checks that no contact gave back more than it took (FR-040), 0073 evidence anyone can measure again and 0072 from a clone to a running window (the owner's request of 10 Nov: easy to get and use, and re-evaluated - docs/EVALUATION.md), 0071 a reach that feels what it meets (OPEN LW-029), 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
   (FR-038), 0062 the search
   mixes words and meaning (OPEN LW-027), 0061 how close to slipping (FR-036), 0060 once it
   holds, an alarm is not heard (OPEN LW-033), 0059 how near it is to tipping (FR-005), 0058 a motor
@@ -20,8 +20,8 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
   the first hour, checked by the app (FR-033); 0045 the tool travels its line (FR-032), both by
   the focused reading's ranking; 0044 robots from their own files (FR-031, the owner's request of
   21 Oct).
-- **Tests**: on MuJoCo 3.10.0, 1192 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 1124 headless; each test runs with an empty robot library of its own.
+- **Tests**: on MuJoCo 3.10.0, 1195 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 1127 headless; each test runs with an empty robot library of its own.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac (4.0.0's engine, `mujoco-core`, has none either: OPEN LW-046); multiccd off. The
   owner's Mac reinstalls after publishing.

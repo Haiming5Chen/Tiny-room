@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-13 · Claude (Cowork) · the same start, checked (FR-041)
+Did: ADR 0075 - every sweep run keeps a fingerprint of its set-up (`inventory/identity.py`,
+`MujocoBackend.digests`, `Run.fingerprint`, `sweep.run(until_start=True)`); the disturbed sweep's report
+and the recovery report check their pairs before their statistics and say so in a sentence. Branch
+claude/fr-041-fingerprints on 9874c9f, one commit.
+Measured: ADR 0036/0051's 63 pairs and ADR 0070's 130 began from the same start, exact; ADR 0052's
+slip is caught in 59 of 71 set-ups (the other 12 unloaded or at the heaviest payload, where the sites
+agree); with NumPy's AVX-512 paths off the 9 starts are the same to the bit, so LW-045's 4 ms arise in
+the run. A fingerprint costs 15 to 23 ms. Suites 1195 with a display, 1127 headless.
+Unfinished: the owner's Mac (LW-050, one command there); the window's run report shows no set-up code
+yet. Not published.
+For the owner: nothing to decide; publishing it is the next step.
+
 ## 2026-11-13 · Claude (Cowork) · LW-045: Windows' last failure, named by GitHub
 Did: after the owner published d175694, read its quick run's public annotations: Linux and Apple
 silicon pass, and one test fails on Windows - the shared log's helper printed a log's CR LF line

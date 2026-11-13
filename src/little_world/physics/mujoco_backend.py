@@ -742,6 +742,37 @@ class MujocoBackend:
             top = int(m.body_parentid[top])
         return float(m.body_subtreemass[top])
 
+    def digests(self, start=None, model=True):
+        """What a set-up's fingerprint is made of (FR-041): {'engine': the MuJoCo release, 'model':
+        (exact, rounded), 'state': (exact, rounded)}. The model is the compiled one as MuJoCo saves it,
+        with every change made to it since - a varied friction, a heavier body, a moved camera; the
+        state is every joint's position and speed now, or `start`'s ((qpos, qvel), as kept). Exact
+        digests the bytes; rounded, the model's numbers to six significant figures and the joints'
+        positions to a micrometre (or microradian) and speeds to a micrometre a second. `model` False
+        leaves the model out (its digest is most of the 20 ms this takes)."""
+        import hashlib
+        self._ready()
+        m, d = self.model, self.data
+        out = {'engine': mj.__version__}
+        if model:
+            saved = np.zeros(mj.mj_sizeModel(m), dtype=np.uint8)
+            mj.mj_saveModel(m, None, saved)
+            rounded = hashlib.sha256()
+            for name in _model_arrays(m):
+                value = getattr(m, name)
+                rounded.update(name.encode())
+                rounded.update(_significant(value) if value.dtype.kind == 'f' else np.ascontiguousarray(value).tobytes())
+            for name in ('timestep', 'gravity', 'impratio', 'tolerance', 'noslip_iterations', 'iterations', 'cone',
+                         'integrator', 'jacobian', 'solver', 'disableflags', 'enableflags'):
+                rounded.update(_significant(np.atleast_1d(np.asarray(getattr(m.opt, name), dtype=float))))
+            out['model'] = (hashlib.sha256(saved.tobytes()).hexdigest()[:16], rounded.hexdigest()[:16])
+        qpos, qvel = (np.asarray(d.qpos), np.asarray(d.qvel)) if start is None else (np.asarray(start[0]), np.asarray(start[1]))
+        state = (hashlib.sha256(qpos.tobytes() + qvel.tobytes()).hexdigest()[:16],
+                 hashlib.sha256(np.round(qpos * 1e6).astype(np.int64).tobytes()
+                                + np.round(qvel * 1e6).astype(np.int64).tobytes()).hexdigest()[:16])
+        out['state'] = state
+        return out
+
     def step(self, commands):
         self._ready()
         unknown = commands.keys() - self._motor_ids.keys()
@@ -1037,3 +1068,34 @@ class MujocoBackend:
         self._hand_goals = {}       # and where it was last sent
         self._motor_dofs = {}
         self._affine = np.zeros(0, dtype=np.intp)
+
+
+def _significant(values, figures=6):
+    """Numbers to `figures` significant figures, as bytes - each one's sign, leading digits and power of
+    ten - for a digest that two machines differing in the last bits agree on (FR-041). Taken to twelve
+    figures first and rounded from there in whole numbers, so that a value on a half - 81/64 of a unit,
+    from a part's sizes - rounds the same way whatever its last bits."""
+    a = np.asarray(values, dtype=np.float64).ravel()
+    finite = np.isfinite(a) & (np.abs(a) > 1e-300)
+    power = np.zeros(a.shape, dtype=np.int64)
+    power[finite] = np.floor(np.log10(np.abs(a[finite]))).astype(np.int64)
+    fine = np.zeros(a.shape, dtype=np.int64)
+    fine[finite] = np.round(np.abs(a[finite]) / 10. ** (power[finite] - 11)).astype(np.int64)
+    scale = 10 ** (12 - figures)
+    digits = (fine + scale // 2) // scale
+    carry = digits >= 10 ** figures                 # 9.999999 rounds to 10.0000: one figure more
+    digits[carry] //= 10
+    power[carry] += 1
+    sign = np.where(finite, np.sign(a), 0).astype(np.int64)
+    special = np.where(np.isnan(a), 1, np.where(np.isinf(a), 2 * np.sign(a), 0)).astype(np.int64)
+    return (sign * digits).tobytes() + np.where(finite, power, 0).tobytes() + special.tobytes()
+
+
+_ARRAYS = []
+
+
+def _model_arrays(m):
+    """The names of a model's numeric arrays, every one MuJoCo's binding has, in order."""
+    if not _ARRAYS:
+        _ARRAYS.extend(sorted(n for n in dir(m) if not n.startswith('_') and isinstance(getattr(m, n, None), np.ndarray)))
+    return _ARRAYS
