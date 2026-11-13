@@ -117,17 +117,17 @@ def test_saved_custom_machine_example_exports_and_compiles_without_a_window(tmp_
     import subprocess
     import sys
     from pathlib import Path
-    source=tmp_path/'machine.json';source.write_text(starter_blueprint().to_json())
+    source=tmp_path/'machine.json';source.write_text(starter_blueprint().to_json(), encoding='utf-8')
     output=tmp_path/'factory.json'
     command=[sys.executable,str(Path(__file__).parents[1]/'examples/factory_layout.py'),'--machine',str(source),'--output',str(output),'--check-physics']
-    result=subprocess.run(command,capture_output=True,text=True,check=True)
+    result=subprocess.run(command,capture_output=True,text=True,check=True, encoding='utf-8')
     report=json.loads(result.stdout)
     assert report['physics_compiled'] and report['process_links'].startswith('layout intent')
-    loaded=FactoryDocument.from_json(output.read_text())
+    loaded=FactoryDocument.from_json(output.read_text(encoding='utf-8'))
     assert next(a.blueprint for a in loaded.assets if a.id=='custom_machine')==starter_blueprint()
     assert len([s for s in loaded.stations if s.asset=='custom_machine'])==2
     before=output.read_bytes()
-    repeated=subprocess.run(command,capture_output=True,text=True)
+    repeated=subprocess.run(command,capture_output=True,text=True, encoding='utf-8')
     assert repeated.returncode!=0 and output.read_bytes()==before
 
 

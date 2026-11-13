@@ -90,7 +90,7 @@ def free_name(text):
 
 
 def metadata(asset):
-    return json.loads((folder(asset) / 'metadata.json').read_text())
+    return json.loads((folder(asset) / 'metadata.json').read_text(encoding='utf-8'))
 
 
 def remove(asset):

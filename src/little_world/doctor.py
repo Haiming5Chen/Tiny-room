@@ -125,7 +125,7 @@ def data_folder():
     try:
         place.mkdir(parents=True, exist_ok=True)
         probe = place / '.write-test'
-        probe.write_text('ok')
+        probe.write_text('ok', encoding='utf-8')
         probe.unlink()
     except OSError as error:
         return Check('Your designs', False, f'{place}: {error}'[:120],

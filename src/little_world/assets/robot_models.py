@@ -47,7 +47,7 @@ def model_path(asset):
 @lru_cache(maxsize=16)
 def metadata(asset='franka_panda'):
     model_path(asset)
-    return json.loads((asset_root(asset)/'metadata.json').read_text())
+    return json.loads((asset_root(asset)/'metadata.json').read_text(encoding='utf-8'))
 
 
 def title(asset):

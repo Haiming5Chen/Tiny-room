@@ -1901,3 +1901,19 @@ both readings "est.". Checked in `tests/test_test_drive.py` (one more test).
 Suites on MuJoCo 3.10.0: 1189 passed with a display, 1121 headless.
 
 Not claimed: that the estimates are right at a curb - they are as they were (OPEN LW-049).
+
+## What fails on Windows on any machine — 2026-11-12
+
+OPEN LW-045. The quick workflow's first run failed its quick tier on Windows, and which tests only a
+signed-in reader of the job's log could see. Three causes found without a Windows machine: the shared
+log's helper imported `fcntl`, which Windows has not (every test that loads it failed); a test patched
+`os.killpg` and named `SIGKILL`, POSIX's both; and 46 places opened a text file without naming its
+encoding, which on Windows is the code page - the log's middle dots read back as other characters.
+The helper locks with `msvcrt` where there is no `fcntl` (a test runs it so), the test expects
+`kill()` off POSIX, and every one of the 46 names UTF-8: the quick tier passes with Python's
+`EncodingWarning` as an error (`python -X warn_default_encoding -m pytest -m "not slow" -W
+error::EncodingWarning`). On GitHub's runners each failed test is now also an `::error` annotation,
+which the run's page shows to anyone (`tests/conftest.py`; checked in `tests/test_evidence.py`).
+Suites on MuJoCo 3.10.0: 1191 passed with a display, 1123 headless.
+
+Not claimed: that the quick tier passes on Windows - its next run on GitHub says.

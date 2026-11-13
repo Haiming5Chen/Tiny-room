@@ -25,7 +25,7 @@ def worker():
 
 
 def start_script(source,current):
-    p=subprocess.Popen([sys.executable,'-m',__name__],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    p=subprocess.Popen([sys.executable,'-m',__name__],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True, encoding='utf-8')
     p.stdin.write(json.dumps({'source':source,'current':current.to_json()}));p.stdin.close();p.stdin=None
     return p
 

@@ -33,7 +33,7 @@ class Inventory:
         data=dict(version=1,id=record.id,name=record.name,status=record.status,notes=record.notes,created=record.created,
                   blueprint=json.loads(record.blueprint.to_json()),program=json.loads(record.program.to_json()))
         temporary=path.with_suffix('.'+uuid.uuid4().hex+'.tmp')
-        temporary.write_text(json.dumps(data,indent=2,allow_nan=False));temporary.replace(path)
+        temporary.write_text(json.dumps(data,indent=2,allow_nan=False), encoding='utf-8');temporary.replace(path)
         return record
     @staticmethod
     def _metadata(name,status,notes):
@@ -44,7 +44,7 @@ class Inventory:
         self._metadata(name,status,notes)
         return self._write(SavedDesign(str(uuid.uuid4()),name.strip(),status,notes,datetime.now(timezone.utc).isoformat(),blueprint,program))
     def read(self,identifier):
-        d=json.loads(self._file(identifier).read_text())
+        d=json.loads(self._file(identifier).read_text(encoding='utf-8'))
         if d.get('version')!=1 or d.get('id')!=identifier:raise ValueError('Invalid inventory record')
         self._metadata(d['name'],d['status'],d['notes'])
         return SavedDesign(identifier,d['name'],d['status'],d['notes'],d['created'],Blueprint.from_json(json.dumps(d['blueprint'])),Program.from_json(json.dumps(d['program'])))

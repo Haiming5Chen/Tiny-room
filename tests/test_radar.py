@@ -301,15 +301,15 @@ def test_the_profile_reads_topics_and_refuses_a_heading_it_does_not_know(tmp_pat
     assert read_profile('# x\n## ADR 0001\nwords here\n> a note\n## Learn: a\n- b\n') == \
         [('ADR 0001', 'words here'), ('Learn: a', 'b')]
     (tmp_path / 'docs' / 'adr').mkdir(parents=True)
-    (tmp_path / 'docs' / 'adr' / '0001-first.md').write_text('# First\n\nThe problem.\n')
+    (tmp_path / 'docs' / 'adr' / '0001-first.md').write_text('# First\n\nThe problem.\n', encoding='utf-8')
     (tmp_path / 'docs' / 'radar').mkdir()
-    (tmp_path / 'docs' / 'radar' / 'profile.md').write_text('## Someday: maybe\nwords\n')
+    (tmp_path / 'docs' / 'radar' / 'profile.md').write_text('## Someday: maybe\nwords\n', encoding='utf-8')
     with pytest.raises(ValueError, match='Someday'):
         topics(tmp_path)
-    (tmp_path / 'docs' / 'radar' / 'profile.md').write_text('## ADR 0002\nwords\n')
+    (tmp_path / 'docs' / 'radar' / 'profile.md').write_text('## ADR 0002\nwords\n', encoding='utf-8')
     with pytest.raises(ValueError, match='no decision record'):
         topics(tmp_path)
-    (tmp_path / 'docs' / 'radar' / 'profile.md').write_text('## ADR 0001\nextra words\n## Next: soon\nplans\n')
+    (tmp_path / 'docs' / 'radar' / 'profile.md').write_text('## ADR 0001\nextra words\n## Next: soon\nplans\n', encoding='utf-8')
     first, soon = topics(tmp_path)
     assert first.id == 'ADR 0001' and 'extra words' in first.text and soon.kind == 'next'
     assert project_root(tmp_path / 'docs') == tmp_path
@@ -421,7 +421,7 @@ def test_the_command_line_ingests_digests_and_rates(tmp_path):
     from little_world.radar.__main__ import main
     db, gathered, page = tmp_path / 'r.sqlite', tmp_path / 'g.jsonl', tmp_path / 'digest.md'
     gathered.write_text(json.dumps({'id': 'web:grip', 'title': 'Grasp slip and creep under soft contact',
-                                    'summary': 'friction cone creep grasp slip', 'kind': 'paper'}) + '\n')
+                                    'summary': 'friction cone creep grasp slip', 'kind': 'paper'}) + '\n', encoding='utf-8')
     out = io.StringIO()
     assert main(['--db', str(db), 'ingest', str(gathered)], out) == 0
     assert main(['--db', str(db), 'digest', '--out', str(page), '--html', str(tmp_path / 'digest.html')], out) == 0
@@ -429,8 +429,8 @@ def test_the_command_line_ingests_digests_and_rates(tmp_path):
     assert main(['--db', str(db), 'topics'], out) == 0
     text = out.getvalue()
     assert '1 new of 1 items' in text and 'web:grip: watch' in text and 'ADR 0017' in text
-    assert 'Grasp slip and creep' in page.read_text()
-    assert 'Grasp slip and creep' in (tmp_path / 'digest.html').read_text()
+    assert 'Grasp slip and creep' in page.read_text(encoding='utf-8')
+    assert 'Grasp slip and creep' in (tmp_path / 'digest.html').read_text(encoding='utf-8')
 
 
 # -- the agents' brief (ADR 0026) ------------------------------------------------------------------
@@ -541,7 +541,7 @@ def test_the_command_line_writes_the_brief_and_keeps_the_proposals(tmp_path):
     db, gathered, frontier = tmp_path / 'r.sqlite', tmp_path / 'g.jsonl', tmp_path / 'FRONTIER.md'
     gathered.write_text(json.dumps({'id': 'arxiv:2609.00004', 'title': 'A Conveyor Belt as a Moving Contact Surface',
                                     'summary': 'conveyor belts: a surface velocity seen by contacts, no extra joints',
-                                    'kind': 'paper'}) + '\n')
+                                    'kind': 'paper'}) + '\n', encoding='utf-8')
     frontier.write_text(FRONTIER, encoding='utf-8')
     out = io.StringIO()
     assert main(['--db', str(db), 'ingest', str(gathered)], out) == 0

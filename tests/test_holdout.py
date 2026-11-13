@@ -58,7 +58,7 @@ def test_the_ledger_lists_seed_1_as_the_tuning_draws_of_every_field():
 def test_a_held_out_seed_is_reserved_once_and_never_given_again(tmp_path):
     from datetime import date
     ledger = tmp_path / 'seeds.jsonl'
-    ledger.write_text((ROOT / holdout.LEDGER).read_text())
+    ledger.write_text((ROOT / holdout.LEDGER).read_text(encoding='utf-8'), encoding='utf-8')
     with pytest.raises(holdout.SeedUsed, match='seed 1 already drew'):
         holdout.reserve(1, 'fetch', 'ADR 0049', ledger)
     fresh = 987654321          # a seed no decision of this project has used
@@ -67,15 +67,15 @@ def test_a_held_out_seed_is_reserved_once_and_never_given_again(tmp_path):
     with pytest.raises(holdout.SeedUsed, match='holdout for ADR 0099'):
         holdout.reserve(fresh, 'fetch', 'ADR 0100', ledger)
     assert holdout.reserve(fresh, 'sprint', 'ADR 0100', ledger).field == 'sprint', "another field's draws"
-    lines = len(ledger.read_text().splitlines())
-    ledger.write_text(ledger.read_text() + '{"seed": 3}\n')
+    lines = len(ledger.read_text(encoding='utf-8').splitlines())
+    ledger.write_text(ledger.read_text(encoding='utf-8') + '{"seed": 3}\n', encoding='utf-8')
     with pytest.raises(ValueError, match=f'line {lines + 1}'):
         holdout.read(ledger)
 
 
 def test_the_command_line_refuses_a_held_out_sweep_on_draws_already_seen(tmp_path, capsys):
     ledger = tmp_path / 'seeds.jsonl'
-    ledger.write_text((ROOT / holdout.LEDGER).read_text())
+    ledger.write_text((ROOT / holdout.LEDGER).read_text(encoding='utf-8'), encoding='utf-8')
     entries = len(holdout.read(ledger))
     with pytest.raises(SystemExit):
         main(['fetch', '--holdout', 'ADR 0049', '--seed', '1', '--ledger', str(ledger)])

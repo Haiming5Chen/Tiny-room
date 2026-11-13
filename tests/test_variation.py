@@ -5,6 +5,7 @@ mark, carrying nothing, on surfaces at the one friction value each source gives.
 repeats a test, and no repeat is the same, so one run could not say how far its result
 holds: whether the arm on a cart tips at 54 degrees, or anywhere from 52 to 57.
 """
+import os
 import math
 import re
 import pytest
@@ -216,18 +217,23 @@ def test_stopping_the_repeats_stops_their_worker_processes_with_them(monkeypatch
     import signal
     from little_world.ui import varied_runs
     killed = []
-    monkeypatch.setattr(varied_runs.os, 'killpg', lambda group, sig: killed.append((group, sig)))
+    # os.killpg and SIGKILL are POSIX's; on Windows the process alone is killed (LW-045).
+    monkeypatch.setattr(varied_runs.os, 'killpg', lambda group, sig: killed.append((group, sig)), raising=False)
 
     class Running:
         pid = 4242
 
         def poll(self):
             return None
+
+        def kill(self):
+            killed.append('the process')
     holder = varied_runs.VariedRuns()
     holder.init_varied_runs()
     holder.varied = dict(process=Running())
     holder.stop_variations()
-    assert killed == [(4242, signal.SIGKILL)] and holder.varied is None
+    expected = [(4242, signal.SIGKILL)] if os.name == 'posix' else ['the process']
+    assert killed == expected and holder.varied is None
 
 
 @pytest.mark.skipif(__import__('os').environ.get('LITTLE_WORLD_TEST_RENDER') != '1', reason='requires OpenGL')

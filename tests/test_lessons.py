@@ -53,8 +53,8 @@ def test_progress_is_kept_outside_the_repository_and_moves_on_to_the_next_lesson
     assert progress.finish('tool') and progress.current == 'drive'
     again = Progress()
     assert set(again.done) == {'sweep', 'tool'} and again.current == 'drive'
-    assert json.loads(where.read_text())['current'] == 'drive'
-    where.write_text('{not json')
+    assert json.loads(where.read_text(encoding='utf-8'))['current'] == 'drive'
+    where.write_text('{not json', encoding='utf-8')
     assert Progress().done == {}, "a spoilt file starts afresh"
     with pytest.raises(ValueError):
         progress.choose('flying')

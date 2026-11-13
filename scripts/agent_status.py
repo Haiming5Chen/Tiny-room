@@ -14,10 +14,14 @@ event log, its locking and the readers' cursors are described in docs/agents/REA
 import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import fcntl
 import hashlib
 import json
 import os
+try:
+    import fcntl            # macOS and Linux: the whole file locked
+except ImportError:         # Windows has no fcntl: msvcrt locks the file's first byte instead (LW-045)
+    fcntl = None
+    import msvcrt
 from pathlib import Path
 import re
 import subprocess
@@ -43,12 +47,20 @@ def single_line(value):
 def locked(root):
     state = root / '.agent-status'
     state.mkdir(exist_ok=True)
-    with (state / 'lock').open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with (state / 'lock').open('ab') as lock:
+        if fcntl is not None:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        else:
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
         try:
             yield state
         finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+            else:
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 def append(root, agent, event):
@@ -122,7 +134,7 @@ def unread(root, agent):
 
 def git(*args):
     try:
-        return subprocess.run(('git', *args), cwd=ROOT, capture_output=True, text=True, check=True).stdout.rstrip()
+        return subprocess.run(('git', *args), cwd=ROOT, capture_output=True, text=True, check=True, encoding='utf-8').stdout.rstrip()
     except (OSError, subprocess.CalledProcessError):
         return ''
 

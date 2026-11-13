@@ -20,8 +20,8 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
   the first hour, checked by the app (FR-033); 0045 the tool travels its line (FR-032), both by
   the focused reading's ranking; 0044 robots from their own files (FR-031, the owner's request of
   21 Oct).
-- **Tests**: on MuJoCo 3.10.0, 1189 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
-  under Xvfb) and 1121 headless; each test runs with an empty robot library of its own.
+- **Tests**: on MuJoCo 3.10.0, 1191 pass with a display (`LITTLE_WORLD_TEST_RENDER=1`
+  under Xvfb) and 1123 headless; each test runs with an empty robot library of its own.
 - **Pinned**: Python 3.11 or newer, MuJoCo 3.10.0 (ADR 0027), the newest release with
   wheels for an Intel Mac (4.0.0's engine, `mujoco-core`, has none either: OPEN LW-046); multiccd off. The
   owner's Mac reinstalls after publishing.

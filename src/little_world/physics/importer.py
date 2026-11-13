@@ -773,20 +773,20 @@ def import_robot(path, name=None):
         assets = work / 'assets'
         assets.mkdir()
         spec, meta, report, copied = prepare(path, assets, name)
-        (work / 'model.xml').write_text(_relative(spec.to_xml()))
+        (work / 'model.xml').write_text(_relative(spec.to_xml()), encoding='utf-8')
         try:
             mj.MjSpec.from_file(str(work / 'model.xml')).compile()
         except Exception as error:
             raise ImportFailed(f'The model written for it could not be read back: {_plain(error)}') from None
         (work / 'source').mkdir()
         shutil.copyfile(path, work / 'source' / path.name)
-        (work / 'metadata.json').write_text(json.dumps(meta, indent=1))
-        (work / 'REPORT.txt').write_text(report.text() + '\n')
+        (work / 'metadata.json').write_text(json.dumps(meta, indent=1), encoding='utf-8')
+        (work / 'REPORT.txt').write_text(report.text() + '\n', encoding='utf-8')
         files = {'source/' + path.name: _sha(path), **{'assets/' + n: _sha(assets / n) for n in sorted(copied.values())},
                  'model.xml': _sha(work / 'model.xml')}
         (work / 'SOURCE.json').write_text(json.dumps(dict(
             file=path.name, format=meta['format'], imported=datetime.now(timezone.utc).isoformat(timespec='seconds'),
-            mujoco=mj.__version__, importer=VERSION, sha256=files), indent=1))
+            mujoco=mj.__version__, importer=VERSION, sha256=files), indent=1), encoding='utf-8')
         for _ in range(100):
             entry = robot_library.free_name(name or meta['title'])
             try:

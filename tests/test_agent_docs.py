@@ -112,6 +112,6 @@ def test_reading_and_writing_the_log_never_run_git(tmp_path, monkeypatch, capsys
     monkeypatch.setattr(status, 'git', no_git)
     assert status.main(['--add', 'Claude (Cowork)', 'started: a test (tests/)']) == 0
     added = capsys.readouterr().out
-    assert status.ENTRY.match(added.rstrip('\n')) and (tmp_path / 'docs/agents/LOG.md').read_text() == added
+    assert status.ENTRY.match(added.rstrip('\n')) and (tmp_path / 'docs/agents/LOG.md').read_text(encoding='utf-8') == added
     assert status.main(['--new', 'codex']) == 0 and capsys.readouterr().out == added
     assert status.main(['--new', 'codex']) == 0 and capsys.readouterr().out == ''

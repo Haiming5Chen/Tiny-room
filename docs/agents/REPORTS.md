@@ -11,6 +11,22 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-12 · Claude (Cowork) · LW-045: what fails on Windows on any machine
+Did: the next reliability repair after LW-048, stacked on b28c7aa (branch claude/lw-045-windows, one
+commit). The shared log's helper locks with msvcrt where there is no fcntl; a test that patched
+os.killpg expects kill() off POSIX; 46 places that opened a text file without naming its encoding
+name UTF-8; on GitHub's runners each failed test is also an annotation anyone can read on the run's
+page (tests/conftest.py). Two tests: the helper's Windows lock (a stand-in msvcrt), the annotation.
+Measured: none of it can be tried here on Windows. Each cause fails there whatever the machine: fcntl
+does not exist on Windows (every test loading the helper), nor do os.killpg and SIGKILL, and the
+log's middle dots read in the code page come back as other characters. With Python's EncodingWarning
+as an error the quick tier had 279 warnings from those 46 places; now it passes with none (1,057).
+Suites 1191 with a display, 1123 headless.
+Unfinished: whether Windows passes - GitHub's next run of the quick workflow says, and now names any
+test that still fails. The app's own saves name no encoding; their JSON is ASCII, but the Python
+workspace's script is the user's text (OPEN LW-045). Not published.
+For the owner: publishing this and LW-048 together starts that run.
+
 ## 2026-11-12 · Claude (Cowork) · LW-048: the Curb report's "it tipped" was an estimate
 Did: LW-048 as assigned in docs/agents/PRINT_ROOM_SYNC.md - base 4c0ea8f (published main), branch
 claude/lw-048-curb-report, head the one commit on it. The run report's tipping lines come from

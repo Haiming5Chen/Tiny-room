@@ -15,7 +15,7 @@ def test_inventory_roundtrip_metadata_and_snapshots(tmp_path):
     assert store.read(a.id).blueprint==bp
     assert store.read(b.id)==b
     with pytest.raises(ValueError):store.read('../escape')
-    (tmp_path/'broken.json').write_text('{}')
+    (tmp_path/'broken.json').write_text('{}', encoding='utf-8')
     records,errors=store.list();assert len(records)==2 and len(errors)==1
 
 

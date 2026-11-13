@@ -59,3 +59,45 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.window)
         if window or name in listed:
             item.add_marker(pytest.mark.slow)
+
+
+def annotation(report):
+    """A failed test, or a test file that failed to load, as a GitHub workflow command (`::error`): the
+    run's page and its API show it to anyone, its log only to someone signed in (LW-045). None for
+    anything that did not fail."""
+    if not report.failed:
+        return None
+    text = str(report.longrepr) if report.longrepr else 'failed'
+    errors = [line[1:].strip() for line in text.splitlines() if line.startswith('E ')]
+    message = ' / '.join(errors[:3]) or (text.strip().splitlines() or ['failed'])[-1]
+    path, line = getattr(report, 'location', (report.nodeid.split('::')[0], 0, ''))[:2]
+
+    def escape(value, properties=False):
+        value = value.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+        return value.replace(':', '%3A').replace(',', '%2C') if properties else value
+    return (f'::error file={escape(str(path).replace(os.sep, "/"), True)},line={(line or 0) + 1},'
+            f'title={escape(report.nodeid, True)}::{escape(message[:400])}')
+
+
+_session = []      # this run's config, kept on GitHub's runners only
+
+
+def pytest_configure(config):
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        _session[:] = [config]
+
+
+def _annotate(report):
+    # Through pytest's terminal reporter, which reaches the job's log past pytest's own capture.
+    reporter = _session[0].pluginmanager.get_plugin('terminalreporter') if _session else None
+    line = annotation(report) if reporter is not None else None
+    if line:
+        reporter.write('\n' + line + '\n', flush=True)        # a workflow command starts its own line
+
+
+def pytest_runtest_logreport(report):
+    _annotate(report)
+
+
+def pytest_collectreport(report):
+    _annotate(report)

@@ -66,10 +66,10 @@ def package(tmp_path, text):
     root = tmp_path / 'src' / 'my_arm'
     (root / 'urdf').mkdir(parents=True, exist_ok=True)
     (root / 'meshes').mkdir(exist_ok=True)
-    (root / 'package.xml').write_text('<package format="2"><name>my_arm</name><version>0.1.0</version></package>')
+    (root / 'package.xml').write_text('<package format="2"><name>my_arm</name><version>0.1.0</version></package>', encoding='utf-8')
     stl(root / 'meshes' / 'forearm.stl', .04, .04, .25)
     path = root / 'urdf' / 'my_arm.urdf'
-    path.write_text(text)
+    path.write_text(text, encoding='utf-8')
     return path
 
 
@@ -152,7 +152,7 @@ def test_a_mimic_slide_follows_its_leader_and_a_slide_is_driven_in_millimetres(t
     path = tmp_path / 'stage.urdf'
     # The gripper's two slides, named as a double stage's rather than as fingers (a gripper
     # is driven by how closed it is: ADR 0047, below).
-    path.write_text(GRIPPER.replace('_finger_joint', '_slide').replace('Two-finger gripper', 'Double stage'))
+    path.write_text(GRIPPER.replace('_finger_joint', '_slide').replace('Two-finger gripper', 'Double stage'), encoding='utf-8')
     asset, report = import_robot(path)
     assert asset == 'user:double-stage'
     meta = metadata(asset)
@@ -255,7 +255,7 @@ def test_what_a_file_leaves_unsaid_is_reported_in_plain_words(tmp_path):
     text = text.replace('package://my_arm/meshes/forearm.stl"/></geometry></visual>',
                         'package://my_arm/meshes/forearm.dae"/></geometry></visual>')
     path = package(tmp_path, text)
-    (path.parent.parent / 'meshes' / 'forearm.dae').write_text('<COLLADA/>')
+    (path.parent.parent / 'meshes' / 'forearm.dae').write_text('<COLLADA/>', encoding='utf-8')
     asset, report = import_robot(path)
     warnings = '\n'.join(report.of('warning'))
     assert "limit in joint 'shoulder': 'efort' is not a URDF attribute of <limit>" in warnings
@@ -278,7 +278,7 @@ def test_what_a_file_leaves_unsaid_is_reported_in_plain_words(tmp_path):
 ])
 def test_a_file_that_cannot_be_imported_says_why_and_leaves_nothing_behind(tmp_path, name, text, words):
     path = tmp_path / name
-    path.write_text(text)
+    path.write_text(text, encoding='utf-8')
     with pytest.raises(ImportFailed, match=words):
         import_robot(path)
     assert robot_library.entries() == () and not any(robot_library.root().iterdir())
@@ -524,7 +524,7 @@ def test_a_claw_closing_on_a_fixed_jaw_squeezes_as_the_kit_gripper_when_its_file
     does, 12 N at its jaw: a torque of that force times the finger's lever."""
     from little_world.assets.robot_models import metadata
     path = tmp_path / 'claw.urdf'
-    path.write_text(CLAW)
+    path.write_text(CLAW, encoding='utf-8')
     asset, report = import_robot(path)
     meta = metadata(asset)
     assert meta['units'] == ['%'] and meta['gripper']['jaws'] == ['claw', 'fixed_jaw']

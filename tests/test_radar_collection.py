@@ -61,7 +61,7 @@ def test_collect_keeps_what_is_filed_or_judged_and_recall_brings_it_back(tmp_pat
     with Store(db) as store:
         store.add(items(), seen='2026-10-05')
         store.rate('arxiv:2609.00003', 'learn', 'the jaws')
-    with open(tmp_path / 'out', 'w') as out:
+    with open(tmp_path / 'out', 'w', encoding='utf-8') as out:
         assert main(['--db', str(db), '--root', str(ROOT), 'collect', '--file', str(kept)], out=out) == 0
     found = collection.read(kept)
     assert 'arxiv:2609.00002' not in found, 'neither filed nor judged'
@@ -76,11 +76,11 @@ def test_collect_keeps_what_is_filed_or_judged_and_recall_brings_it_back(tmp_pat
 def test_collect_merges_entries_gathered_by_hand_and_files_them(tmp_path):
     gathered, kept = tmp_path / 'found.jsonl', tmp_path / 'collection.jsonl'
     gathered.write_text(line(id='arxiv:2609.00009', title='Rolling resistance of caster wheels on concrete floors',
-                             summary='rolling resistance, casters, concrete', verdict='learn', rated='2026-10-05') + '\n')
+                             summary='rolling resistance, casters, concrete', verdict='learn', rated='2026-10-05') + '\n', encoding='utf-8')
     args = ['--db', str(tmp_path / 'r.sqlite'), '--root', str(ROOT), 'collect', '--file', str(kept), '--add', str(gathered)]
-    with open(tmp_path / 'out', 'w') as out:
+    with open(tmp_path / 'out', 'w', encoding='utf-8') as out:
         assert main(args, out=out) == 0 and main(args, out=out) == 0
-    assert (tmp_path / 'out').read_text().splitlines() == [f'1 new, 0 changed; 1 entries in {kept}',
+    assert (tmp_path / 'out').read_text(encoding='utf-8').splitlines() == [f'1 new, 0 changed; 1 entries in {kept}',
                                                            f'0 new, 0 changed; 1 entries in {kept}']
     [e] = collection.read(kept).values()
     assert e.verdict == 'learn' and e.filed, 'filed under a topic on the way in'

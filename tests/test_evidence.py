@@ -119,6 +119,21 @@ def test_the_quick_tier_leaves_out_what_is_listed_slow_and_every_window_test(req
         assert 'test_whats_new.py::test_one_click_from_the_top_bar_the_cube_moved_after_the_look_is_looked_for_again_and_fetched' in window
 
 
+def test_on_githubs_runners_a_failure_is_an_annotation_anyone_can_read(request):
+    """LW-045: the quick tier failed on Windows, and which test only a signed-in reader of the job's log
+    could see. On GitHub's runners each failure is also an `::error` workflow command, which the run's
+    page shows to anyone; its colons, commas and percent signs escaped as GitHub asks."""
+    from types import SimpleNamespace
+    annotation = request.config.pluginmanager.getplugin(str(Path(__file__).parent / 'conftest.py')).annotation
+    failed = SimpleNamespace(failed=True, location=('tests/test_x.py', 9, 'test_y'), nodeid='tests/test_x.py::test_y[a,b]',
+                             longrepr='    assert x\nE   AssertionError: 50% off\nE   assert 1 == 2\ntests/test_x.py:10: AssertionError')
+    assert annotation(failed) == ('::error file=tests/test_x.py,line=10,title=tests/test_x.py%3A%3Atest_y[a%2Cb]'
+                                  '::AssertionError: 50%25 off / assert 1 == 2')
+    unloaded = SimpleNamespace(failed=True, nodeid='tests/test_z.py', longrepr="ModuleNotFoundError: No module named 'fcntl'")
+    assert annotation(unloaded) == "::error file=tests/test_z.py,line=1,title=tests/test_z.py::ModuleNotFoundError: No module named 'fcntl'"
+    assert annotation(SimpleNamespace(failed=False)) is None
+
+
 def test_every_relative_link_in_the_documents_leads_to_a_file(tmp_path):
     links = script('check_links')
     pages = links.pages()
