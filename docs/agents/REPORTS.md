@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-13 · Claude (Cowork) · LW-045: Windows' last failure, named by GitHub
+Did: after the owner published d175694, read its quick run's public annotations: Linux and Apple
+silicon pass, and one test fails on Windows - the shared log's helper printed a log's CR LF line
+endings as they were, and the console's translation doubled them. `--new` now ends every event in a
+plain newline (branch claude/lw-045-crlf on d175694, one commit); one test writes a CR LF log.
+Measured: the new test fails on the old helper here too (it prints CR LF); the quick tier passes
+with EncodingWarning as an error (1,058). Suites 1192 with a display, 1124 headless.
+Unfinished: whether Windows passes - its next run says. Not published.
+For the owner: publishing this starts that run.
+
 ## 2026-11-12 · Claude (Cowork) · LW-045: what fails on Windows on any machine
 Did: the next reliability repair after LW-048, stacked on b28c7aa (branch claude/lw-045-windows, one
 commit). The shared log's helper locks with msvcrt where there is no fcntl; a test that patched

@@ -101,3 +101,15 @@ def test_without_fcntl_the_log_is_locked_by_msvcrt_as_on_windows(checkout, monke
     assert calls == [(1, 1), (0, 1)], "locked, then unlocked"
     assert line.endswith('· Codex · started: a test\n')
     assert (checkout / 'docs/agents/LOG.md').read_text(encoding='utf-8').endswith(line)
+
+
+def test_a_log_with_windows_line_endings_prints_its_events_with_plain_ones(checkout):
+    """LW-045: on GitHub's Windows runner a log written there ended its lines in CR LF, --new printed
+    them so, and the console's own translation made '- replacement\\n\\n' of each. Read here as the
+    bytes the script writes."""
+    log = checkout / 'docs/agents/LOG.md'
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_bytes(b'- 2026-11-13 20:38 UTC \xc2\xb7 Codex \xc2\xb7 first\r\n- second\r\n- partial')
+    out = subprocess.run([sys.executable, str(checkout / 'scripts/agent_status.py'), '--new', 'codex'], capture_output=True,
+                         env={**os.environ, 'PYTHONIOENCODING': 'utf-8'}).stdout
+    assert out.replace(os.linesep.encode(), b'\n') == '- 2026-11-13 20:38 UTC · Codex · first\n- second\n'.encode('utf-8')

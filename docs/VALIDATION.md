@@ -1917,3 +1917,17 @@ which the run's page shows to anyone (`tests/conftest.py`; checked in `tests/tes
 Suites on MuJoCo 3.10.0: 1191 passed with a display, 1123 headless.
 
 Not claimed: that the quick tier passes on Windows - its next run on GitHub says.
+
+## Windows' last failure, named by GitHub — 2026-11-13
+
+OPEN LW-045. With the causes of 12 November mended (d175694), GitHub's quick run passed on Linux and
+Apple silicon and wrote the one test still failing on Windows as an annotation anyone can read:
+`tests/test_agent_status.py::test_truncation_resets_with_notice_and_partial_lines_wait` printed
+`- replacement` with two newlines. A log written on Windows ends its lines in CR LF; the shared
+log's helper printed them so, and the console's own translation doubled each. It now ends every
+event it prints in a plain newline; `tests/test_agent_status.py` writes a log with CR LF lines and
+reads what the helper prints as bytes (it failed before, here on Linux too). The quick tier passes
+with Python's `EncodingWarning` as an error (1,058).
+Suites on MuJoCo 3.10.0: 1192 passed with a display, 1124 headless.
+
+Not claimed: that Windows passes - its next run says.

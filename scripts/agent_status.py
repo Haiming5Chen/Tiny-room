@@ -123,7 +123,10 @@ def unread(root, agent):
             data = stream.read()
             # A manually written partial line is not consumed until it is complete.
             complete = data[:data.rfind(b'\n') + 1]
-            output = ''.join(line for line in complete.decode('utf-8').splitlines(keepends=True) if line.startswith('- '))
+            # Each event ends in a plain newline, whatever the log was written with: a log with Windows line
+            # endings printed as it is would have them doubled by a Windows console's own translation (LW-045).
+            output = ''.join(line.rstrip('\r\n') + '\n' for line in complete.decode('utf-8').splitlines(keepends=True)
+                             if line.startswith('- '))
             sys.stdout.write(output)
             sys.stdout.flush()  # Do not consume events if delivery to stdout fails.
             offset += len(complete)
