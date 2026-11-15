@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-15 · Claude (Cowork) · Windows passes; 0.4.0
+Did: read GitHub's runs on ab83254, which the owner published: the quick workflow passed on all four
+machines, Windows' quick tier and six quick measurements included, and the full workflow too. OPEN
+LW-045 done; macOS and Windows made required in .github/workflows/quick.yml; LW-051 new (the actions'
+Node.js 20, the Python workspace's script saved without an encoding). Then version 0.4.0 for a
+release (CHANGELOG): LW-048, the Windows repairs and FR-041 since 0.3.0.
+Measured: nothing new - GitHub's runs: quick 43532301002 (4 of 4 jobs), full 43532300999.
+Unfinished: LW-050 (the owner's Mac), LW-051, LW-049 (for review). Not published.
+For the owner: publishing makes the release v0.4.0.
+
 ## 2026-11-13 · Claude (Cowork) · the same start, checked (FR-041)
 Did: ADR 0075 - every sweep run keeps a fingerprint of its set-up (`inventory/identity.py`,
 `MujocoBackend.digests`, `Run.fingerprint`, `sweep.run(until_start=True)`); the disturbed sweep's report

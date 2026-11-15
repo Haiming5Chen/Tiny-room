@@ -1945,3 +1945,14 @@ every loaded one below the heaviest payload. On the same machine with NumPy's AV
 Suites on MuJoCo 3.10.0: 1195 passed with a display, 1127 headless.
 
 Not claimed: that runs which began alike ran alike; the window's test drives; the owner's Mac (OPEN LW-050).
+
+## Windows and Apple silicon pass — 2026-11-15
+
+OPEN LW-045 done. GitHub's quick workflow on ab83254 (run 43532301002) passed on all four of its
+machines: on windows-latest and macos-latest (Apple silicon), Python 3.13, and ubuntu-latest, 3.11
+and 3.13, the install as the README gives it, `little-world doctor`, the quick tier and the six quick
+measurements against the numbers recorded on this project's Linux machine - within their tolerances
+there too. macOS and Windows are required in the workflow from now on. The full workflow passed on
+the same commit. Nothing here was changed in the code; the document tests pass.
+
+Not claimed: the window tests or the slow tests on macOS or Windows - the workflows run neither there.

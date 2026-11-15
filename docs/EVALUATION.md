@@ -11,7 +11,9 @@ repository's own records and says where.
 *Since, 12 November:* the owner published the branch (`main` at 44e0a0c, release v0.2.0), and the
 quick workflow's first run on GitHub's machines passed on Linux and on Apple silicon - the install,
 the doctor, the quick tier and the five quick measurements - and failed its quick tier on Windows
-(OPEN LW-044 done, LW-045).
+(OPEN LW-044 done, LW-045). *13 November:* with three causes mended - a lock Windows has not, a
+POSIX-only test, files opened without naming their encoding - the quick workflow passes on Windows
+too, its six quick measurements within their records (OPEN LW-045 done).
 
 ## What was measured again
 

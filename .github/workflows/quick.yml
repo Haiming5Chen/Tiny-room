@@ -1,7 +1,8 @@
 # The quick tier on every push and pull request (ADR 0073): install as the README says, ask the
-# doctor, run the ~1,000 tests that take a minute. Linux is where every number was recorded and
-# must pass; macOS and Windows are reported, not required - nothing had been run there when this
-# was written, and their results are how we find out.
+# doctor, run the ~1,000 tests that take a minute and the quick measurements. Linux, macOS (Apple
+# silicon) and Windows must all pass: Windows' first runs found three things that failed there on
+# any machine, mended by 13 November (OPEN LW-045), and since ab83254 all four pass. A failed test
+# is also written as an annotation the run's page shows to anyone (tests/conftest.py).
 name: quick
 
 on:
@@ -28,8 +29,8 @@ jobs:
         include:
           - {os: ubuntu-latest, python: '3.11', experimental: false}
           - {os: ubuntu-latest, python: '3.13', experimental: false}
-          - {os: macos-latest, python: '3.13', experimental: true}
-          - {os: windows-latest, python: '3.13', experimental: true}
+          - {os: macos-latest, python: '3.13', experimental: false}
+          - {os: windows-latest, python: '3.13', experimental: false}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
