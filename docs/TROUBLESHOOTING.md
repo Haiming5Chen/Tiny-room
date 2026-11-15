@@ -8,7 +8,7 @@ the line that mends it:
 ```
 
 ```
-Little World 0.3.0 on Linux x86_64, Python 3.13.16
+Little World 0.4.0 on Linux x86_64, Python 3.13.16
   ok    Python        3.13.16
   ok    MuJoCo        3.10.0
   ok    NumPy         2.5.3

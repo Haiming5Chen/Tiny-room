@@ -4,6 +4,17 @@ What changed for someone who uses Little World, newest first. Every change has a
 in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 [docs/FEATURES.md](docs/FEATURES.md).
 
+## 0.4.0 - 15 November 2026
+
+- The same start, checked: every sweep run keeps a fingerprint of its set-up, and the disturbed
+  sweep's and the recovery report check that their pairs began alike before their statistics
+  (ADR 0075).
+- The run report keeps an estimated tip apart from one seen: the stance margin and the degrees from
+  tipping are marked as estimates, and only a tilt past 60 deg says a machine tipped over (OPEN
+  LW-048; ADR 0059 amended).
+- Windows: the quick tier and the quick measurements pass there, as on macOS and Linux, and on
+  GitHub a failed test is written where anyone can read it (OPEN LW-045).
+
 ## 0.3.0 - 12 November 2026
 
 - A physics check in every run: a contact that gives back more energy than it took is the engine
