@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · what multiccd on would move (for LW-047)
+Did: no code kept - the headless suite and little-world evidence run on a throwaway copy of 8d8a4b4
+with multiccd on, the owner's open call since ADR 0074 found the curb's energy from nowhere.
+Measured: 8 of 1,130 headless tests fail with it on, 3 of them by design (they hold multiccd off's
+behaviour: the census's lying cylinder, the wheel's single contact, the curb's energy); the others are
+the coast-down against its closed form, the tread ring, the alarm's branch, an empty closing of the
+jaws and the carried grip. The evidence holds 30 of 34: the 10 mm curb is cleared at 11.37 s (10.36)
+with no energy from nowhere (4.59 mm before); the Fetch delivers at 41.05 s (36.87), every goal met;
+the felt reach's run no longer feels the cube, every goal met. With it on the kit cart clears 10 mm
+in 4 draws of 9 and nothing from 14 mm (ADR 0076). Branch claude/lw-047-cost, docs only.
+Unfinished: the decision, the owner's; if it is to switch, those 8 tests and 4 numbers are the work.
+For the owner: LW-047 - on: no energy from nowhere, a slower Fetch and a weaker cart on curbs, 8 tests
+to redo; off: as now, with the artifact flagged in every run.
+
 ## 2026-11-15 · Claude (Cowork) · how far a design can go (FR-042, its first factor)
 Did: ADR 0076 - `inventory/boundary.py` (a factor on a grid, the same draws a level, a monotone fit,
 the 50 % crossing and its bootstrap interval, the pooling said; `python -m little_world.inventory.boundary`);
