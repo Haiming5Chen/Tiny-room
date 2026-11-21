@@ -42,6 +42,7 @@
   23.5 test_stop_follows.py::test_a_cube_set_down_beyond_the_arms_reach_is_left_alone_with_the_reason
   23.3 test_stages.py::test_a_frozen_camera_stops_the_fetch_while_it_looks
   22.4 test_camera_faults.py::test_a_dark_camera_is_named_at_the_look
+  22.0 test_boundary.py::test_at_an_8_mm_curb_the_kit_carts_front_caster_lifts_its_drive_wheels_and_at_12_one_keeps_the_floor
   21.7 test_cell_conveyor.py::test_a_run_fed_by_the_conveyor_places_each_part_each_arriving_within_its_nest
   20.9 test_straight_descent.py::test_tall_blocks_now_go_into_their_slots_and_the_tool_keeps_to_the_vertical
   20.0 test_boundary.py::test_a_curb_a_kit_cart_clears_and_one_it_cannot

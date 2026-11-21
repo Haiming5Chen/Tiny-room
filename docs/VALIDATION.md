@@ -2044,3 +2044,14 @@ display, 1139 headless.
 
 Not claimed: a ramp's profile for the arm cart or a design with suspension; why the two-wheel robot
 stops 1.5 deg short of its stall bound; that the square root of two holds for every factor.
+
+## An 8 mm curb, traced — 2026-11-21
+
+OPEN LW-052 done. The kit cart stalls at an 8 mm curb more often than at 10 to 14 mm (ADR 0076):
+at 8 mm its front caster's wheel gets up on the curb's edge far enough to lift the drive wheels off the
+floor - at 4, 8 and 12 s only the two casters touch - and nothing drives it; at 12 mm the caster stays
+against the edge, a drive wheel keeps the floor, and the cart slews until a drive wheel climbs (11.4 s).
+The rigid four-point stance of OPEN LW-026, as at the ramps. Checked in `tests/test_boundary.py` (one
+new). Suites on MuJoCo 3.10.0: 1210 passed with a display, 1140 headless.
+
+Not claimed: the draws' stalls at 8 mm traced one by one - the design as designed was.

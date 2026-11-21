@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · an 8 mm curb, traced (OPEN LW-052)
+Did: the contacts while the kit cart meets an 8 mm and a 12 mm curb, and a test that holds what they
+show. OPEN LW-052 done; ADR 0076's paragraph says why. Branch claude/lw-052 on 803c680.
+Measured: at 8 mm the front caster's wheel gets up on the curb's edge far enough to lift the drive wheels
+off the floor - at 4, 8 and 12 s only the two casters touch - and nothing drives the cart; at 12 mm the
+caster stays against the edge, a drive wheel keeps the floor, and the cart slews until a drive wheel
+climbs (11.4 s). Suites 1210 with a display, 1140 headless.
+Unfinished: the remedy is LW-026's - a sprung caster or a rocker, not modelled.
+For the owner: the kit cart's curb and ramp troubles have one cause - four rigid points, no suspension.
+
 ## 2026-11-21 · Claude (Cowork) · a ramp's slope, and the interval against 18 draws (FR-042 done)
 Did: `fields.ramp_run(slope)` (one ramp ahead; a half degree makes a valid name), `boundary.FACTORS['ramp']`,
 `Profile.bracket` (an interval narrower than half its step says so). The two-wheel robot on ramps of 4 to

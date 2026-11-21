@@ -70,7 +70,10 @@ Two things this shows, neither mended here:
   9 with multiccd off and in none with it on, where 10 mm is cleared in 5 and 4. What holds it is the
   same caster's wheel against the curb's edge, for the whole 25 s. A rigid wheel pushed at its axle
   needs less push for a lower step, not more: this is the cylinder-against-edge contact again, at a
-  height where it holds the wheel.
+  height where it holds the wheel. Traced on 21 November: at 8 mm the caster's wheel gets up on the
+  curb's edge far enough to lift the cart's drive wheels off the floor - at the stall only the two
+  casters touch - where at 12 mm a drive wheel keeps the floor and the cart slews until one climbs. The
+  rigid four-point stance of OPEN LW-026, as at the ramps below.
 
 **The tilt table (21 November): the method's first check fails, and the profile says why.** FR-042's
 first test of the method was that a profile along the tilt table's angle agrees, within its interval,

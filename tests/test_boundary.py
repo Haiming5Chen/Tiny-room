@@ -192,3 +192,31 @@ def test_the_two_wheel_robot_climbs_four_degrees_and_not_seven_and_the_kit_cart_
     assert run.result('climb_4').status == 'missed'
     machine = {b for b in touching if b.startswith('machine/')}
     assert machine and all('caster' in b for b in machine), machine
+
+
+def test_at_an_8_mm_curb_the_kit_carts_front_caster_lifts_its_drive_wheels_and_at_12_one_keeps_the_floor():
+    """OPEN LW-052, traced: at 8 mm the front caster's wheel gets up on the curb's edge far enough to lift
+    the cart's drive wheels off the floor - only the casters touch, and nothing drives it - where at 12 mm
+    the caster stays against the edge, a drive wheel keeps the floor, and the cart slews until a drive
+    wheel climbs (LW-026)."""
+    pytest.importorskip('mujoco')
+    import mujoco
+    from little_world.fields import curb_run
+    from little_world.inventory import sweep
+
+    def touching(mm, at=8.):
+        seen = set()
+
+        def probe(state, backend):
+            if abs(state.time - at) < 1e-6:
+                m, d = backend.model, backend.data
+                for c in d.contact[:d.ncon]:
+                    for g in (c.geom1, c.geom2):
+                        name = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, m.geom_bodyid[g])
+                        if name.startswith('machine/'):
+                            seen.add(name)
+        sweep.run('curbs', sweep.design('mobile_platform'), field=curb_run((mm / 1000.,)), duration=at + .01, probe=probe)
+        return seen
+    eight, twelve = touching(8.), touching(12.)
+    assert eight and all('caster' in b for b in eight), eight
+    assert any('tread' in b for b in twelve), twelve
