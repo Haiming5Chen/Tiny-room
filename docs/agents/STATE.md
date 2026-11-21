@@ -6,9 +6,9 @@ now is in `LOG.md` (`python scripts/agent_status.py --new NAME` prints only what
 
 - **Branch** `contact-pair-friction`, ahead of `main` (the public import), with Codex's line
   of work (its six commits on the Mac's `main`, up to 863720e) merged in on 2026-10-07 at the
-  owner's decision. **On GitHub** (the Mac's publish log, 14 Nov): `main` and this branch at ab83254, with
-  releases v0.2.0 and v0.3.0 - the owner publishes (`sh ~/Tiny-room/build/publish.sh` on the Mac);
-  the commits since, from 5a3aa59 on (0.4.0), wait for the next. Codex's merge of 23 Oct (the Mac's `main`,
+  owner's decision. **On GitHub** (the Mac's publish log, 21 Nov): `main` and this branch at e2fbba8, with
+  releases v0.2.0, v0.3.0 and v0.4.0 (published 21 Nov) - the owner publishes (`sh ~/Tiny-room/build/publish.sh`
+  on the Mac); the commits since, from 8e0fbff on, wait for the next. Codex's merge of 23 Oct (the Mac's `main`,
   7456609) is a third line, unpushed.
 - **Decision records** 0001 to 0076. The newest: 0076 how far a design can go - where success crosses one half along one factor (FR-042: a curb's height, then a tilt table's angle, whose check found the table's climb reading a tip late, OPEN LW-053, then the Fetch's reach, what its program tried apart from what it met; the Inventory's What it can do), 0075 the same start, checked - every run's set-up fingerprinted before a paired statistic (FR-041), 0074 energy from nowhere - every run checks that no contact gave back more than it took (FR-040), 0073 evidence anyone can measure again and 0072 from a clone to a running window (the owner's request of 10 Nov: easy to get and use, and re-evaluated - docs/EVALUATION.md), 0071 a reach that feels what it meets (OPEN LW-029), 0070 the Fetch keeps its ramp (OPEN LW-041), 0069 the cell finds its parts (OPEN LW-010), 0068 the cell fed by a conveyor (FR-007), 0067 a roller conveyor (FR-007, in part), 0066 the jaws squeeze by current (FR-037, in part), 0065 the Panda holds itself up (OPEN LW-036), 0064 plan the draws (FR-039), 0063 where runs fail
   (FR-038), 0062 the search

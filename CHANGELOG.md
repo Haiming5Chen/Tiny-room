@@ -4,7 +4,13 @@ What changed for someone who uses Little World, newest first. Every change has a
 in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 [docs/FEATURES.md](docs/FEATURES.md).
 
-## 0.4.0 - 15 November 2026
+## Unreleased
+
+- The Inventory's new tab, *What it can do*: an example's measured limits - the kit cart's curb, the
+  arm cart's held tilt table and its reach - and for any other design the commands that would measure
+  it (ADR 0076).
+
+## 0.4.0 - 21 November 2026
 
 - The same start, checked: every sweep run keeps a fingerprint of its set-up, and the disturbed
   sweep's and the recovery report check that their pairs began alike before their statistics
@@ -21,8 +27,7 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
   stands to 50 deg as designed, where the climb reads it going over at 54.6 - and `little-world
   evidence` records that as a flaw of its tilt claim (OPEN LW-053). What's new shows it: *Held, it
   goes over sooner*. The third, the Fetch's cube moved back, counts what the program tried apart from
-  what it met: it reaches up to 6 cm and declines from 7, and no reach it tries fails. The Inventory's
-  new tab, *What it can do*, shows an example's measured limits and how to measure any other design.
+  what it met: it reaches up to 6 cm and declines from 7, and no reach it tries fails.
 - Windows again: every text file the app opens is read and written as UTF-8 - a build script with a
   comment in Chinese saves there now - and GitHub's workflows run on actions that use Node.js 24
   (OPEN LW-051). A window test that read the grip at its frames reads it every step (OPEN LW-054).
