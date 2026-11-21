@@ -14,6 +14,9 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
   LW-048; ADR 0059 amended).
 - Windows: the quick tier and the quick measurements pass there, as on macOS and Linux, and on
   GitHub a failed test is written where anyone can read it (OPEN LW-045).
+- How far a design can go: one factor stepped along a grid - a curb's height first - and where a
+  design's success falls through one half, with an interval (ADR 0076). The kit cart's profile shows
+  how much of its curb climbing the engine's energy from nowhere gives it (OPEN LW-047).
 
 ## 0.3.0 - 12 November 2026
 
