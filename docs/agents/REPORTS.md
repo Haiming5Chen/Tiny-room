@@ -11,6 +11,21 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-15 · Claude (Cowork) · how far a design can go (FR-042, its first factor)
+Did: ADR 0076 - `inventory/boundary.py` (a factor on a grid, the same draws a level, a monotone fit,
+the 50 % crossing and its bootstrap interval, the pooling said; `python -m little_world.inventory.boundary`);
+`sweep.run` takes a field variant and a duration. The first factor: a curb's height. Branch
+claude/fr-042-boundaries on bdeda3d, one commit.
+Measured: the kit cart at one curb, 8 to 26 mm, 9 draws a height, 25 s: multiccd off - 50 % at 14.3 mm
+[12.5, 18.1], 8 to 14 mm pooled; multiccd on - below one half everywhere, 10 mm 4 of 9, 12 mm 1, nothing
+higher. Two findings: the cart's clears from 14 mm up come with the engine's energy from nowhere (LW-047,
+now with numbers for the owner's call), and 8 mm stalls it more than 10 to 14 mm, on or off (LW-052).
+Suites 1198 with a display, 1130 headless.
+Unfinished: the other factors (tilt, ramp, the Fetch's reach), commitment against competence, the
+Workshop card and What's new - FR-042 continues. Not published.
+For the owner: LW-047 - with multiccd on the kit cart clears 10 mm in 4 draws of 9 and nothing from 14
+mm; with it off, up to 18 mm, partly on energy the engine made.
+
 ## 2026-11-15 · Claude (Cowork) · Windows passes; 0.4.0
 Did: read GitHub's runs on ab83254, which the owner published: the quick workflow passed on all four
 machines, Windows' quick tier and six quick measurements included, and the full workflow too. OPEN

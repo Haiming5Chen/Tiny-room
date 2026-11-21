@@ -41,6 +41,7 @@
   22.4 test_camera_faults.py::test_a_dark_camera_is_named_at_the_look
   21.7 test_cell_conveyor.py::test_a_run_fed_by_the_conveyor_places_each_part_each_arriving_within_its_nest
   20.9 test_straight_descent.py::test_tall_blocks_now_go_into_their_slots_and_the_tool_keeps_to_the_vertical
+  20.0 test_boundary.py::test_a_curb_a_kit_cart_clears_and_one_it_cannot
   19.5 test_more_fields.py::test_the_doorway_program_takes_the_platform_through_without_touching_the_frame
   15.1 test_artifacts.py::test_on_the_curb_run_the_casters_contact_with_the_curb_gives_the_cart_energy_it_never_took
    7.2 test_fields.py::test_the_sprint_is_timed_by_the_drive_assist_speed

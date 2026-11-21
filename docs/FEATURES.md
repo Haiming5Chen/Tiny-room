@@ -358,6 +358,12 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   began from the same start before their statistics. The studies of ADR 0036, 0051 and 0070 check out,
   63 and 130 pairs alike; ADR 0052's old slip, the payload placed elsewhere, is caught in 59 of 71 set-ups
   ([ADR 0075](adr/0075-the-same-start-checked.md)).
+- **How far a design can go.** One factor stepped along a grid - a curb's height so far - each level on
+  the same draws, and where the design's success falls through one half, with an interval:
+  `python -m little_world.inventory.boundary curb 8 26 2`. The kit cart's profile shows two things to
+  mend: much of its curb ability comes from the engine's energy from nowhere - with multiccd on it
+  clears nothing from 14 mm up - and an 8 mm curb stalls it more often than a 10 to 14 mm one
+  ([ADR 0076](adr/0076-how-far-a-design-can-go.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

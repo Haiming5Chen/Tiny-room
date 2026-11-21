@@ -147,7 +147,9 @@ One command opens the window and a doctor says what an installation lacks (ADR 0
 numbers can be measured again on any machine, and an evaluation says where the project went wrong (ADR 0073).
 Every run checks that no contact gave back more energy than it took; on the Curb run it catches a
 caster's wheel against a curb's edge given 78 mJ from nowhere (ADR 0074). Every run keeps a fingerprint
-of its set-up, and a paired statistic checks first that its pairs began alike (ADR 0075).
+of its set-up, and a paired statistic checks first that its pairs began alike (ADR 0075). A design's
+boundary along one factor says how far it can go - the kit cart's curb profile, the first, shows how much of its
+climbing the engine's energy from nowhere gives it (ADR 0076).
 Next, by the evaluation of 11 November (docs/EVALUATION.md) - the branch was published on 12
 November (v0.2.0), and its quick tier passes on Linux and Apple silicon: the quick tier mended on
 Windows (OPEN LW-045); a licence chosen; the evidence run on the owner's Mac; one servo checked

@@ -162,7 +162,8 @@ def ranges_for(field_id):
 
 def run(field_id, blueprint, variation=Variation(), program=None, site=None, disturbance=None, corrections=None,
         retries=None, ideal=False, regrasps=None, trace=None, checks=None, camera_error=None, timestep=None,
-        feel=True, probe=None, recovery=None, alarm=None, latency=None, masses=None, until_start=False):
+        feel=True, probe=None, recovery=None, alarm=None, latency=None, masses=None, until_start=False,
+        field=None, duration=None):
     """One run of a field under one variation, and a disturbance partway through if one is
     given (ADR 0030). A program field's program, when not given, is solved for `blueprint`
     as designed; `corrections` caps an aimed pose's corrections (ADR 0025), `retries` how
@@ -190,13 +191,16 @@ def run(field_id, blueprint, variation=Variation(), program=None, site=None, dis
     followed (`Run.grip`). Every contact's work is watched for energy it gives back without having
     taken it (`Run.physics`, FR-040). The set-up is fingerprinted as the program takes over - the model
     with every change made to it, the joints at the start and then, the program, the draw (`Run.fingerprint`,
-    FR-041); `until_start` returns that alone, without running, for a check of a paired study's starts."""
+    FR-041); `until_start` returns that alone, without running, for a check of a paired study's starts.
+    `field` runs a variant of the field - its curb another height (FR-042) - under the field's own
+    protocol; `duration` gives that protocol another length, seconds."""
     from little_world import Entity, World
     from little_world.fields.goals import GoalTracker
     from little_world.physics.mujoco_backend import MujocoBackend
     started = time.monotonic()
-    field = FIELDS[field_id]
-    protocol, duration = PROTOCOLS[field_id]
+    field = FIELDS[field_id] if field is None else field
+    protocol, standard = PROTOCOLS[field_id]
+    duration = standard if duration is None else duration
     if protocol == 'program' and program is None:
         program = solve(field_id, blueprint)
     try:

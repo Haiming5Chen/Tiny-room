@@ -1956,3 +1956,18 @@ there too. macOS and Windows are required in the workflow from now on. The full 
 the same commit. Nothing here was changed in the code; the document tests pass.
 
 Not claimed: the window tests or the slow tests on macOS or Windows - the workflows run neither there.
+
+## How far a design can go — 2026-11-15
+
+ADR 0076 (FR-042, its first factor). `inventory/boundary.py` steps one factor along a grid, runs each
+level on the same draws, fits the rates to fall with it and says where they fall through one half,
+with an interval from resampling the draws - and where a higher level did better than a lower one.
+The kit cart driven at one curb for 25 s, 8 to 26 mm, 9 draws a height (seed 1): with multiccd off
+(as everywhere) 50 % at 14.3 mm, 95 % between 12.5 and 18.1 mm, pooled from 8 to 14 mm; with multiccd
+on below one half over the whole grid - 10 mm in 4 of 9, 12 mm in 1, nothing higher. Its clears from 14
+mm up are with the energy from nowhere (OPEN LW-047), and an 8 mm curb stalls it more than 10 to 14 mm,
+either way (OPEN LW-052). Report: docs/sweeps/2026-11-15-curb-height-boundary.md. Checked in
+`tests/test_boundary.py` (3). Suites on MuJoCo 3.10.0: 1198 passed with a display, 1130 headless.
+
+Not claimed: any factor but a curb's height; a program's commitment apart from its success; a crossing
+where success does not fall with the factor - the report says where it did not.

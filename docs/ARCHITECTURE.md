@@ -616,6 +616,12 @@ factor)`). `MujocoBackend.digests()` computes the digests (`mj_saveModel` for th
 `sweep.run` keeps one for every run (`Run.fingerprint`) and returns it alone with `until_start`; the
 disturbed sweep's report and `inventory/recovery.py` check their pairs.
 
+How far a design can go (ADR 0076): `inventory/boundary.py` (standard library) steps one factor along
+a grid - a curb's height - runs every level on the same draws (`levels`, through `sweep.run(field=...,
+duration=...)`), fits the rates to fall with the factor (`monotone`, pool-adjacent-violators), finds where
+the fit falls through one half (`crossing`) and its interval from resampling the draws (`profile`), and
+writes the report (`markdown`; `python -m little_world.inventory.boundary`).
+
 `inventory/stages.py` (ADR 0063, standard library) reads where a group of runs failed: how many met each
 goal and every goal before it, the first goal each missed, and - from `Run.stopped`, the block a program
 gave up at - what it was doing; a table for the sweep reports, two short lines for the panels.
