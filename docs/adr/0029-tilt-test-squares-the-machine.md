@@ -38,6 +38,10 @@ same offset - with the rail set that much further over; the Fetch field leaves i
 is; the tilt sweep's plan has 18 runs and none turned.
 
 **Boundaries.** The tilt table no longer measures what a turned machine does against a
-rail; that early tip is real for that placement and stays recorded in ADR 0024. The
+rail; that early tip is real for that placement and stays recorded in ADR 0024. The angle it reads
+is where a machine has gone over on the table's 2 deg/s climb, not where it can still stand: held 3 s
+at each angle (ADR 0076, 21 November), the arm cart stands to 50 deg as designed, and every draw 2.1
+to 4.6 deg below its climb's reading - it creeps along the rail, and from about 50 deg the creep runs
+away (OPEN LW-053). The
 machine is squared about its base's own vertical axis: a design whose first free body is not
 its base would be squared about that body.

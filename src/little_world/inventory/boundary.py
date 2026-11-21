@@ -161,8 +161,21 @@ def _curb(value):
     return curb_run((value / 1000.,))
 
 
+def _tilt(value):
+    from little_world.fields import tilt_table
+    return tilt_table(value)
+
+
+def _tilt_seconds(value):
+    from little_world.fields import tilt_seconds
+    return tilt_seconds(value)
+
+
 # factor: (the field whose protocol and ranges it uses, its unit, the field at a value, what it is called)
-FACTORS = {'curb': ('curbs', 'mm', _curb, 'curb height')}
+FACTORS = {'curb': ('curbs', 'mm', _curb, 'curb height'),
+           'tilt': ('tilt', 'deg', _tilt, 'table angle')}
+# how long a run at a value lasts when no length is given: a factor's own, else the field's protocol's
+SECONDS = {'tilt': _tilt_seconds}
 
 
 def _one(job):
@@ -171,6 +184,8 @@ def _one(job):
     from little_world.physics import mujoco_backend
     mujoco_backend.MULTICCD = multiccd          # a study's one setting changed (LW-047); off as everywhere else
     field_id, _, build, _ = FACTORS[factor]
+    if duration is None and factor in SECONDS:
+        duration = SECONDS[factor](value)
     run = sweep.run(field_id, sweep.design(design), variation, site=site, field=build(value), duration=duration)
     return value, variation.label, not run.error and all(x.status in ('met', 'kept') for x in run.results)
 

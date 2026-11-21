@@ -106,14 +106,16 @@ class Undisturbed:
 class TiltHold:
     """Met when a tilting table (a body of the field) passes `angle` degrees with the
     machine still standing on it - its base within `lean` degrees of the table's own
-    up. Missed, with the angle it went over at, once the machine has tipped past
-    `tipped` degrees relative to the table (ADR 0020)."""
+    up - and it has stood there `hold` seconds since (none: met as it passes). Missed,
+    with the angle it went over at, once the machine has tipped past `tipped` degrees
+    relative to the table (ADR 0020) before then."""
     id: str
     label: str
     table: str
     angle: float
     lean: float = 10.
     tipped: float = 25.
+    hold: float = 0.            # seconds standing after it passed `angle`, a table held there (ADR 0076)
 
 
 @dataclass(frozen=True)
@@ -137,6 +139,7 @@ class GoalTracker:
         self.disturbed = {}                         # goal id -> names moved so far
         self.origins = {}
         self.tipped_at = None                       # table angle when the machine went over
+        self.passed = {}                            # TiltHold id -> when the table passed its angle
 
     def update(self, state):
         if self.start is None:
@@ -167,7 +170,8 @@ class GoalTracker:
                     self.failed[goal.id] = now
                     self.tipped_at = self.tipped_at or angle
                 elif angle >= goal.angle and lean <= goal.lean:
-                    self.met[goal.id] = now
+                    if now - self.passed.setdefault(goal.id, now) >= goal.hold:
+                        self.met[goal.id] = now
             elif (goal.after is None or goal.after in self.met) and goal.check(machine, state):
                 self.met[goal.id] = now
 

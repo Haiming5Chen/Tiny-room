@@ -11,6 +11,24 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · a tilt table held at each angle (FR-042, its second factor)
+Did: the tilt table's angle as a boundary factor - `fields.tilt_table(top)` (the table stopped at its
+top and held), `TiltHold.hold` (met once the machine has stood 3 s since the table passed it; the Tilt
+table's own goals keep none), `boundary.FACTORS['tilt']`; the arm cart, 45 to 58 deg, as designed and 8
+draws a degree (126 runs). ADR 0076 amended. Branch claude/fr-042-tilt on 3824c0d.
+Measured: 50 % at 53.5 deg [51.8, 54.6]; the same draws on the table's 2 deg/s climb went over at 54.6
+to 58.7 (median 56.2), their designs predict 56.3: FR-042's first check fails. Each draw stood held only
+to 2.1 to 4.6 deg below its climb's reading. As designed: pressed against the trip rail the cart creeps
+along it (0.2 mm/s at 49 deg) and from about 50 deg the creep runs away - over 1 to 3 s later; the climb
+at 0.5 deg/s reads 51.4. With 1 ms steps or 20 noslip iterations it stands its 3 s at 51; with elliptic
+cones at 52, not 53. The evidence's `tilt` claim carries this as a known flaw, with a third number
+(stood 3 s held at 51 deg: no). Suites 1200 with a display, 1132 headless - one window test failed once in
+the full display suite and passed alone (OPEN LW-054, not this change's).
+Unfinished: OPEN LW-053 - a slower climb or the held profile as the tilt measure, and the creep; FR-042's
+ramp, the Fetch's reach with its commitment curve, the Workshop card.
+For the owner: the tilt table's "54.6 deg, a degree before the prediction" was the climb's lag covering
+the cart's creep; held, it stands to 50 deg (LW-053).
+
 ## 2026-11-21 · Claude (Cowork) · what multiccd on would move (for LW-047)
 Did: no code kept - the headless suite and little-world evidence run on a throwaway copy of 8d8a4b4
 with multiccd on, the owner's open call since ADR 0074 found the curb's energy from nowhere.

@@ -4,9 +4,9 @@ The documents make physical claims with numbers; the tests hold them inside tole
 say pass or fail. This runs thirteen of them again on the machine in front of you and prints
 each number beside the one that was recorded - on Linux, MuJoCo 3.10.0, where every number
 in the documents was measured - so that anyone can see what holds on their own machine and
-what moved. Two record known flaws, kept in the list on purpose: the slope creep (OPEN LW-039)
-and the energy a curb's contact gives the cart from nowhere (OPEN LW-047). One checks the
-physics check itself (FR-040).
+what moved. Three record known flaws, kept in the list on purpose: the slope creep (OPEN LW-039),
+the energy a curb's contact gives the cart from nowhere (OPEN LW-047) and the tilt table's climb
+reading a tip late (OPEN LW-053). One checks the physics check itself (FR-040).
 
     little-world evidence               every claim, about four minutes on two cores
     little-world evidence --quick       the six that take seconds
@@ -117,8 +117,11 @@ def physics():
 
 
 def tilt():
+    from little_world.fields import tilt_seconds, tilt_table
+    from little_world.inventory import sweep
     r = _run('tilt', 'mobile_manipulator')
-    return {'went over at': r.tipped, 'its design predicts': r.predicted}
+    held = sweep.run('tilt', sweep.design('mobile_manipulator'), field=tilt_table(51.), duration=tilt_seconds(51.))
+    return {'went over at': r.tipped, 'its design predicts': r.predicted, 'stood 3 s held at 51 deg': _met(held)}
 
 
 def tilt_cart():
@@ -248,7 +251,11 @@ CLAIMS = (
                'With multiccd on the check is clean and the curb is cleared at 11.4 s.'),
     Claim('tilt', 'On the tilt table the arm on its cart goes over at 54.6 deg, a degree before the 55.6 its design predicts.',
           '0029-tilt-test-squares-the-machine.md', 'test_tipping.py::test_on_the_tilt_table_the_angle_runs_out_as_the_arm_cart_goes_over',
-          (Q('went over at', 54.61, 1., 'deg'), Q('its design predicts', 55.58, .05, 'deg')), tilt, 22),
+          (Q('went over at', 54.61, 1., 'deg'), Q('its design predicts', 55.58, .05, 'deg'), Q('stood 3 s held at 51 deg', False)),
+          tilt, 48,
+          flaw='The table\'s 2 deg/s climb reads it late. Pressed against the trip rail the cart creeps along it, and from about 50 deg '
+               'the creep runs away and it is over 1 to 3 s later: held 3 s at each angle it stands to 50 deg, not 54 (ADR 0076, OPEN '
+               'LW-053).'),
     Claim('tilt-cart', 'The cart without its arm still stands at the table\'s 60 deg; its design predicts 72.',
           '0059-how-near-it-is-to-tipping.md', 'test_tipping.py::test_the_cart_without_its_arm_keeps_twelve_degrees_at_the_tables_top',
           (Q('held at the table\'s 60 deg', True), Q('its design predicts', 71.95, .05, 'deg')), tilt_cart, 20),
@@ -351,7 +358,7 @@ def markdown():
              'and each number is measured again on your machine and printed beside the recorded one. A physics engine',
              'is deterministic on one machine and build, not across processors, operating systems or MuJoCo releases:',
              'a number that moves on your machine is a finding worth an issue, with the `--json` file attached.', '',
-             'One claim is a flaw recorded as it is, not something to be proud of; [the evaluation](EVALUATION.md) lists more.', '']
+             'Three claims record flaws as they are, not things to be proud of; [the evaluation](EVALUATION.md) lists more.', '']
     for c in CLAIMS:
         lines += [f'## `{c.id}`', '', c.says, '']
         if c.flaw:

@@ -16,7 +16,10 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
   GitHub a failed test is written where anyone can read it (OPEN LW-045).
 - How far a design can go: one factor stepped along a grid - a curb's height first - and where a
   design's success falls through one half, with an interval (ADR 0076). The kit cart's profile shows
-  how much of its curb climbing the engine's energy from nowhere gives it (OPEN LW-047).
+  how much of its curb climbing the engine's energy from nowhere gives it (OPEN LW-047). The second
+  factor, a tilt table's angle, shows that the table's climb reads a machine late: held, the arm cart
+  stands to 50 deg as designed, where the climb reads it going over at 54.6 - and `little-world
+  evidence` records that as a flaw of its tilt claim (OPEN LW-053).
 
 ## 0.3.0 - 12 November 2026
 

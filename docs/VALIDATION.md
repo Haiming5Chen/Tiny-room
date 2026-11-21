@@ -1971,3 +1971,21 @@ either way (OPEN LW-052). Report: docs/sweeps/2026-11-15-curb-height-boundary.md
 
 Not claimed: any factor but a curb's height; a program's commitment apart from its success; a crossing
 where success does not fall with the factor - the report says where it did not.
+
+## A tilt table held at each angle — 2026-11-21
+
+ADR 0076 amended (FR-042, its second factor and the method's first check). The tilt table stopped at
+each angle from 45 to 58 deg and held 3 s (`fields.tilt_table`, `TiltHold.hold`), the arm cart as
+designed and 8 draws (seed 1): 50 % at 53.5 deg, 95 % between 51.8 and 54.6. The same draws on the
+table's own 2 deg/s climb went over at 54.6 to 58.7 deg (median 56.2), and their designs predict 56.3
+(median): the check fails. Each draw stood held only to 2.1 to 4.6 deg below its climb's reading: the
+cart creeps along the trip rail (0.2 mm/s at 49 deg) and from about 50 deg the creep runs away; the
+climb at 0.5 deg/s reads 51.4 deg. Steps of 1 ms or 20 noslip iterations let it stand its 3 s at 51;
+with elliptic cones it stands at 52 and not 53. The evidence's `tilt` claim records this as a flaw,
+with a third number (standing held at 51 deg: no; OPEN LW-053). Report:
+docs/sweeps/2026-11-21-tilt-angle-boundary.md. Checked in `tests/test_boundary.py` (5, two new) and
+`tests/test_evidence.py`. Suites on MuJoCo 3.10.0: 1200 passed with a display, 1132 headless.
+
+Not claimed: that a machine held longer would stand at the levels it stood for 3 s - at 49 deg the cart
+still creeps; why the creep runs away (the casters' swivels and the drive wheels stiffened do not stop
+it); a change to the Tilt table's protocol or to the engine's settings.

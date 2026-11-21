@@ -473,9 +473,9 @@ def tilt_entities(machine=None):
     return field_entities(parts)
 
 
-def tilt_target(time):
-    """The table's angle, degrees, at a time into the run."""
-    return max(0., min(TILT_MAX, (time - TILT_START) * TILT_RATE))
+def tilt_target(time, top=TILT_MAX):
+    """The table's angle, degrees, at a time into the run: still, then rising to `top` and held there."""
+    return max(0., min(top, (time - TILT_START) * TILT_RATE))
 
 
 def table_angle(state):
@@ -484,11 +484,11 @@ def table_angle(state):
     return degrees(atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)))
 
 
-def tilt_actuate(state):
+def tilt_actuate(state, top=TILT_MAX):
     """Hold the table on its schedule: a stiff servo whose damping the solver integrates."""
     kp, kd = TILT_GAINS
     rate = state.bodies['field/tilt_table'].angular_velocity[0]
-    torque = kp * radians(tilt_target(state.time) - table_angle(state)) - kd * rate
+    torque = kp * radians(tilt_target(state.time, top) - table_angle(state)) - kd * rate
     if abs(torque) >= TILT_TORQUE:
         return {'field/tilt_motor': TILT_TORQUE if torque > 0 else -TILT_TORQUE}
     return {'field/tilt_motor': Torque(torque, -kd)}
@@ -497,6 +497,32 @@ def tilt_actuate(state):
 def tilt_goals():
     return tuple(TiltHold(f'held_{a}', f'Held at {a} deg', 'field/tilt_table', float(a)) for a in (20, 30, 40, 50)) + \
         (TiltHold('held_60', 'Held at 60 deg', 'field/tilt_table', TILT_MAX - .5),)
+
+
+HELD = 3.     # s a table stopped at its top is held before a machine still on it has stood there (ADR 0076)
+
+
+def tilt_table(top, hold=HELD):
+    """The tilt table stopped at `top` degrees and held: met when the machine has stood `hold` seconds
+    since the table passed half a degree under it (its servo settles that close), missed if it went
+    over first - one level of a boundary along the table's angle (ADR 0076). The same table, rail and
+    squaring as the Tilt table's, so its draws and predictions are the same."""
+    if not 0. < top <= TILT_MAX:
+        raise ValueError(f'the table turns to {TILT_MAX:g} deg at most')
+    return Field(
+        'tilt', 'Tilt table',
+        f'The machine stands on a table that tilts, left side up, {TILT_RATE:g} deg/s to {top:g} deg and stops there, '
+        f'a 5 mm trip rail against its right-hand wheels. Met if it still stands {hold:g} s after.',
+        tilt_entities, goals=(TiltHold('held', f'Stood {hold:g} s at {top:g} deg', 'field/tilt_table', top - .5,
+                                       hold=hold),),
+        actuate=lambda state: tilt_actuate(state, top), home=((0., 0., .1), 2.6, 90., -12.), fitted=True,
+        reading=table_angle, gauge_top=TILT_MAX, side='right', ground=('field/tilt_table',), squared=True)
+
+
+def tilt_seconds(top, hold=HELD):
+    """How long a run of `tilt_table(top)` must last for its goal to be judged: the table's climb, the hold,
+    and a little over."""
+    return TILT_START + top / TILT_RATE + hold + .5
 
 
 TILT = Field(

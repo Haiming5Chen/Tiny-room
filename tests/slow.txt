@@ -21,6 +21,7 @@
   46.6 test_going_back.py::test_a_cart_shoved_6_N_s_at_the_table_goes_back_and_fetches_its_cube
   46.2 test_look.py::test_the_cube_moved_5_cm_as_the_cart_stands_at_the_table_is_fetched
   46.0 test_set_down.py::test_the_cube_is_set_down_without_a_fall_and_comes_to_rest_upright[0.5]
+  46.0 test_boundary.py::test_held_at_51_deg_the_arm_cart_goes_over_though_the_ramp_carries_it_past_54
   45.9 test_set_down.py::test_held_firmly_the_cube_that_crept_out_of_the_jaws_is_set_down
   44.0 test_rise_and_place.py::test_the_cube_hidden_under_the_jaws_is_fetched_without_looking_again
   43.7 test_stop_follows.py::test_a_cube_set_down_6_cm_further_and_15_cm_sideways_is_fetched

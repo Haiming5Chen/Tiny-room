@@ -174,6 +174,10 @@ keep waiting.
   cannot hold a cube lying across them (OPEN LW-034): the Fetch works for a cube standing up.
 - *Contacts are soft* in proportion to the mass behind them: "a 2 mm wheel lift" is not a tip,
   and a force under 0.1 N is noise.
+- *A tilt read on the climb* (found 21 Nov). The tilt table's 54.6 deg for the arm cart, "a degree
+  before" its prediction, is where it has gone over on a table climbing 2 deg a second. Held, it stands
+  to 50 deg: it creeps along the trip rail, and from there the creep runs away (ADR 0076, OPEN LW-053).
+  The agreement with the prediction was the climb's lag cancelling the machine's give.
 
 ### 9. A test suite that grew past use
 

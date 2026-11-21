@@ -617,7 +617,8 @@ factor)`). `MujocoBackend.digests()` computes the digests (`mj_saveModel` for th
 disturbed sweep's report and `inventory/recovery.py` check their pairs.
 
 How far a design can go (ADR 0076): `inventory/boundary.py` (standard library) steps one factor along
-a grid - a curb's height - runs every level on the same draws (`levels`, through `sweep.run(field=...,
+a grid - a curb's height, a tilt table's angle (`fields.tilt_table`, held by `TiltHold.hold`) - runs
+every level on the same draws (`levels`, through `sweep.run(field=...,
 duration=...)`), fits the rates to fall with the factor (`monotone`, pool-adjacent-violators), finds where
 the fit falls through one half (`crossing`) and its interval from resampling the draws (`profile`), and
 writes the report (`markdown`; `python -m little_world.inventory.boundary`).

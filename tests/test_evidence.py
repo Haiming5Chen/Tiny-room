@@ -35,7 +35,7 @@ def test_every_claim_names_a_decision_record_and_a_test_that_exist():
         source = (ROOT / 'tests' / file).read_text(encoding='utf-8')
         assert name and re.search(rf'^def {re.escape(name)}\(', source, re.M), (claim.id, claim.test)
         assert len({q.name for q in claim.quantities}) == len(claim.quantities), claim.id
-    assert [c.id for c in CLAIMS if c.flaw] == ['curb', 'slope-creep'], "the flaws it lists are listed as such"
+    assert [c.id for c in CLAIMS if c.flaw] == ['curb', 'tilt', 'slope-creep'], "the flaws it lists are listed as such"
     assert sum(c.seconds for c in CLAIMS if c.quick) < 40 < sum(c.seconds for c in CLAIMS) < 300
 
 

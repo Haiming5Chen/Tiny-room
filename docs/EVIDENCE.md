@@ -16,7 +16,7 @@ and each number is measured again on your machine and printed beside the recorde
 is deterministic on one machine and build, not across processors, operating systems or MuJoCo releases:
 a number that moves on your machine is a finding worth an issue, with the `--json` file attached.
 
-One claim is a flaw recorded as it is, not something to be proud of; [the evaluation](EVALUATION.md) lists more.
+Three claims record flaws as they are, not things to be proud of; [the evaluation](EVALUATION.md) lists more.
 
 ## `sprint`
 
@@ -48,12 +48,15 @@ Why: [docs/adr/0041-the-cart-stands-on-all-four.md](adr/0041-the-cart-stands-on-
 
 On the tilt table the arm on its cart goes over at 54.6 deg, a degree before the 55.6 its design predicts.
 
+*A known flaw:* The table's 2 deg/s climb reads it late. Pressed against the trip rail the cart creeps along it, and from about 50 deg the creep runs away and it is over 1 to 3 s later: held 3 s at each angle it stands to 50 deg, not 54 (ADR 0076, OPEN LW-053).
+
 | Measured | Recorded | Holds within |
 | --- | --- | --- |
 | went over at | 54.61 deg | 1 deg |
 | its design predicts | 55.58 deg | 0.05 deg |
+| stood 3 s held at 51 deg | no | the same |
 
-Why: [docs/adr/0029-tilt-test-squares-the-machine.md](adr/0029-tilt-test-squares-the-machine.md). Held by `tests/test_tipping.py::test_on_the_tilt_table_the_angle_runs_out_as_the_arm_cart_goes_over`. Again: `little-world evidence --only tilt` (about 22 s).
+Why: [docs/adr/0029-tilt-test-squares-the-machine.md](adr/0029-tilt-test-squares-the-machine.md). Held by `tests/test_tipping.py::test_on_the_tilt_table_the_angle_runs_out_as_the_arm_cart_goes_over`. Again: `little-world evidence --only tilt` (about 48 s).
 
 ## `tilt-cart`
 
