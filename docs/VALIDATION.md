@@ -2004,3 +2004,17 @@ window test stops the table at 51 deg; the arm cart goes over at 51.1. Suites on
 
 Not claimed: the workflows' new actions run until GitHub runs them; why the window's run of the squeeze
 demonstration has single steps of 96 % where the headless one does not.
+
+## The Fetch's reach: what it tried and what it met — 2026-11-21
+
+ADR 0076 amended (FR-042, its third factor and fourth check). The Fetch with its cube moved back along
+the table 0 to 8 cm (`fields.fetch_moved`), the arm cart as designed and 8 draws (seed 1), its program
+solved once for the cube as planned: every draw tried (closed its jaws on the cube) and met every goal
+up to 6 cm; from 7 cm none tried - each said, before moving the arm, that the cube was out of its reach
+from its stop (ADR 0035) - and none met. No draw tried and failed. A crossing at a step from every draw
+to none is reported as lying between the two levels (`Profile.step`). Report:
+docs/sweeps/2026-11-21-fetch-reach-boundary.md. Checked in `tests/test_boundary.py` (8, three new).
+Suites on MuJoCo 3.10.0: 1205 passed with a display, 1136 headless.
+
+Not claimed: that a declined cube could not have been reached; a finer grid than 1 cm; any program but
+the Fetch's; a stop moved nearer a cube seen further away.

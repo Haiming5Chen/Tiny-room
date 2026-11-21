@@ -29,6 +29,14 @@ runs are the project's own (`sweep.run`), and the statistics are a few lines of 
   Tilt table's own goals keep a hold of none). Each level's run lasts the climb, the hold and half a
   second (`tilt_seconds`): `python -m little_world.inventory.boundary tilt 45 58 1 --design
   mobile_manipulator --jobs 2`.
+- *The Fetch's reach, and commitment apart from competence* (21 November), the third:
+  `fields.fetch_moved(back)` is the Fetch with its cube `back` further along the table from the cart's
+  stop; its program is solved once, for the cube where it is planned, and finds the cube with its
+  camera. Where a program decides whether to try, each draw is counted twice: met (every goal) and
+  tried - it closed its jaws on the part, a grasp check (`Level.committed`, `commitment`); `gap(level)`
+  names the draws that tried and failed, and the report shows both. A crossing at a step from every
+  draw to none says it is known only to the grid (`Profile.step`), not to an interval the draws
+  cannot narrow: `python -m little_world.inventory.boundary reach 0 8 1 --design mobile_manipulator --jobs 2`.
 
 **Blueprint and builder.** Untouched.
 
@@ -108,15 +116,32 @@ What's new's *Held, it goes over sooner* stops the table at 51 deg with the arm 
 made for the run is kept by its own id (`fields.VARIANTS`, `find_field`; `tilt-51`), so the window
 shows it, its goal ("Stood 3 s at 51 deg") and, after Stop, the run's report - over at 51.1 deg.
 
-Held by `tests/test_boundary.py` (5: the fit, the crossing and the pooling; the interval from the
+**The Fetch's reach (21 November): it tries where it can, and only there.** FR-042's fourth check:
+where a program decides, both curves, and any draw that tried and failed. The arm on its cart, the
+Fetch's cube moved back 0 to 8 cm, as designed and the same 8 draws:
+
+| The cube moved back, cm | 0 to 6 | 7 | 8 |
+| --- | --- | --- | --- |
+| Tried (closed its jaws on the cube), of 9 | 9 | 0 | 0 |
+| Met every goal, of 9 | 9 | 0 | 0 |
+
+Both fall from every draw to none between 6 and 7 cm, and no draw tried and failed. From 7 cm the
+program says, before it moves the arm, that the cube it sees is out of its reach from this stop (ADR
+0035), and stops; up to 6 cm it reaches and delivers. ADR 0035's check holds its line exactly where the
+arm can still succeed - on these draws and this grid. Report: docs/sweeps/2026-11-21-fetch-reach-boundary.md.
+
+Held by `tests/test_boundary.py` (8: the fit, the crossing and the pooling; the interval from the
 draws, narrowing with more of them; a curb the cart clears and one it cannot; a held table met only
-once the machine has stood its hold; held at 51 deg the arm cart goes over, at 47 it stands) and a
+once the machine has stood its hold; held at 51 deg the arm cart goes over, at 47 it stands; what a
+program tried counted apart from what it met, and a step from all to none read as one; the Fetch with
+its cube moved back; a cube 10 cm back declined, without closing the jaws) and a
 window test in `tests/test_whats_new.py` (the table stops at 51, the cart goes over there). Suites:
 1200 pass with a display, 1132 headless.
 
-**Boundaries.** Two factors: a ramp's slope and the Fetch's reach are not profiled yet, nor is a
-program's commitment apart from its competence - a cart driven at a curb, or stood on a table, has no
-choice. The tilt table's hold is 3 s by judgment, and at 49 deg the cart still creeps: no hold is long
+**Boundaries.** Three factors; a ramp's slope is not profiled yet. Commitment is read only where a
+program decides - a cart driven at a curb, or stood on a table, has no choice. Whether the Fetch could
+have reached a cube it declined is not tried, and its program does not move its stop nearer a cube seen
+further away; between 6 and 7 cm is as fine as the grid went. The tilt table's hold is 3 s by judgment, and at 49 deg the cart still creeps: no hold is long
 enough to say it would stand for good. FR-042's check that the interval narrows by about the square
 root of two from 9 to 18 draws a level is not run. Nine draws a level give wide intervals (a level of 0 of 9 is 0 to 34 %). A
 crossing assumes success falls with the factor; where it does not, the report says so rather than

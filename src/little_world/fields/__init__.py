@@ -343,8 +343,11 @@ BIN, BIN_SIZE, BIN_WALL = (.5, .8), .20, .04   # a bin on the floor, left of the
 CAMERA_AT, CAMERA_AIM = (2.30, 0., .90), (1.85, 0., .12)
 
 
-def fetch_entities():
+def fetch_entities(cube=None):
+    """The Fetch's table, camera, bin and cube - the cube at `cube` (x, y) on the table, where it is
+    planned (FETCH_CUBE) unless given."""
     x, y, depth, width, height = TABLE
+    at_x, at_y = FETCH_CUBE if cube is None else cube
     parts = slab()
     parts.append(fixed('table', (depth, width, height), 'plywood', (x, y, height / 2)))
     # An Intel RealSense D435 (90 x 25 x 25 mm) held out on a bracket from a 30 mm post
@@ -361,7 +364,7 @@ def fetch_entities():
     for i, (dx, dy, sx, sy) in enumerate(((half - .003, 0, .006, BIN_SIZE), (-half + .003, 0, .006, BIN_SIZE),
                                           (0, half - .003, BIN_SIZE, .006), (0, -half + .003, BIN_SIZE, .006))):
         parts.append(fixed(f'bin_wall_{i}', (sx, sy, BIN_WALL), 'tray', (bx + dx, by + dy, BIN_WALL / 2)))
-    props = (loose('fetch_cube', (.025, .025, .040), 'cube', (FETCH_CUBE[0], FETCH_CUBE[1], height + .020)),)
+    props = (loose('fetch_cube', (.025, .025, .040), 'cube', (at_x, at_y, height + .020)),)
     return field_entities(parts, props)
 
 
@@ -383,6 +386,21 @@ FETCH = Field(
     'A cube on a table 1.8 m ahead: drive there, pick it up, bring it back and set it in the bin left of the start.',
     fetch_entities, goals=fetch_goals(), home=((1.0, .35, .15), 3.6, -70., -32.),
     camera=('table_camera', 'realsense_d435'))
+
+
+def fetch_moved(back):
+    """The Fetch with its cube `back` metres further along the table from the cart's stop than planned -
+    one level of a boundary along the cube's reach (ADR 0076). Its program is still solved for the cube
+    where it is planned: it finds the cube with its camera, and reaches for it or says it cannot."""
+    x, _, depth, _, _ = TABLE
+    if not 0. <= back <= x + depth / 2 - .02 - FETCH_CUBE[0]:
+        raise ValueError('the cube stays on the table')
+    made = Field(f'fetch-{100 * back:g}', 'Fetch',
+                 f'The Fetch with its cube {100 * back:g} cm further back on the table than planned.',
+                 lambda: fetch_entities((FETCH_CUBE[0] + back, FETCH_CUBE[1])), goals=fetch_goals(), home=FETCH.home,
+                 camera=FETCH.camera)
+    VARIANTS[made.id] = made
+    return made
 
 
 WALL_X, DOOR_Y, DOOR_WIDTH = 2.0, .5, .50   # a wall across the field, its door off to the left

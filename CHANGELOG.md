@@ -20,7 +20,8 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
   factor, a tilt table's angle, shows that the table's climb reads a machine late: held, the arm cart
   stands to 50 deg as designed, where the climb reads it going over at 54.6 - and `little-world
   evidence` records that as a flaw of its tilt claim (OPEN LW-053). What's new shows it: *Held, it
-  goes over sooner*.
+  goes over sooner*. The third, the Fetch's cube moved back, counts what the program tried apart from
+  what it met: it reaches up to 6 cm and declines from 7, and no reach it tries fails.
 - Windows again: every text file the app opens is read and written as UTF-8 - a build script with a
   comment in Chinese saves there now - and GitHub's workflows run on actions that use Node.js 24
   (OPEN LW-051). A window test that read the grip at its frames reads it every step (OPEN LW-054).

@@ -8,6 +8,7 @@
   93.0 test_feel.py::test_the_fetch_program_feels_the_cube_where_the_contacts_say_it_is_held[0.0]
   77.8 test_branch.py::test_a_branch_is_its_parent_until_the_alarm_and_the_alarm_rescues_it
   74.5 test_camera_error.py::test_fetching_holds_with_the_camera_panned_one_and_a_half_degrees_and_not_two
+  70.0 test_boundary.py::test_the_fetch_reaches_for_a_cube_it_can_reach_and_declines_one_it_cannot
   65.6 test_handling.py::test_jaws_brought_down_on_the_moved_cube_press_it_into_the_table
   59.8 test_friction_use.py::test_reading_friction_use_changes_nothing_in_a_run
   57.1 test_camera_faults.py::test_a_frozen_camera_is_named_before_any_grasp_and_on_trust_misses_twice

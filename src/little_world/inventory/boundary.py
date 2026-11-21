@@ -29,9 +29,11 @@ REPEATS = 2000
 
 @dataclass(frozen=True)
 class Level:
-    """One step of the factor: its value, and each draw's outcome there (label, met)."""
+    """One step of the factor: its value, each draw's outcome there (label, met), and - where a program
+    decides whether to try - whether it did (label, committed): empty when the machine has no choice."""
     value: float
     outcomes: tuple = ()
+    committed: tuple = ()
 
     @property
     def met(self):
@@ -44,6 +46,19 @@ class Level:
     @property
     def rate(self):
         return self.met / self.tried if self.tried else float('nan')
+
+
+def commitment(levels):
+    """The levels as the program's commitment: each draw counted as met when the program tried - closed
+    its jaws on what it was sent for - whether or not it then succeeded (FR-042: commitment apart from
+    competence)."""
+    return tuple(Level(level.value, level.committed) for level in levels if level.committed)
+
+
+def gap(level):
+    """The draws at a level in which the program tried and failed: committed, and not every goal met."""
+    met = dict(level.outcomes)
+    return tuple(label for label, tried in level.committed if tried and not met.get(label))
 
 
 def monotone(levels, falling=True):
@@ -101,11 +116,25 @@ class Profile:
             i = j + 1
         return tuple(out)
 
+    def step(self):
+        """(a, b) when every draw met at one level and none at the next, where the fit crosses one half:
+        the crossing is known only to lie between them - resampling the draws cannot narrow it, and its
+        interval would say 'between b and b'."""
+        values = [level.value for level in self.levels]
+        for (a, f1), (b, f2) in zip(zip(values, self.fitted), zip(values[1:], self.fitted[1:])):
+            if f1 >= AT > f2:
+                return (a, b) if f1 == 1. and f2 == 0. else None
+        return None
+
     def line(self):
         """'Curb height: 50 % at 19.3 mm, 95 % between 17.6 and 21.0 mm.'"""
         name = self.factor[:1].upper() + self.factor[1:]
         pooled = ''.join(f' From {_n(a)} to {_n(b)} {self.unit} a higher level did better than a lower one: pooled.'
                          for a, b in self.pooled())
+        if self.step() is not None:
+            a, b = self.step()
+            return (f'{name}: every draw to {_n(a)} {self.unit} and none from {_n(b)} {self.unit} - one half lies between '
+                    f'them, finer than the grid not measured.' + pooled)
         if self.at is None:
             above = all(r >= AT for r in self.fitted)
             return (f'{name}: {"above" if above else "below"} one half over the whole grid, '
@@ -141,14 +170,22 @@ def profile(field, factor, unit, levels, seed=1, repeats=REPEATS, draws_seed=Non
     return Profile(field, factor, unit, levels, fitted, at, low, high, beyond, repeats, seed, draws_seed)
 
 
-def markdown(p, title=''):
-    """A profile as a short report: one row a level."""
-    lines = [f'# {title or p.field}: {p.factor}', '', p.line(), '',
-             f'| {p.factor[:1].upper() + p.factor[1:]}, {p.unit} | Met every goal | 95 % interval | Fitted |',
-             '| --- | --- | --- | --- |']
+def markdown(p, title='', tried=None):
+    """A profile as a short report: one row a level - and, given the program's commitment profile
+    (`tried`), what it tried beside what it met, and where it tried and failed."""
+    lines = [f'# {title or p.field}: {p.factor}', '', p.line(), '']
+    if tried is not None:
+        lines += ['Tried (the program closed its jaws on it): ' + tried.line()[len(tried.factor) + 2:], '']
+    head = f'| {p.factor[:1].upper() + p.factor[1:]}, {p.unit} | Met every goal | 95 % interval | Fitted |'
+    lines += [head + (' Tried | Tried and failed |' if tried is not None else ''),
+              '| --- | --- | --- | --- |' + (' --- | --- |' if tried is not None else '')]
     for level, f in zip(p.levels, p.fitted):
         lo, hi = rate_interval(level.met, level.tried) if level.tried else (0., 1.)
-        lines.append(f'| {_n(level.value)} | {level.met} of {level.tried} | {100 * lo:.0f} to {100 * hi:.0f} % | {100 * f:.0f} % |')
+        row = f'| {_n(level.value)} | {level.met} of {level.tried} | {100 * lo:.0f} to {100 * hi:.0f} % | {100 * f:.0f} % |'
+        if tried is not None:
+            n = sum(1 for _, t in level.committed if t)
+            row += f' {n} of {len(level.committed)} | {", ".join(gap(level)) or "-"} |'
+        lines.append(row)
     lines += ['', f'Each level on the same {p.levels[0].tried} draws' + (f' (seed {p.draws_seed})' if p.draws_seed is not None else '')
               + f'; the interval from {p.repeats} resamples of each level\'s draws (seed {p.seed}).']
     return '\n'.join(lines) + '\n'
@@ -171,9 +208,16 @@ def _tilt_seconds(value):
     return tilt_seconds(value)
 
 
+def _reach(value):
+    from little_world.fields import fetch_moved
+    return fetch_moved(value / 100.)
+
+
 # factor: (the field whose protocol and ranges it uses, its unit, the field at a value, what it is called)
 FACTORS = {'curb': ('curbs', 'mm', _curb, 'curb height'),
-           'tilt': ('tilt', 'deg', _tilt, 'table angle')}
+           'tilt': ('tilt', 'deg', _tilt, 'table angle'),
+           'reach': ('fetch', 'cm', _reach, 'the cube moved back')}
+_PROGRAMS = {}      # a process's program for each design, solved once for its field as planned
 # how long a run at a value lasts when no length is given: a factor's own, else the field's protocol's
 SECONDS = {'tilt': _tilt_seconds}
 
@@ -186,8 +230,17 @@ def _one(job):
     field_id, _, build, _ = FACTORS[factor]
     if duration is None and factor in SECONDS:
         duration = SECONDS[factor](value)
-    run = sweep.run(field_id, sweep.design(design), variation, site=site, field=build(value), duration=duration)
-    return value, variation.label, not run.error and all(x.status in ('met', 'kept') for x in run.results)
+    program = None
+    if sweep.PROTOCOLS[field_id][0] == 'program':       # solved once, for the design and the field as planned
+        key = (field_id, design)
+        if key not in _PROGRAMS:
+            _PROGRAMS[key] = sweep.solve(field_id, sweep.design(design))
+        program = _PROGRAMS[key]
+    run = sweep.run(field_id, sweep.design(design), variation, program=program, site=site, field=build(value),
+                    duration=duration)
+    met = not run.error and all(x.status in ('met', 'kept') for x in run.results)
+    # Where a program decides, whether it tried: closed its jaws on the part at least once (a grasp check).
+    return value, variation.label, met, (bool(run.felt) if program is not None else None)
 
 
 def levels(factor, values, design, samples=8, seed=1, duration=None, jobs=1, progress=None, multiccd=False):
@@ -202,20 +255,23 @@ def levels(factor, values, design, samples=8, seed=1, duration=None, jobs=1, pro
     site = sweep.shared_site(sweep.design(design), drawn)
     work = [(factor, value, design, v, site, duration, multiccd) for value in values for v in drawn]
     outcomes = {value: [] for value in values}
+    tried = {value: [] for value in values}
+
+    def keep(i, value, label, ok, committed):
+        outcomes[value].append((label, ok))
+        if committed is not None:
+            tried[value].append((label, committed))
+        if progress:
+            progress(i + 1, len(work), value, label, ok)
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
         with ProcessPoolExecutor(jobs) as pool:
-            for i, (value, label, ok) in enumerate(pool.map(_one, work)):
-                outcomes[value].append((label, ok))
-                if progress:
-                    progress(i + 1, len(work), value, label, ok)
+            for i, found in enumerate(pool.map(_one, work)):
+                keep(i, *found)
     else:
         for i, job in enumerate(work):
-            value, label, ok = _one(job)
-            outcomes[value].append((label, ok))
-            if progress:
-                progress(i + 1, len(work), value, label, ok)
-    return tuple(Level(value, tuple(outcomes[value])) for value in values)
+            keep(i, *_one(job))
+    return tuple(Level(value, tuple(outcomes[value]), tuple(tried[value])) for value in values)
 
 
 def main(argv=None):
@@ -243,12 +299,14 @@ def main(argv=None):
                    lambda i, n, value, label, ok: print(f'{i}/{n} {value:g} {unit} {label}: {"met" if ok else "missed"}', flush=True),
                    args.multiccd)
     p = profile(field_id, name, unit, found, draws_seed=args.seed)
-    text = markdown(p, f'{args.design} on the {field_id} field' + (', multiccd on' if args.multiccd else ''))
+    tried = commitment(found)
+    t = profile(field_id, name, unit, tried, draws_seed=args.seed) if tried else None
+    text = markdown(p, f'{args.design} on the {field_id} field' + (', multiccd on' if args.multiccd else ''), t)
     print(text)
     if args.out:
         Path(args.out).write_text(text, encoding='utf-8')
-        Path(args.out).with_suffix('.json').write_text(json.dumps([[level.value, level.outcomes] for level in found]),
-                                                       encoding='utf-8')
+        Path(args.out).with_suffix('.json').write_text(
+            json.dumps([[level.value, level.outcomes, level.committed] for level in found]), encoding='utf-8')
     return 0
 
 

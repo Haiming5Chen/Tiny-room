@@ -80,3 +80,53 @@ def test_held_at_51_deg_the_arm_cart_goes_over_though_the_ramp_carries_it_past_5
     from little_world.inventory.boundary import levels
     found = levels('tilt', (47., 51.), 'mobile_manipulator', samples=0)
     assert [(lv.value, lv.met, lv.tried) for lv in found] == [(47., 1, 1), (51., 0, 1)]
+
+
+def test_where_a_program_decides_what_it_tried_is_counted_apart_from_what_it_met():
+    """FR-042: commitment apart from competence. A draw is committed when the program closed its jaws
+    on the part, met when every goal was; the report shows both, and names where it tried and failed."""
+    from little_world.inventory.boundary import commitment, gap, markdown
+
+    def tried_level(value, outcomes):
+        return Level(value, tuple((f'draw {i}', met) for i, (met, _) in enumerate(outcomes)),
+                     tuple((f'draw {i}', tried) for i, (_, tried) in enumerate(outcomes)))
+    levels = [tried_level(0, [(True, True)] * 4), tried_level(4, [(True, True), (False, True), (True, True), (False, False)]),
+              tried_level(8, [(False, False)] * 4)]
+    tried = commitment(levels)
+    assert [(lv.value, lv.met) for lv in tried] == [(0, 4), (4, 3), (8, 0)]
+    assert gap(levels[1]) == ('draw 1',) and gap(levels[0]) == gap(levels[2]) == (), "tried and failed: draw 1 at 4"
+    assert commitment([level(10, 1, 1)]) == (), "a machine with no choice has no commitment profile"
+    p = profile('fetch', 'the cube moved back', 'cm', levels)
+    t = profile('fetch', 'the cube moved back', 'cm', tried)
+    report = markdown(p, 'arm cart', t)
+    assert 'Tried (the program closed its jaws on it): 50 % at ' in report
+    assert '| 4.0 | 2 of 4 | ' in report and ' 3 of 4 | draw 1 |' in report
+    assert 'Tried' not in markdown(p, 'arm cart'), "without a commitment profile, as before"
+    sharp = profile('fetch', 'the cube moved back', 'cm', [level(5, 9, 9), level(6, 9, 9), level(7, 0, 9)])
+    assert sharp.step() == (6, 7) and sharp.line() == ('The cube moved back: every draw to 6.0 cm and none from 7.0 cm - one '
+                                                       'half lies between them, finer than the grid not measured.')
+    assert p.step() is None, "a crossing between levels some draws met is read as before"
+
+
+def test_the_fetch_moved_back_moves_only_its_cube():
+    from little_world.fields import FETCH, fetch_moved, find_field
+
+    def cube(field):
+        return next(b for b in field.build()[1].blueprint.components if b.id == 'fetch_cube').transform.position
+    moved = fetch_moved(.05)
+    assert moved.id == 'fetch-5' and find_field('fetch-5') is moved and moved.camera == FETCH.camera
+    assert cube(moved)[0] == pytest.approx(cube(FETCH)[0] + .05) and cube(moved)[1:] == pytest.approx(cube(FETCH)[1:])
+    assert [g.id for g in moved.goals] == [g.id for g in FETCH.goals]
+    for back in (-.01, .40):
+        with pytest.raises(ValueError):
+            fetch_moved(back)
+
+
+def test_the_fetch_reaches_for_a_cube_it_can_reach_and_declines_one_it_cannot():
+    """The Fetch's program is solved for the cube where it is planned and finds it with its camera: 10 cm
+    further back it says the cube is out of the arm's reach from its stop, and does not close its jaws."""
+    pytest.importorskip('mujoco')
+    from little_world.inventory.boundary import levels
+    found = levels('reach', (0., 10.), 'mobile_manipulator', samples=0)
+    assert [(lv.value, lv.met, lv.tried, lv.committed) for lv in found] == \
+        [(0., 1, 1, (('as designed', True),)), (10., 0, 1, (('as designed', False),))]

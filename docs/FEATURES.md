@@ -366,7 +366,10 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   cart's tilt profile - the table stopped at each angle and held 3 s - puts one half at 53.5 deg, below
   every reading of the table's own 2 deg/s climb: the climb reads a machine late, because the cart creeps
   along the trip rail and goes over a second or more after it can no longer stand (OPEN LW-053). What's
-  new's *Held, it goes over sooner* stops the table at 51 deg and shows it
+  new's *Held, it goes over sooner* stops the table at 51 deg and shows it. Where a program decides, the
+  report counts what it tried apart from what it met: with the Fetch's cube moved back, the program
+  reaches and delivers up to 6 cm and from 7 cm says the cube is out of its reach before it moves - no
+  draw tries and fails
   ([ADR 0076](adr/0076-how-far-a-design-can-go.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's

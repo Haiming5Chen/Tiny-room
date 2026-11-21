@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · the Fetch's reach: what it tried and what it met (FR-042, its third factor)
+Did: `fields.fetch_moved(back)` (the Fetch's cube further back on the table; `fetch_entities(cube)`),
+`boundary.FACTORS['reach']`, and commitment apart from competence where a program decides -
+`Level.committed` (it closed its jaws on the part), `commitment`, `gap`, both in the report;
+`Profile.step` for a crossing known only to the grid. ADR 0076 amended. Branch claude/fr-042-reach on 0f9b031.
+Measured: the arm cart, the cube moved back 0 to 8 cm, 9 draws a cm (81 runs): every draw tried and met
+up to 6 cm; from 7 cm none tried - each said the cube was out of its reach from its stop before moving the
+arm (ADR 0035) - and none met. No draw tried and failed: FR-042's fourth check, no gap. Suites 1205 with a
+display, 1136 headless.
+Unfinished: FR-042's ramp, the interval against 18 draws, the Workshop card; whether a declined cube could
+have been reached is not tried.
+For the owner: the Fetch knows its own reach - it never tried a cube it then failed to deliver.
+
 ## 2026-11-21 · Claude (Cowork) · text as UTF-8, a grip read every step, the held table in the window
 Did: three commits on c7548d8, branch claude/reliability-1121. OPEN LW-054: the squeeze demonstration's
 window test reads the grip at every step and judges what it keeps for 10 ms. OPEN LW-051: the workflows
