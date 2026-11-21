@@ -28,7 +28,7 @@ class FactoryAuthoring:
         self.pending_source=None;self.tray_drag=None;self.selected_tray='input';self.guided=False
         self.authoring_note='Drag a tray on the table. The robot and camera stay fixed.'
         if self.recipe_path.exists():
-            try:self.recipe=CellRecipe.from_json(self.recipe_path.read_text())
+            try:self.recipe=CellRecipe.from_json(self.recipe_path.read_text(encoding='utf-8'))
             except (ValueError,TypeError,OSError):self.authoring_note='Saved cell could not be loaded. Using the starter layout.'
 
     @property
@@ -63,7 +63,7 @@ class FactoryAuthoring:
 
     def save_cell(self):
         self.recipe_path.parent.mkdir(parents=True,exist_ok=True)
-        temp=self.recipe_path.with_suffix('.json.tmp');temp.write_text(self.recipe.to_json());temp.replace(self.recipe_path)
+        temp=self.recipe_path.with_suffix('.json.tmp');temp.write_text(self.recipe.to_json(), encoding='utf-8');temp.replace(self.recipe_path)
         self.authoring_note='Cell layout and task saved.'
 
     def choose_mode(self,mode):

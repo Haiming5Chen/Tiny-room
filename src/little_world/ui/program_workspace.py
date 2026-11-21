@@ -34,11 +34,11 @@ class ProgramWorkspace:
     def save_program(self):
         self.program_path.parent.mkdir(parents=True,exist_ok=True)
         temporary=self.program_path.with_suffix('.json.tmp')
-        temporary.write_text(self.program.to_json());temporary.replace(self.program_path)
+        temporary.write_text(self.program.to_json(), encoding='utf-8');temporary.replace(self.program_path)
         self.status='Program saved: '+self.program_path.name
 
     def load_program(self):
-        self.program_edit(Program.from_json(self.program_path.read_text()))
+        self.program_edit(Program.from_json(self.program_path.read_text(encoding='utf-8')))
 
     def pickup_program(self):
         specs=self.editor.blueprint.controllers

@@ -18,7 +18,7 @@ def build_report(blueprint):
         elif isinstance(c,Body) and c.robot_asset and c.robot_asset.startswith('user:'):
             from little_world.assets.robot_models import asset_root,title
             import json
-            source=json.loads((asset_root(c.robot_asset)/'SOURCE.json').read_text())
+            source=json.loads((asset_root(c.robot_asset)/'SOURCE.json').read_text(encoding='utf-8'))
             writer.writerow((c.id,'imported robot',title(c.robot_asset),1,
                 'Imported from its own '+source['format']+' file; servos added by the importer where it had none (ADR 0044); not physical validation',
                 '','','','',source['file'],source['imported'],
@@ -27,7 +27,7 @@ def build_report(blueprint):
         elif isinstance(c,Body) and c.robot_asset:
             from little_world.assets.robot_models import asset_root,MODELS
             import json
-            source=json.loads((asset_root(c.robot_asset)/'SOURCE.json').read_text())
+            source=json.loads((asset_root(c.robot_asset)/'SOURCE.json').read_text(encoding='utf-8'))
             writer.writerow((c.id,'registered robot',MODELS[c.robot_asset][2],1,
                 'MuJoCo Menagerie model; not physical validation','','','','',source['repository'],source['revision'],
                 c.parent or '','mesh assembly','fixed','upstream materials',

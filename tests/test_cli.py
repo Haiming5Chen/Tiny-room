@@ -143,3 +143,36 @@ def test_the_bare_command_opens_the_window_on_whats_new_and_demo_starts_one(monk
     assert app.live_disturbance.label == 'cube moved 5 cm sideways, 2 s later'
     assert cli.main(['build', '--design', design, '--seconds', '2']) == 0
     assert Path(design).parent.is_dir() and not Path(design).exists(), "a design is written when it is saved, not when it is opened"
+
+
+# Codex's line, merged at the owner's word on 7 Oct: left as they are, for the owner (OPEN LW-055).
+LEFT = {'src/little_world/testing/semantic.py', 'src/little_world/ui/cell_changes.py',
+        'src/little_world/ui/layout_workspace.py', 'src/little_world/ui/teaching_workspace.py'}
+
+
+def test_every_text_file_the_code_opens_names_its_encoding():
+    """OPEN LW-051: on Windows a text file opened without an encoding is read in the code page, so a
+    character outside it - a comment in Chinese in the user's own build script - would not save. Every
+    `read_text`, `write_text` and built-in `open` of text in the package and its scripts says UTF-8."""
+    import ast
+    unnamed = []
+    for path in sorted([*(ROOT / 'src').rglob('*.py'), *(ROOT / 'scripts').glob('*.py')]):
+        where = path.relative_to(ROOT).as_posix()
+        if where in LEFT:
+            continue
+        for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
+            if not isinstance(node, ast.Call):
+                continue
+            f = node.func
+            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, 'id', None)
+            if name not in ('read_text', 'write_text', 'open') or (name == 'open' and isinstance(f, ast.Attribute)):
+                continue                    # x.open(): an archive's, an image's - not the built-in
+            modes = [a.value for a in node.args[1:2] if isinstance(a, ast.Constant)] + \
+                [k.value.value for k in node.keywords if k.arg == 'mode' and isinstance(k.value, ast.Constant)]
+            if any(k.arg == 'encoding' for k in node.keywords) or any('b' in str(m) for m in modes):
+                continue
+            unnamed.append(f'{where}:{node.lineno} {name}')
+    assert not unnamed, unnamed
+    from little_world.ui.python_workspace import PythonWorkspace
+    import inspect
+    assert inspect.getsource(PythonWorkspace).count("encoding='utf-8'") >= 2, "the user's script saved and read as UTF-8"

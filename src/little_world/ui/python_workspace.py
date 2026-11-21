@@ -50,13 +50,13 @@ class PythonWorkspace:
         if not self.building:self.simulate()
         self.close_bench();self.control_panel=False;self.inventory_open=False;self.clear_keys()
         if not self.script_loaded:
-            if self.script_path.exists():self.script_text=self.script_path.read_text()
+            if self.script_path.exists():self.script_text=self.script_path.read_text(encoding='utf-8')
             self.script_loaded=True
         self.script_open=True
 
     def script_save(self):
         self.script_path.parent.mkdir(parents=True,exist_ok=True)
-        self.script_path.write_text(self.script_text)
+        self.script_path.write_text(self.script_text, encoding='utf-8')
         self.script_output='Saved '+self.script_path.name
 
     def script_replace(self,text):

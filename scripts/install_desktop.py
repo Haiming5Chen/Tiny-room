@@ -16,7 +16,7 @@ executable.parent.mkdir(parents=True,exist_ok=True)
 resources=app/'Contents'/'Resources';resources.mkdir(exist_ok=True)
 log=Path.home()/'Library'/'Logs'/'Little World Builder.log'
 log.parent.mkdir(parents=True,exist_ok=True)
-executable.write_text('#!/bin/sh\ncd '+shlex.quote(str(repo))+' || exit 1\nexec '+shlex.quote(str(repo/'.venv/bin/python'))+' '+shlex.quote(str(repo/'examples/launch_desktop.py'))+' "$@" >> '+shlex.quote(str(log))+' 2>&1\n')
+executable.write_text('#!/bin/sh\ncd '+shlex.quote(str(repo))+' || exit 1\nexec '+shlex.quote(str(repo/'.venv/bin/python'))+' '+shlex.quote(str(repo/'examples/launch_desktop.py'))+' "$@" >> '+shlex.quote(str(log))+' 2>&1\n', encoding='utf-8')
 executable.chmod(0o755)
 plist=dict(CFBundleExecutable='LittleWorldBuilder',CFBundleIdentifier=identifier,CFBundleName='Little World Builder',CFBundleDisplayName='Little World Builder',CFBundlePackageType='APPL',CFBundleVersion='1',CFBundleShortVersionString='0.1',NSHighResolutionCapable=True)
 info.write_bytes(plistlib.dumps(plist))

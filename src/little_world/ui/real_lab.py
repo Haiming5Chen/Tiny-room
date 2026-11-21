@@ -49,7 +49,7 @@ class RealLab:
         if asset not in MODELS and not robot_library.valid(asset):raise ValueError('Unknown robot')
         program=self._robot_programs.get(asset,Program())
         path=self.recipe_path.with_name(asset.replace(':','-')+'.program.json')
-        if asset not in self._robot_programs and path.exists():program=Program.from_json(path.read_text())
+        if asset not in self._robot_programs and path.exists():program=Program.from_json(path.read_text(encoding='utf-8'))
         self._robot_programs[self.robot_asset]=self.program
         if not self.building:self.state=self.world.reset()
         self.runner.stop();self.program_keys.clear();self.program_drive=None;self.clear_keys()

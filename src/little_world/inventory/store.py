@@ -78,13 +78,13 @@ class Inventory:
         if not self.valid_comparison(result):raise ValueError('Invalid comparison result')
         path=self.path/'comparisons';path.mkdir(parents=True,exist_ok=True)
         target=path/(str(uuid.uuid4())+'.json');temporary=target.with_suffix('.tmp')
-        temporary.write_text(json.dumps(result,indent=2,allow_nan=False));temporary.replace(target)
+        temporary.write_text(json.dumps(result,indent=2,allow_nan=False), encoding='utf-8');temporary.replace(target)
         return target
     def comparisons(self):
         records=[]
         for path in (self.path/'comparisons').glob('*.json'):
             try:
-                d=json.loads(path.read_text())
+                d=json.loads(path.read_text(encoding='utf-8'))
                 if self.valid_comparison(d):records.append(d)
             except (ValueError,OSError):continue
         return sorted(records,key=lambda d:d.get('created',''),reverse=True)

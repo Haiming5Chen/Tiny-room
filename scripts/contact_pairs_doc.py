@@ -58,6 +58,6 @@ def render():
 if __name__ == "__main__":
     text = render()
     if "--check" in sys.argv:
-        sys.exit(0 if PAGE.exists() and PAGE.read_text() == text else 1)
-    PAGE.write_text(text)
+        sys.exit(0 if PAGE.exists() and PAGE.read_text(encoding='utf-8') == text else 1)
+    PAGE.write_text(text, encoding='utf-8')
     print(f"wrote {PAGE.relative_to(ROOT)}")

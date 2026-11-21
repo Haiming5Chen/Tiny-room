@@ -53,7 +53,7 @@ class TestWorkspace:
 
     def export_test(self):
         path=self.path.with_suffix('.test.json');path.parent.mkdir(parents=True,exist_ok=True)
-        temporary=path.with_suffix('.json.tmp');temporary.write_text(json.dumps(self.test_snapshot(),indent=2,allow_nan=False));temporary.replace(path)
+        temporary=path.with_suffix('.json.tmp');temporary.write_text(json.dumps(self.test_snapshot(),indent=2,allow_nan=False), encoding='utf-8');temporary.replace(path)
         self.status='Test snapshot saved: '+str(path)
 
     def draw_test(self,ui,button,text,ww,wh):

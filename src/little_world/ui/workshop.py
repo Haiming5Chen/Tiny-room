@@ -247,14 +247,14 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
         path=self.path.with_suffix('.parts.csv')
         path.parent.mkdir(parents=True,exist_ok=True)
         temporary=path.with_suffix(path.suffix+'.tmp')
-        temporary.write_text(build_report(self.editor.blueprint))
+        temporary.write_text(build_report(self.editor.blueprint), encoding='utf-8')
         temporary.replace(path)
         self.status='Exported candidate motors + custom parts: '+str(path)
 
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(self.path.suffix + '.tmp')
-        temporary.write_text(self.editor.blueprint.to_json() + '\n')
+        temporary.write_text(self.editor.blueprint.to_json() + '\n', encoding='utf-8')
         temporary.replace(self.path)
         self.save_program()
         self.status = 'Saved design and program: ' + str(self.path.name)
@@ -262,8 +262,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
     def load(self):
         from little_world.programming.program import Program
         if not self.building:raise ValueError('Stop simulation before loading')
-        blueprint = Blueprint.from_json(self.path.read_text())
-        program=Program.from_json(self.program_path.read_text()) if self.program_path.exists() else Program()
+        blueprint = Blueprint.from_json(self.path.read_text(encoding='utf-8'))
+        program=Program.from_json(self.program_path.read_text(encoding='utf-8')) if self.program_path.exists() else Program()
         self.edit(lambda: self.editor.load(blueprint))
         self.program_edit(program)
         self.status = 'Loaded: ' + str(self.path.name)
