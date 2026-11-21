@@ -93,11 +93,6 @@ lifting the part at 2 ms steps (about the same with no noslip pass), 0.7 mm at 1
 comes on within one step, the step's doing more than the contact's. Fed by the conveyor, a finger
 holding a part gives back 3.8 mm's worth between 17.8 and 23.8 s; not traced further.
 
-**In Real's cell** the Panda's fingers pass the line as they close on a part: 2.6 mm's worth of
-lifting the part at 2 ms steps (about the same with no noslip pass), 0.7 mm at 1 ms - a contact that
-comes on within one step, the step's doing more than the contact's. Fed by the conveyor, a finger
-holding a part gives back 3.8 mm's worth between 17.8 and 23.8 s; not traced further.
-
 **In the Fetch** the jaws' contacts with the cube give back a little more than they took. As
 designed, the palm stop's, while the jaws hold the cube against it: 0.21 mJ, as much as lifting the
 16 g cube 1.3 mm (1.5 mm at 1 ms steps) - under the line. With no noslip pass it is gone, and the
