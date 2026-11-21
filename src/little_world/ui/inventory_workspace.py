@@ -139,7 +139,7 @@ class InventoryWorkspace:
         self.inventory_preview(self.editor.blueprint,(x,158,half,184),ww,wh,fw,fh)
         if r:self.inventory_preview(r.blueprint,(x+half+16,158,half,184),ww,wh,fw,fh)
         ui.begin()
-        for i,tab in enumerate(('Overview','Parts changes','Performance')):
+        for i,tab in enumerate(('Overview','Parts changes','Performance','What it can do')):
             button(tab,x+i*145,354,137,lambda t=tab:(setattr(self,'inventory_tab',t),setattr(self,'inventory_scroll',0)),active=self.inventory_tab==tab,h=28)
         left=self.inventory_report(self.editor.blueprint);right=self.inventory_report(r.blueprint) if r else None
         if self.inventory_tab=='Overview':
@@ -173,10 +173,29 @@ class InventoryWorkspace:
             for i,line in enumerate(lines[self.inventory_scroll:self.inventory_scroll+max(1,int((wh-480)/20))]):text(line,x+8,401+i*20,12,(.7,.79,.8),width-16)
             button('Previous',x,wh-85,100,lambda:setattr(self,'inventory_scroll',max(0,self.inventory_scroll-8)),h=28)
             button('More',x+108,wh-85,100,lambda:setattr(self,'inventory_scroll',min(max(0,len(lines)-1),self.inventory_scroll+8)),h=28)
+        elif self.inventory_tab=='What it can do':self.draw_capability(button,text,x,width,wh)
         else:self.draw_comparison(button,text,x,ww,wh,r)
         message=self.status if not self.inventory_errors else f'{len(self.inventory_errors)} unreadable inventory file(s); existing valid designs remain available.'
         text(message,24,wh-27,11,(.6,.74,.77),ww-48)
         self.draw_dialog(ui,button,text,ww,wh)
+
+    def draw_capability(self,button,text,x,width,wh):
+        """How far the current design can go, as the boundary studies measured it (ADR 0076): an example's
+        record while it is that example as designed, and otherwise how to measure it."""
+        from little_world.inventory.boundary import recorded
+        name,found=recorded(self.editor.blueprint);wide=max(40,int(width/6.5))
+        if found:
+            lines=[f'Measured for the example {name}, as designed: each level run on the same 9 set-ups (ADR 0076).','']
+            for _,words,report in found:lines+=textwrap.wrap(words,wide)+['   '+report,'']
+            lines.append('Change the design and these no longer hold for it: measure it again.')
+        else:
+            lines=textwrap.wrap('Not measured: this design is not one of the examples as designed, and how far it can go '
+                                'is known only from its own runs. Save it, then measure one factor at a time:',wide)+['',
+                   f'   python -m little_world.inventory.boundary curb 8 26 2 --design {self.path.name} --jobs 2',
+                   f'   python -m little_world.inventory.boundary tilt 45 58 1 --design {self.path.name} --jobs 2','']+\
+                textwrap.wrap('Each runs every level on the same set-ups and prints where success falls through one half, with '
+                              'an interval (ADR 0076).',wide)
+        for i,line in enumerate(lines[self.inventory_scroll:self.inventory_scroll+max(1,int((wh-480)/20))]):text(line,x+8,401+i*20,12,(.7,.79,.8),width-16)
 
     def draw_comparison(self,button,text,x,ww,wh,record):
         button('Drive / hold trial',x,398,155,lambda:self.start_comparison('hold_drive'),record is not None and self.comparison_future is None,h=30)

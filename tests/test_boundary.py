@@ -130,3 +130,25 @@ def test_the_fetch_reaches_for_a_cube_it_can_reach_and_declines_one_it_cannot():
     found = levels('reach', (0., 10.), 'mobile_manipulator', samples=0)
     assert [(lv.value, lv.met, lv.tried, lv.committed) for lv in found] == \
         [(0., 1, 1, (('as designed', True),)), (10., 0, 1, (('as designed', False),))]
+
+
+def test_what_was_measured_is_kept_for_the_examples_as_designed_and_matches_their_reports():
+    """The Inventory's 'What it can do' (ADR 0076): an example's measured limits are shown while the design
+    is that example as designed, and every number shown is the one its report holds."""
+    from pathlib import Path
+    from little_world.inventory.boundary import RECORDED, recorded
+    from little_world.robots.arm_lab import arm_lab_blueprint
+    from little_world.robots.mobile_manipulator import mobile_manipulator_blueprint
+    from little_world.robots.mobile_platform import mobile_platform_blueprint
+    root = Path(__file__).resolve().parents[1]
+    assert recorded(mobile_manipulator_blueprint()) == ('mobile_manipulator', RECORDED['mobile_manipulator'])
+    assert [f for f, _, _ in recorded(mobile_platform_blueprint())[1]] == ['curb']
+    assert recorded(arm_lab_blueprint()) == (None, ()), "not measured: no record"
+    shown = {factor: (words, (root / report).read_text(encoding='utf-8')) for found in RECORDED.values() for factor, words, report in found}
+    words, report = shown['curb']
+    assert '14.3 mm (12.5 to 18.1)' in words and '50 % at 14.3 mm, 95 % between 12.5 and 18.1 mm' in report
+    words, report = shown['tilt']
+    assert '53.5 deg (51.8 to 54.6)' in words and '50 % at 53.5 deg, 95 % between 51.8 and 54.6 deg' in report
+    assert '54.6 to 58.7' in words and '| repeat 8 | 56 | 57 | 58.7 |' in report and '| as designed | 50 | 51 | 54.6 |' in report
+    words, report = shown['reach']
+    assert 'up to 6 cm; from 7 cm none' in words and 'every draw to 6.0 cm and none from 7.0 cm' in report

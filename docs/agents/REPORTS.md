@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · what it can do, in the Inventory (FR-042's Workshop card)
+Did: a fourth tab of the Inventory, *What it can do*: for the example the current design is, as designed,
+what the boundary studies measured (`boundary.RECORDED`, `recorded`) - the kit cart's curb, the arm cart's
+held tilt table and its reach, each with its report; for any other design, that it is not measured and the
+two commands that would measure it. ADR 0076 amended. Branch claude/fr-042-card on e2fbba8.
+Measured: nothing new - a test ties every number the tab shows to its report. Suites 1207 with a display,
+1137 headless.
+Unfinished: FR-042's ramp and the interval against 18 draws; a changed design gets the commands, not a profile.
+For the owner: Inventory > What it can do, with the arm cart loaded.
+
 ## 2026-11-21 · Claude (Cowork) · the Fetch's reach: what it tried and what it met (FR-042, its third factor)
 Did: `fields.fetch_moved(back)` (the Fetch's cube further back on the table; `fetch_entities(cube)`),
 `boundary.FACTORS['reach']`, and commitment apart from competence where a program decides -

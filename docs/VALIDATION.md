@@ -2018,3 +2018,15 @@ Suites on MuJoCo 3.10.0: 1205 passed with a display, 1136 headless.
 
 Not claimed: that a declined cube could not have been reached; a finer grid than 1 cm; any program but
 the Fetch's; a stop moved nearer a cube seen further away.
+
+## What it can do, in the Inventory — 2026-11-21
+
+ADR 0076 amended (FR-042's Workshop card). A fourth tab of the Inventory shows what the boundary studies
+measured for the example the current design is, as designed - the kit cart's curb, the arm cart's held
+tilt table and its reach, each with its report - and for any other design that it is not measured and
+the commands that would measure it. Checked in `tests/test_boundary.py` (every number shown is the one
+its report holds; an example changed, or another design, has no record) and a window test in
+`tests/test_inventory.py`. Suites on MuJoCo 3.10.0: 1207 passed with a display, 1137 headless.
+
+Not claimed: a profile for a changed design - the tab says how to measure it; the records follow the
+studies only as far as the test that ties them to their reports.

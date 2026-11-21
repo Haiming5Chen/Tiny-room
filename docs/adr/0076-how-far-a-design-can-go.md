@@ -37,6 +37,11 @@ runs are the project's own (`sweep.run`), and the statistics are a few lines of 
   names the draws that tried and failed, and the report shows both. A crossing at a step from every
   draw to none says it is known only to the grid (`Profile.step`), not to an interval the draws
   cannot narrow: `python -m little_world.inventory.boundary reach 0 8 1 --design mobile_manipulator --jobs 2`.
+- *What it can do* (21 November), the Workshop's card: a fourth tab of the Inventory says how far the
+  current design can go - while it is one of the examples as designed, what the studies measured for it
+  (`boundary.RECORDED`, `recorded(blueprint)`: the kit cart's curb; the arm cart's held tilt table and its
+  reach), each with its report; for any other design, that it is not measured and the two commands that
+  would measure it.
 
 **Blueprint and builder.** Untouched.
 
@@ -134,7 +139,9 @@ Held by `tests/test_boundary.py` (8: the fit, the crossing and the pooling; the 
 draws, narrowing with more of them; a curb the cart clears and one it cannot; a held table met only
 once the machine has stood its hold; held at 51 deg the arm cart goes over, at 47 it stands; what a
 program tried counted apart from what it met, and a step from all to none read as one; the Fetch with
-its cube moved back; a cube 10 cm back declined, without closing the jaws) and a
+its cube moved back; a cube 10 cm back declined, without closing the jaws; what was measured kept for
+the examples as designed, each number the one its report holds), a window test in `tests/test_inventory.py`
+(the arm cart's measured limits, and how to measure a design not measured) and a
 window test in `tests/test_whats_new.py` (the table stops at 51, the cart goes over there). Suites:
 1200 pass with a display, 1132 headless.
 
@@ -145,4 +152,5 @@ further away; between 6 and 7 cm is as fine as the grid went. The tilt table's h
 enough to say it would stand for good. FR-042's check that the interval narrows by about the square
 root of two from 9 to 18 draws a level is not run. Nine draws a level give wide intervals (a level of 0 of 9 is 0 to 34 %). A
 crossing assumes success falls with the factor; where it does not, the report says so rather than
-hiding it. Nothing in the Workshop shows a profile yet.
+hiding it. The Workshop shows the examples' records only: a changed design shows how to measure it, not a
+profile.

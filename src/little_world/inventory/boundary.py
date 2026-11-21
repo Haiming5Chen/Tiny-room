@@ -191,6 +191,34 @@ def markdown(p, title='', tried=None):
     return '\n'.join(lines) + '\n'
 
 
+# -- what was measured ----------------------------------------------------------------------------
+
+# What the studies found for the examples as designed (ADR 0076): (factor, what it found, its report).
+RECORDED = {
+    'mobile_platform': (
+        ('curb', "Curbs, driven at one for 25 s: 50 % at 14.3 mm (12.5 to 18.1). Its clears from 14 mm up come "
+                 "with energy the engine makes at a caster's contact with the curb (OPEN LW-047).",
+         'docs/sweeps/2026-11-15-curb-height-boundary.md'),),
+    'mobile_manipulator': (
+        ('tilt', "The tilt table stopped and held 3 s: 50 % at 53.5 deg (51.8 to 54.6). The table's climb reads "
+                 "it going over at 54.6 to 58.7 - late: it creeps along the trip rail first (OPEN LW-053).",
+         'docs/sweeps/2026-11-21-tilt-angle-boundary.md'),
+        ('reach', "The Fetch's cube moved back: every set-up reaches and delivers it up to 6 cm; from 7 cm none "
+                  "tries - each says the cube is out of its reach. None tries and fails.",
+         'docs/sweeps/2026-11-21-fetch-reach-boundary.md')),
+}
+
+
+def recorded(blueprint):
+    """(the example's name, what was measured for it) when `blueprint` is one of the examples as
+    designed; (None, ()) for any other design - how far it can go is known only from its own runs."""
+    from little_world.inventory.sweep import design
+    for name, found in RECORDED.items():
+        if blueprint == design(name):
+            return name, found
+    return None, ()
+
+
 # -- the runs --------------------------------------------------------------------------------------
 
 def _curb(value):
