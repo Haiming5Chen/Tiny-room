@@ -9,6 +9,9 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 - The Inventory's new tab, *What it can do*: an example's measured limits - the kit cart's curb, the
   arm cart's held tilt table and its reach - and for any other design the commands that would measure
   it (ADR 0076).
+- How far a design can go, the fourth factor: a ramp's slope. The two-wheel robot climbs to 5 deg;
+  the kit cart climbs none, its drive wheels lifted by its casters. With 18 set-ups a level instead of
+  9, a crossing's interval narrows as statistics say it should (ADR 0076).
 
 ## 0.4.0 - 21 November 2026
 

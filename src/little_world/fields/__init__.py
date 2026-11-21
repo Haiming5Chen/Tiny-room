@@ -230,7 +230,7 @@ def ramps_entities(lanes=RAMP_LANES):
         length = RAMP_HEIGHT / sin(a)
         centre = (RAMP_START + length / 2 * cos(a) + BOARD / 2 * sin(a), y,
                   length / 2 * sin(a) - BOARD / 2 * cos(a))
-        tag = f'{angle:g}'
+        tag = f'{angle:g}'.replace('.', '_')     # an identifier for a ramp of 4.5 deg too
         parts.append(fixed(f'ramp_{tag}', (length, RAMP_WIDTH, BOARD), 'plywood', centre,
                            (cos(a / 2), 0., -sin(a / 2), 0.)))
         top = ramp_top(angle)
@@ -255,6 +255,18 @@ def ramps_goals(lanes=RAMP_LANES):
 RAMPS = Field('ramps', 'Ramps',
               'Plywood ramps of 8, 14 and 20 degrees up to a 20 cm deck: left, ahead, right.',
               ramps_entities, goals=ramps_goals(), home=((2.0, 0., .3), 5.5, -35., -25.))
+
+
+def ramp_run(slope):
+    """The Ramps field with one ramp of `slope` degrees straight ahead to its 20 cm deck - one level of a
+    boundary along a ramp's slope (ADR 0076)."""
+    if not 0. < slope < 60.:
+        raise ValueError('a ramp between 0 and 60 deg')
+    lane = ((float(slope), 0.),)
+    made = Field(f'ramps-{slope:g}', 'Ramps', f'One plywood ramp of {slope:g} degrees ahead, up to a 20 cm deck.',
+                 lambda: ramps_entities(lane), goals=ramps_goals(lane), home=RAMPS.home)
+    VARIANTS[made.id] = made
+    return made
 
 
 CURB_HEIGHTS = (.010, .020, .035)                  # m, in the order met

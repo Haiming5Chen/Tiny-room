@@ -106,6 +106,10 @@ def test_where_a_program_decides_what_it_tried_is_counted_apart_from_what_it_met
     assert sharp.step() == (6, 7) and sharp.line() == ('The cube moved back: every draw to 6.0 cm and none from 7.0 cm - one '
                                                        'half lies between them, finer than the grid not measured.')
     assert p.step() is None, "a crossing between levels some draws met is read as before"
+    steep = profile('ramps', 'ramp slope', 'deg', [level(4.5, 9, 9), level(5., 8, 9), level(5.5, 0, 9)])
+    assert steep.bracket() == (5., 5.5) and steep.step() is None
+    assert steep.line().endswith('- inside the step from 5.0 to 5.5 deg, whose straight line it assumes.'), steep.line()
+    assert 'inside the step' not in p.line(), "an interval as wide as half its step is read as before"
 
 
 def test_the_fetch_moved_back_moves_only_its_cube():
@@ -152,3 +156,39 @@ def test_what_was_measured_is_kept_for_the_examples_as_designed_and_matches_thei
     assert '54.6 to 58.7' in words and '| repeat 8 | 56 | 57 | 58.7 |' in report and '| as designed | 50 | 51 | 54.6 |' in report
     words, report = shown['reach']
     assert 'up to 6 cm; from 7 cm none' in words and 'every draw to 6.0 cm and none from 7.0 cm' in report
+
+
+def test_a_ramp_of_any_slope_straight_ahead():
+    from little_world.fields import RAMPS, find_field, ramp_run
+    made = ramp_run(4.5)
+    assert made.id == 'ramps-4.5' and find_field('ramps-4.5') is made and made.home == RAMPS.home
+    assert [g.id for g in made.goals] == ['climb_4.5', 'upright']
+    bodies = [b.id for b in made.build()[0].blueprint.components]
+    assert 'ramp_4_5' in bodies and 'platform_4_5' in bodies, "a half degree makes a name too"
+    for slope in (0., 60.):
+        with pytest.raises(ValueError):
+            ramp_run(slope)
+
+
+def test_the_two_wheel_robot_climbs_four_degrees_and_not_seven_and_the_kit_cart_not_four():
+    """ADR 0076's ramp: the two-wheel robot's 20.5 kg against its 23.5 N of drive at stall (m g sin = drive
+    at 6.7 deg) climbs 4 degrees and not 7; the kit cart, on four rigid points, climbs none - its front
+    caster on the slope lifts its drive wheels off the floor."""
+    pytest.importorskip('mujoco')
+    import mujoco
+    from little_world.fields import ramp_run
+    from little_world.inventory import sweep
+    from little_world.inventory.boundary import levels
+    found = levels('ramp', (4., 7.), 'two_wheel', samples=0, duration=25.)
+    assert [(lv.value, lv.met) for lv in found] == [(4., 1), (7., 0)]
+    touching = set()
+
+    def probe(state, backend):
+        if state.time > 5.:
+            m, d = backend.model, backend.data
+            for c in d.contact[:d.ncon]:
+                touching.update(mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, m.geom_bodyid[g]) for g in (c.geom1, c.geom2))
+    run = sweep.run('ramps', sweep.design('mobile_platform'), field=ramp_run(4.), duration=7., probe=probe)
+    assert run.result('climb_4').status == 'missed'
+    machine = {b for b in touching if b.startswith('machine/')}
+    assert machine and all('caster' in b for b in machine), machine

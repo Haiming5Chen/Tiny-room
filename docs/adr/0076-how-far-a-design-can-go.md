@@ -37,6 +37,10 @@ runs are the project's own (`sweep.run`), and the statistics are a few lines of 
   names the draws that tried and failed, and the report shows both. A crossing at a step from every
   draw to none says it is known only to the grid (`Profile.step`), not to an interval the draws
   cannot narrow: `python -m little_world.inventory.boundary reach 0 8 1 --design mobile_manipulator --jobs 2`.
+- *A ramp's slope* (21 November), the fourth: `fields.ramp_run(slope)` is the Ramps field with one
+  ramp straight ahead; `python -m little_world.inventory.boundary ramp 4 7 0.5 --design two_wheel
+  --seconds 25 --jobs 2`. A crossing whose interval is narrower than half the step it lies in says so
+  (`Profile.bracket`): the resamples move it only along the straight line drawn between two levels.
 - *What it can do* (21 November), the Workshop's card: a fourth tab of the Inventory says how far the
   current design can go - while it is one of the examples as designed, what the studies measured for it
   (`boundary.RECORDED`, `recorded(blueprint)`: the kit cart's curb; the arm cart's held tilt table and its
@@ -135,17 +139,42 @@ program says, before it moves the arm, that the cube it sees is out of its reach
 0035), and stops; up to 6 cm it reaches and delivers. ADR 0035's check holds its line exactly where the
 arm can still succeed - on these draws and this grid. Report: docs/sweeps/2026-11-21-fetch-reach-boundary.md.
 
-Held by `tests/test_boundary.py` (8: the fit, the crossing and the pooling; the interval from the
+**A ramp's slope (21 November).** The two-wheel robot, 25 s at one ramp, as designed and 8 draws:
+
+| Ramp slope, deg | 4 | 4.5 | 5 | 5.5 | 6 | 6.5 | 7 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Climbed, of 9 | 9 | 9 | 8 | 0 | 0 | 0 | 0 |
+
+50 % at 5.2 deg, inside the step from 5.0 to 5.5. Its 20.5 kg against the 23.5 N its two motors give
+at stall bound it at 6.7 deg (m g sin = drive); it stops 1.5 deg short, where the slope asks 18 N of it.
+The kit cart climbs no ramp at all, from 4 deg (ADR 0041: none of 8, 14, 20): on four rigid points,
+its front caster on the slope lifts its drive wheels off the floor - only the casters touch - and with
+multiccd on it climbs none either. A sprung caster or a rocker would (OPEN LW-026).
+Report: docs/sweeps/2026-11-21-ramp-slope-boundary.md.
+
+**The interval against 18 draws (21 November).** FR-042's third check: the crossing's interval
+should narrow by about the square root of two from 9 draws a level to 18. The tilt table, the arm
+cart held 3 s, 45 to 58 deg, as designed and 17 draws (252 runs); its first 9 draws read alone:
+
+| Draws a level | 50 % at | 95 % between | Width |
+| --- | --- | --- | --- |
+| 9 (the first) | 53.5 deg | 51.8 and 54.6 | 2.8 deg |
+| 18 | 54.3 deg | 53.5 and 55.2 | 1.7 deg |
+
+The interval narrows 1.64 times, where the square root of two gives 1.41: the order the method promises, though one set of draws' ratio is noisy itself. The nine added draws stood held a little higher, moving the crossing up 0.8 deg. Report: docs/sweeps/2026-11-21-tilt-angle-boundary-18-draws.md.
+
+Held by `tests/test_boundary.py` (11: the fit, the crossing and the pooling; the interval from the
 draws, narrowing with more of them; a curb the cart clears and one it cannot; a held table met only
 once the machine has stood its hold; held at 51 deg the arm cart goes over, at 47 it stands; what a
 program tried counted apart from what it met, and a step from all to none read as one; the Fetch with
 its cube moved back; a cube 10 cm back declined, without closing the jaws; what was measured kept for
-the examples as designed, each number the one its report holds), a window test in `tests/test_inventory.py`
+the examples as designed, each number the one its report holds; a ramp of any slope ahead; the
+two-wheel robot climbs 4 deg and not 7, and the kit cart high-centres on its casters at 4), a window test in `tests/test_inventory.py`
 (the arm cart's measured limits, and how to measure a design not measured) and a
 window test in `tests/test_whats_new.py` (the table stops at 51, the cart goes over there). Suites:
 1200 pass with a display, 1132 headless.
 
-**Boundaries.** Three factors; a ramp's slope is not profiled yet. Commitment is read only where a
+**Boundaries.** Four factors, each on one design or two. Commitment is read only where a
 program decides - a cart driven at a curb, or stood on a table, has no choice. Whether the Fetch could
 have reached a cube it declined is not tried, and its program does not move its stop nearer a cube seen
 further away; between 6 and 7 cm is as fine as the grid went. The tilt table's hold is 3 s by judgment, and at 49 deg the cart still creeps: no hold is long

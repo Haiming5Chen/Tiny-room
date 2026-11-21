@@ -116,6 +116,14 @@ class Profile:
             i = j + 1
         return tuple(out)
 
+    def bracket(self):
+        """(a, b): the two levels the fit falls through one half between; None if it does not."""
+        values = [level.value for level in self.levels]
+        for (a, f1), (b, f2) in zip(zip(values, self.fitted), zip(values[1:], self.fitted[1:])):
+            if f1 >= AT > f2:
+                return a, b
+        return None
+
     def step(self):
         """(a, b) when every draw met at one level and none at the next, where the fit crosses one half:
         the crossing is known only to lie between them - resampling the draws cannot narrow it, and its
@@ -141,6 +149,11 @@ class Profile:
                     f'{_n(self.levels[0].value)} to {_n(self.levels[-1].value)} {self.unit}.' + pooled)
         spread = ('' if self.low is None or self.high is None else
                   f', 95 % between {_n(self.low)} and {_n(self.high)} {self.unit}')
+        bracket = self.bracket()
+        if spread and bracket is not None and self.high - self.low < (bracket[1] - bracket[0]) / 2:
+            # The resamples move the crossing only along the straight line drawn between two levels.
+            spread += (f' - inside the step from {_n(bracket[0])} to {_n(bracket[1])} {self.unit}, '
+                       f'whose straight line it assumes')
         beyond = f' ({self.beyond} of {self.repeats} resamples did not cross within the grid)' if self.beyond else ''
         return f'{name}: 50 % at {_n(self.at)} {self.unit}{spread}{beyond}.' + pooled
 
@@ -241,10 +254,16 @@ def _reach(value):
     return fetch_moved(value / 100.)
 
 
+def _ramp(value):
+    from little_world.fields import ramp_run
+    return ramp_run(value)
+
+
 # factor: (the field whose protocol and ranges it uses, its unit, the field at a value, what it is called)
 FACTORS = {'curb': ('curbs', 'mm', _curb, 'curb height'),
            'tilt': ('tilt', 'deg', _tilt, 'table angle'),
-           'reach': ('fetch', 'cm', _reach, 'the cube moved back')}
+           'reach': ('fetch', 'cm', _reach, 'the cube moved back'),
+           'ramp': ('ramps', 'deg', _ramp, 'ramp slope')}
 _PROGRAMS = {}      # a process's program for each design, solved once for its field as planned
 # how long a run at a value lasts when no length is given: a factor's own, else the field's protocol's
 SECONDS = {'tilt': _tilt_seconds}

@@ -2030,3 +2030,17 @@ its report holds; an example changed, or another design, has no record) and a wi
 
 Not claimed: a profile for a changed design - the tab says how to measure it; the records follow the
 studies only as far as the test that ties them to their reports.
+
+## A ramp's slope, and the interval against 18 draws — 2026-11-21
+
+ADR 0076 amended (FR-042, its fourth factor and third check). One ramp straight ahead
+(`fields.ramp_run`), 25 s: the two-wheel robot, as designed and 8 draws, climbs 4 and 4.5 deg in 9 of
+9, 5 in 8, nothing from 5.5 - 50 % at 5.2 deg, inside the step from 5.0 to 5.5 (the report says when an
+interval is narrower than half its step: `Profile.bracket`); the bound from its motors' stall force is
+6.7 deg. The kit cart climbs no ramp from 4 deg: its front caster lifts its drive wheels (OPEN LW-026).
+The tilt table with 18 draws a level: 50 % at 54.3 deg, 95 % between 53.5 and 55.2 (1.7 wide), where its first 9 draws read alone give 53.5, between 51.8 and 54.6 (2.8): 1.64 times narrower, against the square root of two's 1.41. Report: docs/sweeps/2026-11-21-ramp-slope-boundary.md.
+Checked in `tests/test_boundary.py` (11, three new). Suites on MuJoCo 3.10.0: 1209 passed with a
+display, 1139 headless.
+
+Not claimed: a ramp's profile for the arm cart or a design with suspension; why the two-wheel robot
+stops 1.5 deg short of its stall bound; that the square root of two holds for every factor.

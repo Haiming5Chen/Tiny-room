@@ -619,7 +619,7 @@ disturbed sweep's report and `inventory/recovery.py` check their pairs.
 How far a design can go (ADR 0076): `inventory/boundary.py` (standard library) steps one factor along
 a grid - a curb's height, a tilt table's angle (`fields.tilt_table`, held by `TiltHold.hold`), the
 Fetch's cube moved back (`fields.fetch_moved`; where a program decides, `Level.committed` counts what it
-tried apart from what it met) - runs every level on the same draws (`levels`, through `sweep.run(field=...,
+tried apart from what it met), a ramp's slope (`fields.ramp_run`) - runs every level on the same draws (`levels`, through `sweep.run(field=...,
 duration=...)`), fits the rates to fall with the factor (`monotone`, pool-adjacent-violators), finds where
 the fit falls through one half (`crossing`) and its interval from resampling the draws (`profile`), and
 writes the report (`markdown`; `python -m little_world.inventory.boundary`).

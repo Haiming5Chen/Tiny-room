@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · a ramp's slope, and the interval against 18 draws (FR-042 done)
+Did: `fields.ramp_run(slope)` (one ramp ahead; a half degree makes a valid name), `boundary.FACTORS['ramp']`,
+`Profile.bracket` (an interval narrower than half its step says so). The two-wheel robot on ramps of 4 to
+7 deg (63 runs), the kit cart probed, and the tilt table again with 18 draws a level (252 runs). ADR 0076
+amended; FR-042 done. Branch claude/fr-042-ramp on 0412bf7.
+Measured: the two-wheel robot climbs 4 and 4.5 deg in 9 of 9, 5 in 8, none from 5.5 - 50 % at 5.2 deg,
+1.5 short of 6.7, where its motors' stall force meets the slope. The kit cart climbs no ramp from 4 deg:
+its front caster on the slope lifts its drive wheels off the floor (multiccd on as well; OPEN LW-026). The
+tilt table with 18 draws: 50 % at 54.3 deg [53.5, 55.2], where its first 9 draws give 53.5 [51.8, 54.6]: the interval 1.64 times narrower (the square root of two: 1.41). Suites 1209 with a display, 1139 headless.
+Unfinished: why the two-wheel robot stops short of its stall bound; next by the 9 Nov reading, FR-043.
+For the owner: FR-042 is done - four factors, what a program tries apart from what it meets, the card.
+
 ## 2026-11-21 · Claude (Cowork) · what it can do, in the Inventory (FR-042's Workshop card)
 Did: a fourth tab of the Inventory, *What it can do*: for the example the current design is, as designed,
 what the boundary studies measured (`boundary.RECORDED`, `recorded`) - the kit cart's curb, the arm cart's

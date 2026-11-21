@@ -369,7 +369,9 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   new's *Held, it goes over sooner* stops the table at 51 deg and shows it. Where a program decides, the
   report counts what it tried apart from what it met: with the Fetch's cube moved back, the program
   reaches and delivers up to 6 cm and from 7 cm says the cube is out of its reach before it moves - no
-  draw tries and fails. The Inventory's *What it can do* shows these for the example a design is, as
+  draw tries and fails. A ramp's slope: the two-wheel robot climbs to 5 deg and not 5.5, 1.5 short of
+  what its motors' stall force bounds it at; the kit cart climbs none - its casters lift its drive
+  wheels. The Inventory's *What it can do* shows these for the example a design is, as
   designed, and for any other design the commands that would measure it
   ([ADR 0076](adr/0076-how-far-a-design-can-go.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open

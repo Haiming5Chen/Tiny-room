@@ -29,6 +29,7 @@
   42.8 test_latency.py::test_a_bus_slower_than_the_grasp_check_leaves_a_held_cube_unfelt
   42.6 test_more_fields.py::test_the_mobile_manipulator_tips_where_its_stance_says_and_the_platform_holds
   41.2 test_paired_runs.py::test_the_two_runs_of_a_sprint_pair_are_one_run_until_the_shove
+  40.0 test_boundary.py::test_the_two_wheel_robot_climbs_four_degrees_and_not_seven_and_the_kit_cart_not_four
   39.7 test_jitter.py::test_a_repeat_moved_by_nothing_is_its_set_up_step_for_step
   37.9 test_weak_motor.py::test_the_kit_cart_does_not_notice_its_left_motor_run_hot
   37.8 test_tipping.py::test_the_cart_without_its_arm_keeps_twelve_degrees_at_the_tables_top
