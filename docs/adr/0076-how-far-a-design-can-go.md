@@ -104,10 +104,14 @@ starts one to two degrees higher. Part is not: with elliptic cones the cart stil
 of casters, tyres and joints at about 2 deg). The evidence's `tilt` claim (54.6 deg, a degree before
 the prediction) records the climb's reading; it now carries this as a known flaw, with a third number,
 standing held at 51 deg: no (OPEN LW-053). Report: docs/sweeps/2026-11-21-tilt-angle-boundary.md.
+What's new's *Held, it goes over sooner* stops the table at 51 deg with the arm cart on it: a field
+made for the run is kept by its own id (`fields.VARIANTS`, `find_field`; `tilt-51`), so the window
+shows it, its goal ("Stood 3 s at 51 deg") and, after Stop, the run's report - over at 51.1 deg.
 
 Held by `tests/test_boundary.py` (5: the fit, the crossing and the pooling; the interval from the
 draws, narrowing with more of them; a curb the cart clears and one it cannot; a held table met only
-once the machine has stood its hold; held at 51 deg the arm cart goes over, at 47 it stands). Suites:
+once the machine has stood its hold; held at 51 deg the arm cart goes over, at 47 it stands) and a
+window test in `tests/test_whats_new.py` (the table stops at 51, the cart goes over there). Suites:
 1200 pass with a display, 1132 headless.
 
 **Boundaries.** Two factors: a ramp's slope and the Fetch's reach are not profiled yet, nor is a

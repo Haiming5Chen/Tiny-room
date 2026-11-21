@@ -191,8 +191,8 @@ class Workshop(AppModes, PythonWorkspace, PrecisionInspector, BuildWorkspace, Ke
             self.drive_view = 'free'
         self.camera.type = mj.mjtCamera.mjCAMERA_FREE
         if room:
-            from little_world.fields import FIELDS
-            lookat, distance, azimuth, elevation = FIELDS[getattr(self, 'field_id', 'workshop')].home
+            from little_world.fields import find_field
+            lookat, distance, azimuth, elevation = find_field(getattr(self, 'field_id', 'workshop')).home
             self.camera.lookat[:] = lookat
             self.camera.distance, self.camera.azimuth, self.camera.elevation = distance, azimuth, elevation
         else:

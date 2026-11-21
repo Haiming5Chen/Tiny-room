@@ -509,14 +509,16 @@ def tilt_table(top, hold=HELD):
     squaring as the Tilt table's, so its draws and predictions are the same."""
     if not 0. < top <= TILT_MAX:
         raise ValueError(f'the table turns to {TILT_MAX:g} deg at most')
-    return Field(
-        'tilt', 'Tilt table',
+    made = Field(
+        f'tilt-{top:g}', 'Tilt table',
         f'The machine stands on a table that tilts, left side up, {TILT_RATE:g} deg/s to {top:g} deg and stops there, '
         f'a 5 mm trip rail against its right-hand wheels. Met if it still stands {hold:g} s after.',
         tilt_entities, goals=(TiltHold('held', f'Stood {hold:g} s at {top:g} deg', 'field/tilt_table', top - .5,
                                        hold=hold),),
         actuate=lambda state: tilt_actuate(state, top), home=((0., 0., .1), 2.6, 90., -12.), fitted=True,
         reading=table_angle, gauge_top=TILT_MAX, side='right', ground=('field/tilt_table',), squared=True)
+    VARIANTS[made.id] = made            # the window can show it by its id (What's new, ADR 0076)
+    return made
 
 
 def tilt_seconds(top, hold=HELD):
@@ -554,7 +556,16 @@ CONVEYOR = _conveyor()
 FIELDS = {f.id: f for f in (WORKSHOP, SPRINT, SLALOM, RAMPS, CURB_RUN, PUSH, PICK_PLACE, FETCH, DOORWAY, TILT, CONVEYOR)}
 
 
-def field_scene(field_id, machine):
-    if field_id not in FIELDS:
+VARIANTS = {}       # fields made from one of FIELDS for a run, by their own ids: a tilt table stopped at an angle
+
+
+def find_field(field_id):
+    """A test field by its id: one of FIELDS, or a variant made for a run (`VARIANTS`)."""
+    found = FIELDS.get(field_id, VARIANTS.get(field_id))
+    if found is None:
         raise ValueError(f'Unknown test field: {field_id}')
-    return FIELDS[field_id].scene(machine)
+    return found
+
+
+def field_scene(field_id, machine):
+    return find_field(field_id).scene(machine)

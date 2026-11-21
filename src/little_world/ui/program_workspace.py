@@ -93,8 +93,8 @@ class ProgramWorkspace:
 
     def field_camera(self):
         """The chosen field's own depth camera, (camera id, sensor id), or None (ADR 0032)."""
-        from little_world.fields import FIELDS
-        field=FIELDS.get(getattr(self,'field_id','workshop'))
+        from little_world.fields import FIELDS,VARIANTS
+        field_id=getattr(self,'field_id','workshop');field=FIELDS.get(field_id,VARIANTS.get(field_id))
         return field.camera if field is not None and field.camera else None
 
     def program_eye(self):

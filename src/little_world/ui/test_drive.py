@@ -11,7 +11,7 @@ import numpy as np
 from little_world.construction.structure import standing
 from little_world.control.drive_telemetry import DriveTelemetry, display_name
 from little_world.control.run_log import RunLog, RunSummary
-from little_world.fields import FIELDS, railed
+from little_world.fields import FIELDS, VARIANTS, find_field, railed
 from little_world.fields.goals import GoalTracker, Line, TiltHold, Zone, between
 from .chase_camera import ChaseCamera
 
@@ -47,6 +47,12 @@ def prediction_words(predicted, at_rail):
     if predicted is None:
         return 'No prediction: the design does not stand by itself'
     return f'Predicted {predicted:.0f} deg, {at_rail:.0f} at the rail'
+
+
+def title_of(field_id):
+    """What a run's field is called - a variant made for one run (a table stopped at an angle) by its own title."""
+    found = FIELDS.get(field_id, VARIANTS.get(field_id))
+    return found.title if found is not None else field_id
 
 
 @dataclass(frozen=True)
@@ -98,7 +104,7 @@ class TestDrive:
         self.build_camera = (camera.type, tuple(camera.lookat), camera.distance,
                              camera.azimuth, camera.elevation, self.follow)
         self.run_report = None
-        field = FIELDS[self.field_id]
+        field = find_field(self.field_id)
         self.telemetry = DriveTelemetry(self.backend, self.editor.blueprint, self.drive_control, ground=field.ground)
         self.static = None
         if field.reading is not None:
@@ -139,7 +145,7 @@ class TestDrive:
             if self.static is not None:
                 peak, predicted, at_rail = self.static
                 over = self.goal_tracker.tipped_at if self.goal_tracker is not None else None
-                static = (peak, over, predicted, at_rail, FIELDS[self.field_id].gauge_top)
+                static = (peak, over, predicted, at_rail, find_field(self.field_id).gauge_top)
             record = RunRecord(self.run_count, self.field_id, self.run_log.summary(), goals,
                                self.telemetry.speed_limit() if self.telemetry.channels else None,
                                anchored=self.telemetry.anchored, static=static,
@@ -184,7 +190,7 @@ class TestDrive:
         if self.goal_tracker is not None and self.state is not None:
             self.goal_tracker.update(self.state)
         if self.static is not None and self.state is not None:
-            self.static[0] = max(self.static[0], FIELDS[self.field_id].reading(self.state))
+            self.static[0] = max(self.static[0], find_field(self.field_id).reading(self.state))
         if self.telemetry.channels and self.static is None:
             self.extend_trail(self.drive_sample.position[:2])
 
@@ -233,12 +239,13 @@ class TestDrive:
             scene.ngeom += 1
 
     def field_title(self):
-        return FIELDS[self.field_id].title
+        return find_field(self.field_id).title
 
     def field_commands(self):
         """The field's own motors, for a field that moves - a tilt table (ADR 0020) - and, each
         step of a run, a disturbance armed for it (ADR 0055)."""
-        field = FIELDS.get(getattr(self, 'field_id', 'workshop'))
+        field_id = getattr(self, 'field_id', 'workshop')
+        field = FIELDS.get(field_id, VARIANTS.get(field_id))
         if field is None or self.building:
             return {}
         if getattr(self, 'live_disturbance', None) is not None:
@@ -257,7 +264,7 @@ class TestDrive:
 
     def set_field(self, field_id):
         """Rebuild the scene around the same design in another field (build mode only)."""
-        if field_id not in FIELDS:
+        if field_id not in FIELDS and field_id not in VARIANTS:
             raise ValueError(f'Unknown test field: {field_id}')
         if not self.building:
             raise ValueError('Stop the run before changing the test field')
@@ -271,12 +278,12 @@ class TestDrive:
             raise
         self.trail, self.last_goals, self.run_report = [], (), None
         self.home(True)
-        field = FIELDS[field_id]
+        field = find_field(field_id)
         self.status = field.title + ': ' + field.summary
 
     def goal_marks(self):
         """(goal, status) for what can be drawn on the floor: lines and small zones."""
-        field = FIELDS[self.field_id]
+        field = find_field(self.field_id)
         if self.goal_tracker is not None:
             results = {r.id: r.status for r in self.goal_tracker.results()}
         else:
@@ -285,7 +292,7 @@ class TestDrive:
 
     def draw_field_marks(self, scene=None):
         scene = self.render_scene if scene is None else scene
-        field = FIELDS[self.field_id]
+        field = find_field(self.field_id)
         if self.bench_open or not (field.goals or field.markings):
             return
         floor = self.floor_top() + .004
@@ -546,7 +553,7 @@ class TestDrive:
             self.draw_static_report(ui, button, text, section, ww, wh)
             return
         r = record.summary
-        title = FIELDS[record.field].title if record.field in FIELDS else record.field
+        title = title_of(record.field)
         section(f'RUN {record.number} REPORT  /  {title}', 120)
         if record.anchored:
             met = sum(g.status in ('met', 'kept') for g in record.goals)
@@ -617,7 +624,7 @@ class TestDrive:
     @staticmethod
     def run_line(run):
         """One run in the session list."""
-        where = FIELDS[run.field].title if run.field in FIELDS else run.field
+        where = title_of(run.field)
         if run.static is not None:
             peak, over, *_ = run.static
             return f'Run {run.number}  {where}  ' + (f'over at {over:.0f} deg' if over is not None else f'{peak:.0f} deg held')
@@ -659,13 +666,15 @@ class TestDrive:
             colour = ACCENT if result.status == 'met' else WARN if result.status == 'missed' else (.30, .36, .41)
             ui.rect(x, y, w, 28, (.10, .14, .17))
             ui.rect(x, y + 25, w, 3, colour)
-            label = f'{goal.angle:.0f}'
+            label = goal.label if goal.hold else f'{goal.angle:.0f}'
             text(label, x + (w - ui.width(label, 13)) / 2, y + 5, 13, LIGHT if result.status != 'open' else MUTED)
-        text('held: still on its wheels as the table passed it', 16, y + 36, 11, MUTED, 256)
+        held = next((g for g, _ in holds if g.hold), None)      # a table stopped at its top (ADR 0076)
+        text(f'stood: still on its wheels {held.hold:g} s after the table stopped' if held else
+             'held: still on its wheels as the table passed it', 16, y + 36, 11, MUTED, 256)
         return y + 56
 
     def draw_static_test_panel(self, ui, button, text, section, ww, wh):
-        field = FIELDS[self.field_id]
+        field = find_field(self.field_id)
         s = self.drive_sample
         peak, predicted, at_rail = self.static
         section(f'{field.title.upper()}  /  where it tips', 120)
@@ -695,14 +704,15 @@ class TestDrive:
         text('against: ' + against if against else 'against nothing but the table', 16, y, 12, MUTED, 256)
         y += 30
         if self.goal_tracker is not None:
-            section('GOALS  /  held at each angle', y)
+            section('GOALS  /  stood at its top' if any(getattr(g, 'hold', 0.) for g in field.goals)
+                    else 'GOALS  /  held at each angle', y)
             y = self.draw_hold_chips(ui, text, field, self.goal_tracker.results(), y + 20)
         text('P pause    Enter stop', 16, y, 12, MUTED)
         button('Stop and redesign', 12, wh - 78, 264, self.stop_and_redesign, tone='danger')
 
     def draw_static_report(self, ui, button, text, section, ww, wh):
         record = self.run_report
-        field = FIELDS[record.field]
+        field = find_field(record.field)
         peak, over, predicted, at_rail, top = record.static
         section(f'RUN {record.number} REPORT  /  {field.title}', 120)
         headline, tone = static_verdict(peak, over, top)
@@ -732,13 +742,13 @@ class TestDrive:
         r = record.summary
         if record.static is not None:
             peak, over, predicted, at_rail, top = record.static
-            where = FIELDS[record.field].title if record.field in FIELDS else record.field
+            where = title_of(record.field)
             headline, _ = static_verdict(peak, over, top)
             return f'Last run on the {where.lower()}: {headline.lower()}' + (
                 f', predicted {at_rail:.0f}' if at_rail is not None else '')
         if record.goals:
             met = sum(g.status in ('met', 'kept') for g in record.goals)
-            where = FIELDS[record.field].title if record.field in FIELDS else record.field
+            where = title_of(record.field)
             return f'Last run in {where}: {met} of {len(record.goals)} goals, {r.distance:.2f} m in {r.duration:.1f} s'
         touched = ', '.join(r.touched) if r.touched else 'nothing'
         return (f'Last run: {r.distance:.2f} m in {r.duration:.1f} s, top {r.top_speed:.2f} m/s, '

@@ -32,10 +32,17 @@ class Demo:
     feeder: str = 'hand'            # how Real's cell is fed in a 'factory' demonstration: 'conveyor' (ADR 0068)
     sensing: str = 'known'          # how Real's cell finds its parts in a 'factory' demonstration: 'camera' (ADR 0069)
     squeeze: float = 0.             # the Fetch's jaws squeezing this many newtons by current, 0: as solved (FR-037)
+    top: float = 0.                 # 'tilt': the table stopped at this angle and held (ADR 0076); 0: it climbs to 60
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('held', 'Held, it goes over sooner',
+         'The tilt table climbs to 51 degrees and stops. The arm on its cart, which the climbing table '
+         'carries to 54 before it goes over, cannot stand there: pressed against the trip rail it creeps '
+         'along it, faster and faster, and goes over two seconds after the table stops. The climb read it late.',
+         'at 26.5 s the table stops at 51 degrees; by 28.5 s the cart has crept along the rail and gone over',
+         '', 'ADR 0076', where='tilt', top=51.),
     Demo('nowhere', 'Energy from nowhere',
          'Every run now checks its contacts: one gives back what two bodies put into it as they press '
          'together, never more. On the Curb run one does - the kit cart pushes a caster against the '
@@ -234,7 +241,11 @@ class WhatsNew:
         self.stop_program()
         self.edit(lambda: self.editor.load(mobile_manipulator_blueprint()))
         self.program_edit(type(self.program)())
-        self.set_field(demo.where)
+        if demo.top:                        # the tilt table stopped at an angle (ADR 0076)
+            from little_world.fields import tilt_table
+            self.set_field(tilt_table(demo.top).id)
+        else:
+            self.set_field(demo.where)
         self.arm_disturbance(None)
         self.simulate()
         self.home(True)

@@ -63,6 +63,8 @@ def test_a_table_stopped_at_its_top_is_met_once_the_machine_has_stood_there_its_
     (goal,) = field.goals
     assert (goal.angle, goal.hold, goal.label) == (51.5, 3., 'Stood 3 s at 52 deg'), "its servo settles within half a degree"
     assert field.squared and field.fitted and field.side == FIELDS['tilt'].side, "squared and railed as the Tilt table is"
+    from little_world.fields import find_field
+    assert field.id == 'tilt-52' and find_field('tilt-52') is field, "the window finds it by its own id (What's new)"
     assert tilt_seconds(52.) == pytest.approx(1. + 26. + 3. + .5) == SECONDS['tilt'](52.)
     assert FACTORS['tilt'][:2] == ('tilt', 'deg') and FACTORS['tilt'][3] == 'table angle'
     for top in (0., 61.):

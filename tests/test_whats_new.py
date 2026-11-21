@@ -20,17 +20,18 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
+    assert [d.id for d in DEMOS] == ['held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
                                      'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch', 'fetch',
-                                        'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1.] * 8 + [16.] + [1.] * 7
+    assert [d.where for d in DEMOS] == ['tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
+                                        'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
+    assert [d.heavier for d in DEMOS] == [1.] * 9 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 6 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 0., 0., 7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['hand'] * 2 + ['conveyor'] * 2 + ['hand'] * 12
-    assert [d.sensing for d in DEMOS] == ['known'] * 2 + ['camera'] + ['known'] * 13
+    assert [d.product for d in DEMOS] == ['Small block'] * 7 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 0., 0., 0., 7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['hand'] * 3 + ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['known'] * 3 + ['camera'] + ['known'] * 13
+    assert [(d.id, d.top) for d in DEMOS if d.top] == [('held', 51.)], "the tilt table stopped at 51 deg (ADR 0076)"
     assert BY_ID['felt'].disturbance == BY_ID['look_again'].disturbance, "the same cube, moved: now felt"
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
@@ -61,7 +62,7 @@ def page_drawn(page, wh, picked=None, started=False):
 
 
 def test_whats_new_fits_a_window_780_high_in_pages_and_a_tall_one_on_one():
-    """The window opens 1200 by 780: fifteen demonstrations (sixteen now) and what the picked one shows ran
+    """The window opens 1200 by 780: fifteen demonstrations (seventeen now) and what the picked one shows ran
     under the Guide's own button at its foot. Paged, every word and button above it is clear of
     it, and the pages hold every demonstration once, newest first."""
     from little_world.ui.whats_new import demo_pages
@@ -544,6 +545,51 @@ def test_the_tipping_demonstration_counts_down_the_degrees_left_as_the_table_til
     assert seen[0][1] > 40. and seen[-1][1] < seen[0][1] - 3., (seen[0], seen[-1])
     counts = [float(w.split()[0]) for w in words if w.endswith(' deg from tipping')]
     assert counts and counts[0] > 40. and counts[-1] < counts[0] - 3., "the panel counts it down"
+
+
+@WINDOW
+def test_held_at_51_degrees_the_arm_cart_creeps_along_the_rail_and_goes_over(tmp_path, monkeypatch):
+    """ADR 0076: What's new stops the tilt table at 51 degrees - a field made for the run, by its own id -
+    and the arm cart, which the climbing table carries to 54, goes over there; the panel says what it must
+    stand, and the run's report that it went over at 51."""
+    import glfw
+    from little_world.fields import table_angle
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {'peak': 0.}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'Held, it goes over sooner')
+        elif n == 2:
+            assert app.field_id == 'tilt-51' and not app.building and app.active_tab == 'Edit' and app.demo == 'held'
+            assert app.field_title() == 'Tilt table'
+        elif n == 3:
+            seen['peak'] = max(seen['peak'], table_angle(app.state))
+            if app.state.time < 30.:
+                return
+            seen['over'] = app.goal_tracker.tipped_at
+            seen['goals'] = [(r.id, r.status) for r in app.goal_tracker.results(finished=True)]
+            app.events.append(app.simulate)             # Stop: the run's report on the left
+        elif n == 4:
+            seen['report'] = app.run_report
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    words = said(app, monkeypatch, 'draw_static_test_panel')
+    app.run(seconds=600)
+    assert step['n'] == 5, step
+    assert 51. < seen['peak'] < 51.3, "the table stops at its top"
+    assert seen['over'] == pytest.approx(51.1, abs=.2) and seen['goals'] == [('held', 'missed')], seen
+    assert 'Stood 3 s at 51 deg' in words and 'stood: still on its wheels 3 s after the table stopped' in words
+    report = seen['report']
+    assert report.field == 'tilt-51' and report.static[1] == pytest.approx(51.1, abs=.2), report.static
 
 
 @WINDOW

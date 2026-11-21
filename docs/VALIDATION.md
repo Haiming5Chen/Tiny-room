@@ -1989,3 +1989,18 @@ docs/sweeps/2026-11-21-tilt-angle-boundary.md. Checked in `tests/test_boundary.p
 Not claimed: that a machine held longer would stand at the levels it stood for 3 s - at 49 deg the cart
 still creeps; why the creep runs away (the casters' swivels and the drive wheels stiffened do not stop
 it); a change to the Tilt table's protocol or to the engine's settings.
+
+## Text as UTF-8, a grip read every step, the held table in the window — 2026-11-21
+
+OPEN LW-051: 19 calls in 10 files of the package and its scripts read or wrote text in the platform's
+encoding (on Windows its code page); they name UTF-8 now, and `tests/test_cli.py` reads every
+`read_text`, `write_text` and built-in `open` in `src/` and `scripts/` for it - four files of Codex's
+line are listed as left (OPEN LW-055). The workflows use actions/checkout v5, setup-python v6 and
+upload-artifact v5 (Node.js 24; not yet run on GitHub). OPEN LW-054: the squeeze demonstration's window
+test reads the grip at every step and judges what it keeps for 10 ms - in single steps it reads 96 %
+five times, held for 10 ms never above 54 %. What's new's *Held, it goes over sooner* (ADR 0076): a
+window test stops the table at 51 deg; the arm cart goes over at 51.1. Suites on MuJoCo 3.10.0:
+1202 passed with a display, 1133 headless.
+
+Not claimed: the workflows' new actions run until GitHub runs them; why the window's run of the squeeze
+demonstration has single steps of 96 % where the headless one does not.

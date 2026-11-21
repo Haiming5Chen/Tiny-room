@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-21 · Claude (Cowork) · text as UTF-8, a grip read every step, the held table in the window
+Did: three commits on c7548d8, branch claude/reliability-1121. OPEN LW-054: the squeeze demonstration's
+window test reads the grip at every step and judges what it keeps for 10 ms. OPEN LW-051: the workflows
+on actions that run on Node.js 24 (checkout v5, setup-python v6, upload-artifact v5); 19 calls in 10 files
+read and write text as UTF-8, and a test holds every text file the code opens to naming its encoding.
+What's new's *Held, it goes over sooner* (ADR 0076): the tilt table stopped at 51 deg, a field the window
+finds by its own id (`fields.VARIANTS`, `find_field`).
+Measured: in the window the squeeze run reads 96 % of its grip in five single steps and never more than
+54 % for 10 ms; read at its frames, a frame landed on one once. In the window the arm cart held at 51 deg
+goes over at 51.1 deg, 2 s after the table stops. Suites 1202 with a display, 1133 headless.
+Unfinished: OPEN LW-055 - four files of Codex's line still open text in the platform's encoding (left:
+another agent's work); the new actions run once the owner publishes.
+For the owner: LW-055 is yours to give - a one-word change in each of nine places.
+
 ## 2026-11-21 · Claude (Cowork) · a tilt table held at each angle (FR-042, its second factor)
 Did: the tilt table's angle as a boundary factor - `fields.tilt_table(top)` (the table stopped at its
 top and held), `TiltHold.hold` (met once the machine has stood 3 s since the table passed it; the Tilt
