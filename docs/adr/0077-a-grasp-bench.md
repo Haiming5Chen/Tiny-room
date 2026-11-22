@@ -115,11 +115,25 @@ designed.
   the kit's friction (held cubes 11 % at the median, the kit's 55 %) and creeps under 0.5 mm. Its grasp
   check reads contacts: it felt all 119 held. Checked in `tests/test_graspbench.py` (two new, one
   slow). Suites: 1233 passed with a display, 1160 headless.
+- *The wrist turned, and the cell's parts* (22 November): with `--turned` the program turns the arm's
+  wrist - the joint that turns its tool about where it points, its axis through the tool point
+  (`_wrist`; the Panda's seventh) - so the jaws close across a long box, or onto the nearer face of a
+  square one, at every pose (`_square`), as the factory cell holds its hand square to its parts; an
+  arm without such a joint, as the arm lab's, is told so. The cell's two parts (`PARTS`,
+  `factory.scene.PRODUCTS`) stand on the bench when named. The Panda turned: the cube, the standing and
+  the lying block 36 of 36 each (27, 36 and 26 as it came; paired, the cube 9 rescued and none lost,
+  p = 0.004, the lying block 10 and none, p = 0.002), the cylinder 30 (round: not turned, the same
+  runs), the plate none; held cubes use 6 % of their friction at the median (11 % as it came).
+  FR-043's check (3): the cell's two parts 72 of 72 turned, as the cell's 228 of 228; as the arm came,
+  the small block slips out at 7 of the 9 places turned 30 deg.
+  docs/sweeps/2026-11-22-grasp-bench-panda-turned.md. Checked in `tests/test_graspbench.py` (two new,
+  one slow). Suites: 1235 passed with a display, 1162 headless.
 
 **Boundaries.** Two grippers: the kit's on the arm lab, and the Panda's from the robot library (the
 library's other arms have no hand; a gripper brought in from its own file is taken, and no bench has
 run one). The camera finds boxes only. Each object's interval is exact over its 36 runs, not clustered
-by pose: each pose is one deterministic run. FR-043's checks (2) and (3) - the Fetch's cart, the cell's
-own parts - are not run, and the bench's program does not turn the Panda's jaws to the object. The carry runs one way, to the side; why the
+by pose: each pose is one deterministic run. FR-043's check (2) - the kit's arm on the Fetch's cart -
+is not run. The jaws are turned only when asked (`--turned`), and only by a wrist whose axis runs
+through the tool point; the cell's parts are the bench's wood, not the cell's. The carry runs one way, to the side; why the
 lying block is held at 14 deg and lost at 16 is measured, not explained. The cylinder's result is
 this engine's: a real cylinder in parallel jaws is held along a line of contact on each side.

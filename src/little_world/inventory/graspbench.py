@@ -8,7 +8,7 @@ bench at each pose of a grid, the arm sent through the same approach, close, lif
 the outcome judged by the object - not by the program's own account of it.
 
 - Objects: a 25 mm cube; the kit's 25 x 25 x 40 mm block standing and lying on its side; a cylinder
-  25 mm across, standing; a 60 x 40 x 6 mm plate lying flat.
+  25 mm across, standing; a 60 x 40 x 6 mm plate lying flat. Named, the factory cell's two parts too.
 - Poses: 3 x 3 places 2 cm apart round the bench's middle, each at 4 turns about the vertical.
 - Protocol: the arm lab's pick-and-place template (`tool_motion.pick_and_place`): jaws open; 6 cm
   above the object's top, down to its centre - or as low as the jaws keep 5 mm over the bench;
@@ -17,7 +17,8 @@ the outcome judged by the object - not by the program's own account of it.
   object is. Or found by the camera (`--camera`): a depth camera beyond the bench, as the Fetch's at
   its table; the program is solved for the bench's middle, looks for the object there and reaches
   where it was seen, up to 2.8 cm away (ADR 0032, 0025) - so that what the camera misses is told
-  apart from what the jaws drop. The
+  apart from what the jaws drop. With `--turned`, the arm's wrist turns its jaws square to each box,
+  as the factory cell holds its hand to its parts. The
   program goes on as taught whatever its grasp check feels (the runner's 'ignore', FR-022), so the
   outcome is the grip's; what the check felt is reported beside it.
 - Held: lifted 8 cm or more and carried 18 cm or more at the end, and slipped under 2 mm in the
@@ -45,6 +46,13 @@ OBJECTS = {
     'cylinder': ('cylinder', (.0125, .040)),         # standing on its end
     'plate': ('box', (.060, .040, .006)),            # flat on the bench
 }
+# The factory cell's two products (`factory.scene.PRODUCTS`), for FR-043's check (3) - the Panda on the
+# cell's own parts; run when named, not among the five.
+PARTS = {
+    'small block': ('box', (.032, .032, .040)),
+    'tall block': ('box', (.032, .032, .065)),
+}
+SHAPES = {**OBJECTS, **PARTS}
 CENTRE = (.36, -.10)        # m: the grid's middle, in the arm lab's reach with the carry
 SHIFTS = (-.02, 0., .02)    # m: the grid's places either way of it, in x and in y
 TURNS = (0., 30., 60., 90.)  # deg about the vertical
@@ -79,7 +87,7 @@ def poses():
 
 def height(name):
     """How tall an object stands at rest."""
-    shape, size = OBJECTS[name]
+    shape, size = SHAPES[name]
     return size[2] if shape == 'box' else size[1]
 
 
@@ -131,13 +139,17 @@ def table(outcomes):
     return by_turn, total
 
 
-def markdown(outcomes, design, title='', look=False):
+def markdown(outcomes, design, title='', look=False, turned=False):
     """The bench's report: held of tried by object and turn, each object's rate with its exact 95 %
-    interval, and why the rest were not held; `look`, the runs found the object with the bench's camera."""
+    interval, and why the rest were not held; `look`, the runs found the object with the bench's camera;
+    `turned`, the arm's wrist turned its jaws square to each box."""
     by_turn, total = table(outcomes)
-    names = [n for n in OBJECTS if n in total]
+    names = [n for n in SHAPES if n in total]
     found = 'found by the bench\'s depth camera' if look else 'known pose'
-    lines = [f'# {title or "Grasp bench"}: {design}' + (', found by the camera' if look else ''), '',
+    if turned:
+        found += '; the jaws turned square to each box by the arm\'s wrist'
+    lines = [f'# {title or "Grasp bench"}: {design}' + (', found by the camera' if look else '')
+             + (', its jaws turned' if turned else ''), '',
              f'Each object at {len(SHIFTS) ** 2} places x {len(TURNS)} turns on a bench {100 * TOP:.1f} cm up; '
              f'approach, close, lift {100 * LIFT:g} cm, carry {100 * CARRY:g} cm, hold {HOLD:g} s; {found}. '
              f'Held: lifted and carried, and under {1000 * SLIP:g} mm of slip in the jaws over the last {HOLD:g} s.', '']
@@ -238,9 +250,9 @@ def bench_field(name, pose, camera=False):
     finds it by its id, the last one made (`fields.VARIANTS`)."""
     from little_world.core.component import Body, Camera, Geometry, Transform
     from little_world.fields import VARIANTS, Field, Zone, field_entities, fixed, looking, slab
-    if name not in OBJECTS:
-        raise ValueError(f'no bench object called {name!r}; objects: {", ".join(OBJECTS)}')
-    shape, size = OBJECTS[name]
+    if name not in SHAPES:
+        raise ValueError(f'no bench object called {name!r}; objects: {", ".join(SHAPES)}')
+    shape, size = SHAPES[name]
     dx, dy, turn = pose
     h = height(name)
     part = Body('part', Geometry(shape, size), 'cube',
@@ -267,14 +279,16 @@ def bench_field(name, pose, camera=False):
     return made
 
 
-def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
+def program(field, blueprint, top=0., clearance=.06, speed=40., look=False, turned=False):
     """The protocol as a program, solved for this arm and the object where it stands (known pose):
     open, `clearance` above its top (`top` over its centre), down to its centre - or as low as the
     jaws keep JAWS_CLEAR over the bench - close and squeeze, grasp check, lift, carry, hold. Returns
     (the program, the jaws' angle to a box's x axis there, deg, or None for a round object). With
     `look`, the program first looks for the object with the field's camera and its poses are aimed at
-    their points, so the arm reaches where the camera saw it (ADR 0032, 0025). ValueError if a point is
-    out of reach."""
+    their points, so the arm reaches where the camera saw it (ADR 0032, 0025). With `turned`, the arm's
+    wrist turns its jaws square to a box at every pose - across a long one, to the nearer face of a square
+    one - as the factory cell holds its hand to its parts (`_square`). ValueError if a point is out of
+    reach, or the arm has no wrist to turn."""
     from math import atan2, degrees
     import mujoco as mj
     import numpy as np
@@ -308,12 +322,23 @@ def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
         poses_, seed, angles_, points = {}, start, {}, {}
         planned = tuple(float(v) for v in grasp)
         fingers = [m.body(motion.prefix + b).id for b in _fingers(blueprint)]
+        round_ = any(m.geom_type[g] != mj.mjtGeom.mjGEOM_BOX for g in range(m.ngeom) if m.geom_bodyid[g] == part)
+        across = None
+        if turned and not round_:
+            if len(fingers) != 2:
+                raise ValueError('the bench turns jaws it can find: this gripper has no two fingers')
+            size = 2 * m.geom_size[next(g for g in range(m.ngeom) if m.geom_bodyid[g] == part)]
+            axes = d.xmat[part].reshape(3, 3)
+            # Across a long box (its y axis), or to whichever face of a square one is nearer.
+            across = (axes[:, 1] if size[0] >= size[1] else axes[:, 0]), abs(size[0] - size[1]) < 1e-6
 
         def reach(label, point):
             nonlocal seed
             short = float('inf')
             for angle in (hold, None):
                 angles, short = motion.solve(point, seed, angle)
+                if short <= REACHED and across is not None:
+                    angles = _square(motion, angles, fingers, *across)
                 if short <= REACHED and not motion.self_collision(angles):
                     poses_[label], seed, angles_[label] = motion.pose(angles), angles, angles
                     points[label] = tuple(float(v) for v in point)
@@ -328,7 +353,6 @@ def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
         if len(fingers) == 2:
             at = motion._pose(angles_['at'])
             closing = at.xpos[fingers[1]] - at.xpos[fingers[0]]
-        round_ = any(m.geom_type[g] != mj.mjtGeom.mjGEOM_BOX for g in range(m.ngeom) if m.geom_bodyid[g] == part)
         jaws_angle = (skew(closing[:2], degrees(atan2(length[1], length[0])))
                       if closing[:2].any() and not round_ else None)
 
@@ -338,6 +362,56 @@ def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
     return Program((Block('action', jaws, -1, .6), *found, pose('above', speed), pose('at', speed / 2),
                     *take_hold(jaws, 'objects/part', close),
                     pose('lifted', speed / 2), pose('carried', speed / 2), Block('wait', duration=HOLD))), jaws_angle
+
+
+def _wrist(motion, angles):
+    """(its index among the arm's joints, the sign its turns take seen from above) of the joint that turns
+    the tool about where it points - a hinge along the pointing, its axis through the tool point within
+    5 mm: the Panda's seventh - or None for an arm without one."""
+    import mujoco as mj
+    import numpy as np
+    m = motion.model
+    tip, pointing = motion.tool(angles=angles)
+    d = motion.scratch                      # posed at `angles` by tool()
+    for i in range(len(motion.joints) - 1, -1, -1):
+        joint = int(np.flatnonzero(m.jnt_qposadr == motion.qpos[i])[0])
+        if m.jnt_type[joint] != mj.mjtJoint.mjJNT_HINGE:
+            continue
+        axis, anchor = d.xaxis[joint].copy(), d.xanchor[joint].copy()
+        off = (tip - anchor) - ((tip - anchor) @ axis) * axis
+        if abs(axis @ pointing) > .995 and np.linalg.norm(off) < .005:
+            return i, 1. if axis[2] >= 0 else -1.
+    return None
+
+
+def _square(motion, angles, fingers, line, square):
+    """`angles` with the arm's wrist turned so its jaws close along the horizontal `line` - or, for a
+    `square` box, along it or across it, whichever the wrist turns to the less - within its limits.
+    ValueError if the arm has no wrist that turns its tool about where it points."""
+    from math import atan2, degrees, pi, radians
+    import numpy as np
+    wrist = _wrist(motion, angles)
+    if wrist is None:
+        raise ValueError('the arm has no wrist that turns its jaws about where they point')
+    i, sign = wrist
+    angles = np.array(angles, dtype=float)
+    period = 90. if square else 180.
+    want = degrees(atan2(line[1], line[0]))
+    for _ in range(8):
+        d = motion._pose(angles)
+        closing = d.xpos[fingers[1]] - d.xpos[fingers[0]]
+        if np.hypot(closing[0], closing[1]) < .002:
+            raise ValueError('the jaws are shut: the bench cannot see the line they close along')
+        error = (want - degrees(atan2(closing[1], closing[0])) + period / 2) % period - period / 2
+        if abs(error) < .1:
+            break
+        # The same lines a period apart: the turn within the wrist's limits that is least.
+        turns = sorted((radians(error + k * period) * sign for k in range(-3, 4)), key=abs)
+        turn = next((u for u in turns if motion.lower[i] <= angles[i] + u <= motion.upper[i]), None)
+        if turn is None:
+            raise ValueError('the wrist cannot turn the jaws square to it')
+        angles[i] += turn
+    return angles
 
 
 def _low(motion, angles):
@@ -408,19 +482,19 @@ def lowest(motion, centre, bench, top, hold, seed):
     raise ValueError('the arm cannot close its jaws on it without striking the bench')
 
 
-def run(design, name, pose, look=False):
+def run(design, name, pose, look=False, turned=False):
     """One object at one pose, through the protocol: its Outcome. Known pose, the program is solved for
     where the object is; with `look`, for the bench's middle at the object's turn, and the camera finds
-    where in the grid it is."""
+    where in the grid it is; `turned`, the arm's wrist turns the jaws square to a box."""
     import numpy as np
     from little_world.inventory import sweep
     blueprint = machine(design)
-    if look and OBJECTS[name][0] != 'box':
+    if look and SHAPES[name][0] != 'box':
         return Outcome(name, tuple(pose), message='not looked for: the camera finds boxes (ADR 0032)')
     field = bench_field(name, pose, camera=look)
     try:
         planned = bench_field(name, (0., 0., pose[2]), camera=True) if look else field
-        solved, jaws_angle = program(planned, blueprint, top=height(name) / 2, look=look)
+        solved, jaws_angle = program(planned, blueprint, top=height(name) / 2, look=look, turned=turned)
     except ValueError as error:
         return Outcome(name, tuple(pose), message=str(error))
     bench_field(name, pose, camera=look)           # the field the window finds by its id is the one run
@@ -482,7 +556,7 @@ def progress(line):
     """(object, pose, held) from one of the bench's progress lines ('12/180 cube (0.0, 0.0, 30.0): held'),
     None for any other line."""
     found = LINE.match(line)
-    if not found or found[1] not in OBJECTS:
+    if not found or found[1] not in SHAPES:
         return None
     return found[1], (float(found[2]), float(found[3]), float(found[4])), found[5] == 'held'
 
@@ -506,10 +580,10 @@ def _one(job):
     return run(*job)
 
 
-def bench(design, names=tuple(OBJECTS), jobs=1, progress=None, look=False):
+def bench(design, names=tuple(OBJECTS), jobs=1, progress=None, look=False, turned=False):
     """Every object at every pose of the grid for `design` - with `look`, each found by the bench's
-    camera: the Outcomes, objects in order."""
-    work = [(design, name, pose, look) for name in names for pose in poses()]
+    camera; `turned`, the jaws turned square to each box: the Outcomes, objects in order."""
+    work = [(design, name, pose, look, turned) for name in names for pose in poses()]
     found = []
     if jobs > 1:
         from concurrent.futures import ProcessPoolExecutor
@@ -533,16 +607,20 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog='python -m little_world.inventory.graspbench',
                                      description='Every diagnostic object at every pose of the grid, through one protocol (FR-043).')
     parser.add_argument('--design', default='arm_lab')
-    parser.add_argument('--objects', nargs='*', default=list(OBJECTS), choices=list(OBJECTS), metavar='OBJECT')
+    parser.add_argument('--objects', nargs='*', default=list(OBJECTS), choices=list(SHAPES), metavar='OBJECT',
+                        help='the five diagnostic objects (the default), or the factory cell\'s parts: '
+                        + ', '.join(PARTS))
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--camera', action='store_true', help='find each object with the bench\'s depth camera, '
                         'not from where it is known to be')
+    parser.add_argument('--turned', action='store_true', help='the arm\'s wrist turns the jaws square to each '
+                        'box, as the factory cell holds its hand to its parts')
     parser.add_argument('--out', help='write the report here, and its outcomes beside it as .json')
     args = parser.parse_args(argv)
     found = bench(args.design, tuple(args.objects), args.jobs,
                   lambda i, n, o: print(f'{i}/{n} {o.name} {o.pose}: {"held" if o.held else o.reason}', flush=True),
-                  look=args.camera)
-    text = markdown(found, args.design, look=args.camera)
+                  look=args.camera, turned=args.turned)
+    text = markdown(found, args.design, look=args.camera, turned=args.turned)
     print(text)
     if args.out:
         Path(args.out).write_text(text, encoding='utf-8')

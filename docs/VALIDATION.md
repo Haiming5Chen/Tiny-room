@@ -2193,5 +2193,20 @@ block 26 (none by its ends, at turn 0), the cylinder 30, the plate none; frictio
 lab's table is unchanged. Checked in `tests/test_graspbench.py` (two new, one slow). Suites on MuJoCo
 3.10.0: 1233 passed with a display, 1160 headless.
 
-Not claimed: the Panda with its wrist turned to each object - the bench's program holds only how its
-tool points; the factory cell's parts on the bench (FR-043's third check).
+Not claimed: the Panda with its wrist turned to each object, or the factory cell's parts on the bench
+(FR-043's third check) - both in the section after this one.
+
+## The Panda's wrist turned, and the cell's parts, on the grasp bench — 2026-11-22
+
+ADR 0077 amended (FR-043's check (3)). With `--turned` the Panda's seventh joint turns its jaws square to
+each box at every pose. 252 runs, known pose: the cube, the standing and the lying block 36 of 36 each,
+the cylinder 30 (not turned), the plate none, the cell's small and tall blocks 36 of 36 each - as the
+cell's 228 of 228. As the arm came, 72 more runs: the small block 29 of 36 (7 of 9 slip turned 30 deg),
+the tall block 36. Paired on the same poses: the cube 9 rescued and none lost (p = 0.004), the lying
+block 10 and none (p = 0.002), the small block 7 and none (p = 0.016). Report:
+docs/sweeps/2026-11-22-grasp-bench-panda-turned.md. Checked in `tests/test_graspbench.py` (two new, one
+slow). Suites on MuJoCo 3.10.0: 1235 passed with a display, 1162 headless.
+
+Not claimed: a wrist whose axis misses the tool point (the arm lab's has none, and is told so); the
+cell's parts in the cell's own wood (the bench's is 8 % denser); FR-043's check (2), the kit's arm on
+the Fetch's cart.

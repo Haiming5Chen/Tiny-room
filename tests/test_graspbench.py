@@ -249,3 +249,33 @@ def test_the_panda_holds_the_cylinder_and_loses_the_lying_block_by_its_ends():
     lying = gb.run('franka_panda', 'block lying', (0., 0., 0.))
     assert cylinder.held and cylinder.grip < .5
     assert not lying.held and lying.reason == 'slipped in the jaws' and lying.skew == pytest.approx(13., abs=2.)
+
+
+def test_the_cells_parts_are_the_factorys_and_run_only_when_named():
+    # FR-043's check (3) is the Panda on the factory cell's own parts (`factory.scene.PRODUCTS`): the
+    # bench runs them when named; its five diagnostic objects stay its default.
+    from little_world.factory.scene import PRODUCTS
+    assert {n: s for n, (_, s) in gb.PARTS.items()} == {n.lower(): s for n, s in PRODUCTS.items()}
+    assert list(gb.SHAPES) == [*gb.OBJECTS, *gb.PARTS] and gb.height('tall block') == .065
+    assert gb.progress('3/72 small block (0.0, 0.0, 30.0): held') == ('small block', (0., 0., 30.), True)
+    assert gb.bench_field('tall block', (0., 0., 0.)).summary.startswith('The tall block on a bench')
+    with pytest.raises(SystemExit):
+        gb.main(['--objects', 'no such part'])
+    turned = gb.markdown((gb.Outcome('small block', (0., 0., 0.), .1, .2, .0001, 'Completed', True, True, 0., .07),),
+                         'franka_panda', turned=True)
+    assert turned.splitlines()[0] == '# Grasp bench: franka_panda, its jaws turned'
+    assert "known pose; the jaws turned square to each box by the arm's wrist" in turned
+    assert '| small block | 1 of 1 |' in turned
+
+
+def test_the_pandas_wrist_turns_its_jaws_square_and_the_arm_labs_arm_has_none():
+    # Turned (FR-043's check (3)), the Panda's seventh joint turns its jaws square to a box as the factory
+    # cell holds its hand to its parts: the cube turned 30 deg - lost by its corners with the jaws as the
+    # arm came, 9 of 9 - is held square, and the lying block at turn 0 - lost by its ends - across. The
+    # arm lab's arm has no wrist to turn, and its run says so.
+    cube = gb.run('franka_panda', 'cube', (0., 0., 30.), turned=True)
+    lying = gb.run('franka_panda', 'block lying', (0., 0., 0.), turned=True)
+    assert cube.held and cube.skew == pytest.approx(0., abs=1.)
+    assert lying.held and lying.skew == pytest.approx(90., abs=1.)
+    lab = gb.run('arm_lab', 'block lying', (0., 0., 0.), turned=True)
+    assert not lab.held and lab.reason == 'the arm has no wrist that turns its jaws about where they point'

@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · the Panda's wrist turned, and the cell's parts (FR-043's check 3)
+Did: `--turned` - the bench's program turns the arm's wrist so its jaws close square to each box
+(`_wrist`, `_square`); the factory cell's two parts on the bench when named (`PARTS`). ADR 0077
+amended. Branch claude/fr-043-turned.
+Measured: the Panda turned - the cube, standing and lying block 36/36 each, the cell's two parts 72/72
+(the cell 228/228), the cylinder 30, the plate none; as the arm came the small block slips at 7 of 9
+places turned 30 deg. Paired: the lying block 10 rescued, none lost (p = 0.002). Suites 1235 with a
+display, 1162 headless.
+Unfinished: FR-043's check (2), the kit's arm on the Fetch's cart.
+For the owner: the bench agrees with the cell; what the Panda dropped on it was the jaws' angle, not the
+hand.
+
 ## 2026-11-22 · Claude (Cowork) · the Panda on the grasp bench (FR-043)
 Did: the bench takes a library robot (`graspbench.machine`), finds its fingers (`_fingers`), closes its
 gripper all the way at its key's speed (`take_hold(..., close)`), and reads a hand's clearance over the
