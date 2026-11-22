@@ -11,6 +11,18 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · the Panda on the grasp bench (FR-043)
+Did: the bench takes a library robot (`graspbench.machine`), finds its fingers (`_fingers`), closes its
+gripper all the way at its key's speed (`take_hold(..., close)`), and reads a hand's clearance over the
+bench from its meshes' vertices (`_low`); the report says a library robot's check reads contacts. ADR
+0077 amended. Branch claude/fr-043-panda.
+Measured: the Panda, 180 runs - cube 27/36 (0/9 turned 30 deg: corners), standing block 36, lying block
+26 (0/9 by its ends), cylinder 30, plate 0; friction in use a fifth of the kit's; creep under 0.5 mm. The
+arm lab's table unchanged. Suites 1233 with a display, 1160 headless.
+Unfinished: the wrist turned to each object; the cell's parts on the bench.
+For the owner: the Panda holds what the kit's jaws cannot (the cylinder), and drops what they hold (a
+cube by its corners).
+
 ## 2026-11-22 · Claude (Cowork) · two more claims anyone can measure again
 Did: `evidence.grasp_bench` and `evidence.import_probe` - the lying block across and by its ends (ADR
 0077), and the probe on the sample arm with its elbow wired backwards (ADR 0079); fifteen claims, seven

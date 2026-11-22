@@ -210,3 +210,42 @@ def test_the_report_says_how_close_each_grip_came_to_slipping():
     assert '## How close to slipping' in text
     assert '| cube | 50 % | 55 % | - |' in text and '| block lying | 41 % | 41 % | 100 % |' in text
     assert '| plate |' not in text.split('## How close to slipping')[1].split('\n## ')[0], "never in the air"
+
+
+def test_a_library_robot_stands_at_the_bench_with_its_own_fingers_and_closes_all_the_way():
+    # A second gripper (ADR 0077): the Panda from the robot library, its fingers its hand's, its gripper
+    # closed all the way at its key's speed - the kit's 1 s ramp is sized on the kit's jaws (ADR 0042) -
+    # and its hand's clearance over the bench read from its meshes' own vertices.
+    from little_world import Entity, World
+    from little_world.control.tool_motion import ToolMotion, _jaws_low
+    from little_world.inventory import sweep
+    from little_world.physics.mujoco_backend import MujocoBackend
+    panda = gb.machine('franka_panda')
+    assert any(getattr(b, 'robot_asset', None) == 'franka_panda' for b in panda.components)
+    assert gb.machine('arm_lab') == sweep.design('arm_lab')
+    assert gb._fingers(panda) == ['root__robot_left_finger', 'root__robot_right_finger']
+    assert gb._fingers(sweep.design('arm_lab')) == ['two_finger_gripper_1_finger_right', 'two_finger_gripper_1_finger_left']
+    field = gb.bench_field('cube', (0., 0., 0.))
+    lows = {}
+    for name, bp in (('panda', panda), ('arm lab', sweep.design('arm_lab'))):
+        backend = MujocoBackend()
+        with World(backend, field.scene(Entity('machine', bp))) as world:
+            world.start()
+            _, control, _ = sweep._rigs(backend, bp)
+            motion = ToolMotion(backend, bp, control)
+            lows[name] = (gb._low(motion, motion.targets()), _jaws_low(motion, motion.targets()))
+    assert lows['panda'][0] - lows['panda'][1] > .03, "by the box round its bounding sphere, the hand reaches 3.7 cm lower"
+    assert lows['arm lab'][0] == lows['arm lab'][1], "no meshes: the same as the Fetch sets down by"
+    program, skew = gb.program(field, panda, top=gb.height('cube') / 2)
+    close = next(b for b in program.blocks if b.kind == 'action' and b.value > 0)
+    assert close.duration == pytest.approx(100. / 60. + .25) and skew == pytest.approx(13., abs=2.)
+
+
+def test_the_panda_holds_the_cylinder_and_loses_the_lying_block_by_its_ends():
+    # The Panda's fingers, squeezing 70 N (ADR 0065), hold the cylinder the kit's jaws cannot (OPEN
+    # LW-057); its jaws, which the bench's program does not turn, close 13 deg from the lying block's
+    # length at turn 0 - by its ends - and it slips out of them, as from the kit's (OPEN LW-034).
+    cylinder = gb.run('franka_panda', 'cylinder', (0., 0., 0.))
+    lying = gb.run('franka_panda', 'block lying', (0., 0., 0.))
+    assert cylinder.held and cylinder.grip < .5
+    assert not lying.held and lying.reason == 'slipped in the jaws' and lying.skew == pytest.approx(13., abs=2.)

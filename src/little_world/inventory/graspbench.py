@@ -178,9 +178,12 @@ def markdown(outcomes, design, title='', look=False):
                              + ' | ' + (', '.join(f'{100 * u:.0f} %' for u in sorted(lost)) if lost else '-') + ' |')
     (felt_held, held), (felt_lost, lost) = check(outcomes)
     if held or lost:
+        from little_world.assets import robot_library
+        from little_world.assets.robot_models import MODELS
+        reads = ('its jaws\' contacts with the object: a library robot\'s gripper servo is not read as the kit\'s are'
+                 if design in MODELS or robot_library.is_user(design) else 'the jaws\' servos (ADR 0048), not the object')
         lines += ['', '## What the grasp check felt', '',
-                  'The program went on as taught whatever its grasp check felt; the check reads the jaws\' servos '
-                  '(ADR 0048), not the object.', '',
+                  f'The program went on as taught whatever its grasp check felt; the check reads {reads}.', '',
                   '| Object | held, felt held | held, felt nothing | not held, felt held | not held, felt nothing |',
                   '| --- | --- | --- | --- | --- |']
         for n in names:
@@ -287,9 +290,14 @@ def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
         for _ in range(sweep.SETTLE):
             state = sweep._hold(world, drive, control, field, state)
         motion = ToolMotion(backend, blueprint, control)
-        jaws = next((s.id for s in control.specs if s.actuators and set(s.actuators) <= set(motion.jaws)), None)
-        if jaws is None:
+        spec = next((s for s in control.specs if s.actuators and set(s.actuators) <= set(motion.jaws)), None)
+        if spec is None:
             raise ValueError('the bench needs the gripper bound to a keyboard action')
+        jaws = spec.id
+        # The kit's jaws close for the template's 1 s (ADR 0042); a gripper driven by how closed it is,
+        # all the way, at its key's speed, its own controller squeezing what stops it.
+        units = getattr(control, 'units', {})
+        close = 100. / spec.speed + .25 if all(units.get(a) == '%' for a in spec.actuators) else 1.
         start = motion.targets()
         _, pointing = motion.tool(angles=start)
         m, d = backend.model, backend.data
@@ -299,8 +307,7 @@ def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
         hold = float(pointing[2])
         poses_, seed, angles_, points = {}, start, {}, {}
         planned = tuple(float(v) for v in grasp)
-        fingers = [m.body(motion.prefix + b).id for b in motion.tool_module.bodies
-                   if b.endswith(('_finger_left', '_finger_right'))]
+        fingers = [m.body(motion.prefix + b).id for b in _fingers(blueprint)]
 
         def reach(label, point):
             nonlocal seed
@@ -329,8 +336,51 @@ def program(field, blueprint, top=0., clearance=.06, speed=40., look=False):
         return Block('pose', value=pace, duration=2., angles=poses_[label], point=points[label] if look else ())
     found = (Block('look', 'objects/part', value=WATCH, duration=LOOKING, secondary=SEARCH, point=planned),) if look else ()
     return Program((Block('action', jaws, -1, .6), *found, pose('above', speed), pose('at', speed / 2),
-                    *take_hold(jaws, 'objects/part'),
+                    *take_hold(jaws, 'objects/part', close),
                     pose('lifted', speed / 2), pose('carried', speed / 2), Block('wait', duration=HOLD))), jaws_angle
+
+
+def _low(motion, angles):
+    """The lowest point of the tool's visible parts with the arm at `angles` (m): a mesh by its own
+    vertices, other shapes as `tool_motion._jaws_low` bounds them - by the box round its bounding
+    sphere, the Panda's hand reaches 3.6 cm lower over the cube than its mesh does."""
+    import mujoco as mj
+    import numpy as np
+    from little_world.control.tool_motion import _below, _corners
+    m = motion.model
+    d = motion._pose(angles)
+    low = np.inf
+    for g in range(m.ngeom):
+        if not (_below(m, int(m.geom_bodyid[g]), motion.body) and m.geom_rgba[g][3] > 0):
+            continue
+        if m.geom_type[g] == mj.mjtGeom.mjGEOM_MESH:
+            mesh = m.geom_dataid[g]
+            v = m.mesh_vert[m.mesh_vertadr[mesh]:m.mesh_vertadr[mesh] + m.mesh_vertnum[mesh]]
+            low = min(low, float(np.min(d.geom_xpos[g][2] + v @ d.geom_xmat[g].reshape(3, 3)[2])))
+        else:
+            low = min(low, float(np.min(_corners(m, d, g)[:, 2])))
+    return low
+
+
+def _fingers(blueprint):
+    """The bodies the jaws close with, as the machine names them: the kit gripper's two fingers, or a
+    library robot's - its hand's (`robot_models.CONTROLLERS`) or the jaws its file was found to have."""
+    fingers = [b.id for b in blueprint.components if b.id.endswith(('_finger_left', '_finger_right'))]
+    robot = next((b for b in blueprint.components if getattr(b, 'robot_asset', None)), None)
+    if not fingers and robot is not None:
+        from little_world.assets.robot_models import CONTROLLERS, jaws
+        hand = CONTROLLERS.get(robot.robot_asset, {}).get('hand')
+        fingers = [f'{robot.id}__robot_{n}' for n in (hand[2] if hand else jaws(robot.robot_asset))]
+    return fingers
+
+
+def machine(name):
+    """A machine by name: an example design, a saved design's file (`sweep.design`), or a robot from the
+    library - a Menagerie arm or one brought in from its file - standing on the floor."""
+    from little_world.assets import robot_library
+    from little_world.assets.robot_models import MODELS, blueprint
+    from little_world.inventory import sweep
+    return blueprint(name) if name in MODELS or robot_library.is_user(name) else sweep.design(name)
 
 
 def lowest(motion, centre, bench, top, hold, seed):
@@ -339,14 +389,14 @@ def lowest(motion, centre, bench, top, hold, seed):
     the surface - with the tool at the angle `hold` if the arm can, else at any. The point rises no
     further than the object's top. ValueError if no such point is reached without the arm in its
     own machine."""
-    from little_world.control.tool_motion import JAWS_CLEAR, REACHED, _jaws_low
+    from little_world.control.tool_motion import JAWS_CLEAR, REACHED
     for angle in (hold, None):
         point = centre.copy()
         for _ in range(4):
             angles, short = motion.solve(point, seed, angle)
             if short > REACHED:
                 break
-            under = bench + JAWS_CLEAR - _jaws_low(motion, angles)
+            under = bench + JAWS_CLEAR - _low(motion, angles)
             if under <= 1e-4:
                 if not motion.self_collision(angles):
                     return point
@@ -364,7 +414,7 @@ def run(design, name, pose, look=False):
     where in the grid it is."""
     import numpy as np
     from little_world.inventory import sweep
-    blueprint = sweep.design(design)
+    blueprint = machine(design)
     if look and OBJECTS[name][0] != 'box':
         return Outcome(name, tuple(pose), message='not looked for: the camera finds boxes (ADR 0032)')
     field = bench_field(name, pose, camera=look)
@@ -374,7 +424,7 @@ def run(design, name, pose, look=False):
     except ValueError as error:
         return Outcome(name, tuple(pose), message=str(error))
     bench_field(name, pose, camera=look)           # the field the window finds by its id is the one run
-    fingers = [b.id for b in blueprint.components if b.id.endswith(('_finger_left', '_finger_right'))]
+    fingers = _fingers(blueprint)
     track = []
 
     uses = []

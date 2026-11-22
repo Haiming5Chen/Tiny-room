@@ -2182,3 +2182,16 @@ registry. Held by `tests/test_evidence.py` (the registry, the page). Suites on M
 passed with a display, 1158 headless.
 
 Not claimed: either on another machine - the records are this one's, the tolerances judgment.
+
+## The Panda on the grasp bench — 2026-11-22
+
+ADR 0077 amended (FR-043's second gripper). The Panda from the robot library beside the bench, its
+gripper closed all the way before the template's squeeze and check, its hand's clearance read from its
+meshes. 180 runs, known pose: the cube 27 of 36 (none turned 30 deg), the standing block 36, the lying
+block 26 (none by its ends, at turn 0), the cylinder 30, the plate none; friction in use held cubes
+11 % at the median; creep under 0.5 mm. Report: docs/sweeps/2026-11-22-grasp-bench-panda.md. The arm
+lab's table is unchanged. Checked in `tests/test_graspbench.py` (two new, one slow). Suites on MuJoCo
+3.10.0: 1233 passed with a display, 1160 headless.
+
+Not claimed: the Panda with its wrist turned to each object - the bench's program holds only how its
+tool points; the factory cell's parts on the bench (FR-043's third check).

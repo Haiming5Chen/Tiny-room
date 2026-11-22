@@ -18,7 +18,8 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
   new's *By its ends, it falls* shows the lying block's case, and the Inventory's *Grasp bench* tab
   shows the arm lab's table and runs the bench on any design. With a depth camera finding each object
   instead of its known place, the arm lab drops what it dropped before: the camera finds every box.
-  Its report says how close each grip came to slipping (ADR 0077).
+  Its report says how close each grip came to slipping, and a robot from the library takes it too: the
+  Panda holds the cylinder the kit's jaws cannot (ADR 0077).
 - The pick-and-place template squeezes before it checks its grasp. On the grasp bench its check missed
   13 of 18 held cubes and blocks the jaws had turned square before it looked; now it feels every held
   part, and the arm lab's cube reaches the tray 0.02 s later (ADR 0078).

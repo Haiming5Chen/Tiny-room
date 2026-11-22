@@ -512,14 +512,14 @@ SQUEEZE = .02           # s the jaws keep closing past their 1 s ramp: it ends j
                         # held; the pick-and-place template before it checks (`take_hold`, ADR 0078)
 
 
-def take_hold(jaws, target):
+def take_hold(jaws, target, close=1.):
     """The pick-and-place template's blocks that take hold of `target`: close the jaws for 1 s, keep
     closing SQUEEZE more, then check the grasp from the jaws' servos (0.5 s). Checked straight after the
     ramp, a 25 mm part was felt only while the jaws still pressed it: resting, each jaw stops 2 or 3
     pulses short of its goal, pushing with 4 counts of current - under the 6 the feel needs - and a part
     the jaws had turned square before the check was held and not felt (OPEN LW-056); squeezed, each rests
     6 pulses short pushing with 10 (ADR 0078)."""
-    return (Block('action', jaws, 1, 1.), Block('action', jaws, 1, SQUEEZE), Block('grasp', target, duration=.5))
+    return (Block('action', jaws, 1, close), Block('action', jaws, 1, SQUEEZE), Block('grasp', target, duration=.5))
 
 
 FULL_CLOSE = 1.4        # s: the kit jaws' target from fully open (-12 deg) to fully closed (30 deg) at 30 deg/s

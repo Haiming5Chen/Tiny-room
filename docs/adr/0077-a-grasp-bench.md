@@ -100,9 +100,26 @@ designed.
   (41 %); by its ends 100 % - it slides - 9 of 9; and the one that crept over the 2 mm line, 45 %: it
   crept inside its friction cones, as OPEN LW-039's block on a slope. Checked in `tests/test_graspbench.py`
   (one new; the lying block's slow test). Suites: 1230 passed with a display, 1158 headless.
+- *A second gripper: the Panda* (22 November): `machine` takes a robot from the library - a Menagerie
+  arm or one brought in from its file - standing on the floor beside the bench, held up and squeezing
+  as its own controller does (ADR 0065); its fingers are its hand's (`_fingers`); its gripper closes all
+  the way at its key's speed before the template's squeeze and check (`take_hold`'s `close`) - the
+  kit's 1 s ramp is sized on the kit's jaws (ADR 0042); and the jaws' clearance over the bench reads a
+  mesh by its own vertices (`_low`; bounded by the box round its bounding sphere, the Panda's hand
+  reached 3.6 cm lower over the cube than its mesh does; the kit gripper has no meshes and its results
+  are unchanged). `python -m
+  little_world.inventory.graspbench --design franka_panda`; docs/sweeps/2026-11-22-grasp-bench-panda.md.
+  Held: the cube 27 of 36 (none turned 30 deg, 43 deg to its jaws: its flat fingers slide off the
+  corners), the standing block 36, the lying block 26 (none at turn 0, 13 deg from its length: by its
+  ends), the cylinder 30 - the kit's jaws none - and the plate none. Squeezing 70 N it uses a fifth of
+  the kit's friction (held cubes 11 % at the median, the kit's 55 %) and creeps under 0.5 mm. Its grasp
+  check reads contacts: it felt all 119 held. Checked in `tests/test_graspbench.py` (two new, one
+  slow). Suites: 1233 passed with a display, 1160 headless.
 
-**Boundaries.** One gripper, the kit's on the arm lab, and known pose only: FR-043's camera mode, the
-other designs and the robot library's grippers, intervals clustered by pose, FR-036's friction in use
-at the lift, and the Joint lab's button are not done. The carry runs one way, to the side; why the
+**Boundaries.** Two grippers: the kit's on the arm lab, and the Panda's from the robot library (the
+library's other arms have no hand; a gripper brought in from its own file is taken, and no bench has
+run one). The camera finds boxes only. Each object's interval is exact over its 36 runs, not clustered
+by pose: each pose is one deterministic run. FR-043's checks (2) and (3) - the Fetch's cart, the cell's
+own parts - are not run, and the bench's program does not turn the Panda's jaws to the object. The carry runs one way, to the side; why the
 lying block is held at 14 deg and lost at 16 is measured, not explained. The cylinder's result is
 this engine's: a real cylinder in parallel jaws is held along a line of contact on each side.
