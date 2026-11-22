@@ -140,6 +140,7 @@ def test_the_lying_block_is_held_across_the_jaws_and_falls_along_them():
     assert across.skew == pytest.approx(74.5, abs=1.) and along.skew == pytest.approx(15.5, abs=1.)
     assert across.held and across.slip < .0018                     # it creeps: 1.6 mm in the hold's 2 s
     assert not along.held and along.felt and along.lifted < -.1      # off the bench, on the floor
+    assert across.grip < .5 and along.grip == pytest.approx(1.)     # by its ends it used all its friction
 
 
 def test_a_cube_turned_against_the_jaws_is_held_and_felt_held(monkeypatch):
@@ -193,3 +194,19 @@ def test_a_cube_off_the_benchs_middle_is_found_by_the_camera_and_picked():
     found = gb.run('arm_lab', 'cube', (.02, .02, 30.), look=True)
     assert found.held and found.felt and found.message == 'Completed'
     assert found.carried == pytest.approx(.195, abs=.005)
+
+
+def test_the_report_says_how_close_each_grip_came_to_slipping():
+    # FR-036's friction in use, while the object was in the air: the held runs' median and most, and
+    # the others' each (ADR 0077).
+    o = gb.Outcome
+    found = (o('cube', (0., 0., 0.), .097, .195, .0008, 'Completed', True, True, 74.5, .55),
+             o('cube', (.02, 0., 0.), .097, .195, .0006, 'Completed', True, True, 74., .45),
+             o('block lying', (0., 0., 90.), -.187, .22, .0003, 'Completed', True, True, 15.5, 1.),
+             o('block lying', (0., 0., 0.), .095, .194, .0015, 'Completed', True, True, 74.5, .41),
+             o('plate', (0., 0., 0.), message='the arm cannot close its jaws on it without striking the bench'))
+    assert gb.grips(found) == {'cube': ([.55, .45], []), 'block lying': ([.41], [1.])}
+    text = gb.markdown(found, 'arm_lab')
+    assert '## How close to slipping' in text
+    assert '| cube | 50 % | 55 % | - |' in text and '| block lying | 41 % | 41 % | 100 % |' in text
+    assert '| plate |' not in text.split('## How close to slipping')[1].split('\n## ')[0], "never in the air"

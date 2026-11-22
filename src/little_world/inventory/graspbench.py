@@ -33,6 +33,7 @@ The statistics are the standard library's; the runs come from `inventory.sweep` 
 from dataclasses import dataclass
 from math import cos, radians, sin
 import re
+from statistics import median
 
 from little_world.inventory.confidence import interval
 
@@ -55,6 +56,7 @@ CAMERA_AT = (CENTRE[0] + .45, CENTRE[1], TOP + .78)   # m: a depth camera beyond
                                                       # it as the Fetch's looks at its table (ADR 0032)
 SEARCH = .06                # m round the plan the camera looks: the grid's places and a little more
 SLIP = .002                 # m: the most an object may move in the jaws over the last HOLD seconds
+AIR = .02                   # m over where it stood: an object this high is in the air, held by the jaws alone
 
 
 # What the bench measured for an example as designed (ADR 0077, 0078): held of the 9 places at each
@@ -93,6 +95,7 @@ class Outcome:
     felt: bool | None = None    # what the program's grasp check felt from the jaws' servos (ADR 0048)
     between: bool | None = None  # whether the contacts then said the object was held by the pads
     skew: float | None = None   # deg: a box's x axis from the line the jaws close along, 0 to 90
+    grip: float | None = None   # the most of its grip's friction in use while it was in the air (FR-036), 0 to 1
 
     @property
     def held(self):
@@ -162,6 +165,17 @@ def markdown(outcomes, design, title='', look=False):
     slips = [o.slip for o in outcomes if o.held]
     if slips:
         lines += ['', f'Held runs slipped {1000 * min(slips):.2f} to {1000 * max(slips):.2f} mm in their last {HOLD:g} s.']
+    near = grips(outcomes)
+    if near:
+        lines += ['', '## How close to slipping', '',
+                  'The most of its grip\'s friction in use while the object was in the air, held by the jaws alone '
+                  '(FR-036): 100 % is a grip at the edge of its friction cones, sliding.', '',
+                  '| Object | held runs: median | most | not held, in the air |', '| --- | --- | --- | --- |']
+        for n in names:
+            if n in near:
+                held, lost = near[n]
+                lines.append(f'| {n} | ' + (f'{100 * median(held):.0f} % | {100 * max(held):.0f} %' if held else '- | -')
+                             + ' | ' + (', '.join(f'{100 * u:.0f} %' for u in sorted(lost)) if lost else '-') + ' |')
     (felt_held, held), (felt_lost, lost) = check(outcomes)
     if held or lost:
         lines += ['', '## What the grasp check felt', '',
@@ -177,9 +191,17 @@ def markdown(outcomes, design, title='', look=False):
     return '\n'.join(lines) + '\n'
 
 
+def grips(outcomes):
+    """{object: (the held runs' most friction in use, the others')} over the runs that lifted it."""
+    out = {}
+    for o in outcomes:
+        if o.grip is not None:
+            out.setdefault(o.name, ([], []))[0 if o.held else 1].append(o.grip)
+    return out
+
+
 def jaw_angles(outcomes):
     """{turn: the median jaws' angle (deg) over the runs at that turn}, for the runs that reached."""
-    from statistics import median
     by = {}
     for o in outcomes:
         if o.skew is not None:
@@ -355,11 +377,18 @@ def run(design, name, pose, look=False):
     fingers = [b.id for b in blueprint.components if b.id.endswith(('_finger_left', '_finger_right'))]
     track = []
 
+    uses = []
+
     def probe(state, backend):
+        from little_world.inventory.handling import grip_use
         m, d = backend.model, backend.data
         part = d.xpos[m.body('objects/part').id].copy()
         middle = sum(d.xpos[m.body('machine/' + f).id] for f in fingers) / len(fingers) if fingers else part
         track.append((part, part - middle))
+        if part[2] > track[0][0][2] + AIR:      # in the air: what share of its grip's friction holds it
+            use = grip_use(backend, 'objects/part')
+            if use is not None:
+                uses.append(use)
     result = sweep.run('pick_place', blueprint, program=solved, field=field, probe=probe, recovery='ignore')
     if result.error or not track:
         return Outcome(name, tuple(pose), message=result.error or 'did not run')
@@ -371,7 +400,8 @@ def run(design, name, pose, look=False):
     slip = float(np.linalg.norm(track[-1][1] - track[-min(steps, len(track))][1])) if fingers else None
     felt, between = (bool(result.felt[-1][1]), bool(result.felt[-1][2])) if result.felt else (None, None)
     return Outcome(name, tuple(pose), lifted=float(last[2] - first[2]), carried=float(np.linalg.norm(last[:2] - origin)),
-                   slip=slip, message=result.message, felt=felt, between=between, skew=jaws_angle)
+                   slip=slip, message=result.message, felt=felt, between=between, skew=jaws_angle,
+                   grip=max(uses) if uses else None)
 
 
 def recorded(blueprint):
@@ -419,8 +449,7 @@ def counts(found):
 def from_json(text):
     """The Outcomes the command line wrote beside its report (`--out`)."""
     import json
-    return tuple(Outcome(name, tuple(pose), lifted, carried, slip, message, felt, between, skew)
-                 for name, pose, lifted, carried, slip, message, felt, between, skew in json.loads(text))
+    return tuple(Outcome(name, tuple(pose), *rest) for name, pose, *rest in json.loads(text))
 
 
 def _one(job):
@@ -468,7 +497,7 @@ def main(argv=None):
     if args.out:
         Path(args.out).write_text(text, encoding='utf-8')
         Path(args.out).with_suffix('.json').write_text(json.dumps(
-            [[o.name, list(o.pose), o.lifted, o.carried, o.slip, o.message, o.felt, o.between, o.skew]
+            [[o.name, list(o.pose), o.lifted, o.carried, o.slip, o.message, o.felt, o.between, o.skew, o.grip]
              for o in found]), encoding='utf-8')
     return 0
 

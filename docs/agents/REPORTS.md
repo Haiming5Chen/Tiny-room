@@ -11,6 +11,17 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · how close each grip came to slipping (FR-043)
+Did: each bench run keeps the most of its grip's friction in use while the object is in the air
+(`Outcome.grip`, FR-036's `grip_use`); the report's section 'How close to slipping' (`grips`); the
+outcomes' JSON carries it. ADR 0077 amended. Branch claude/fr-043-grip on 690a8b6.
+Measured: the same 180 runs to the last digit; held cubes 55 % at the median, 92 % at the most (turned
+90, 16 deg off square one way - 60 % the other way); standing block 42 % (72 %); lying block 35 % (41 %);
+lost by its ends 100 %; the lying block that crept past 2 mm, 45 % - creep inside the cone (LW-039).
+Suites 1230 with a display, 1158 headless.
+Unfinished: FR-043's other grippers.
+For the owner: nothing to decide.
+
 ## 2026-11-22 · Claude (Cowork) · the grasp bench with its camera (FR-043)
 Did: FR-043's second mode - `bench_field(..., camera=True)` (a D435 depth camera beyond the bench, as the
 Fetch's), `program(..., look=True)` (a look for the object, poses aimed at where it was seen), the

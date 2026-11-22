@@ -20,6 +20,16 @@ At the 0, 30, 60, 90 deg turns the object's x axis lay 74, 44, 14, 16 deg from t
 
 Held runs slipped 0.01 to 1.88 mm in their last 2 s.
 
+## How close to slipping
+
+The most of its grip's friction in use while the object was in the air, held by the jaws alone (FR-036): 100 % is a grip at the edge of its friction cones, sliding.
+
+| Object | held runs: median | most | not held, in the air |
+| --- | --- | --- | --- |
+| cube | 55 % | 92 % | - |
+| block | 42 % | 72 % | - |
+| block lying | 35 % | 41 % | 45 %, 100 %, 100 %, 100 %, 100 %, 100 %, 100 %, 100 %, 100 %, 100 % |
+
 ## What the grasp check felt
 
 The program went on as taught whatever its grasp check felt; the check reads the jaws' servos (ADR 0048), not the object.
@@ -37,7 +47,9 @@ It felt 97 of the 97 held runs held, and 13 of the 47 others.
 ## How it was run
 
 As docs/sweeps/2026-11-22-grasp-bench-arm-lab.md, the same 180 poses, with the template taking hold as
-ADR 0078 has it: close for 1 s, squeeze 0.6 deg more, then check (`tool_motion.take_hold`).
+ADR 0078 has it: close for 1 s, squeeze 0.6 deg more, then check (`tool_motion.take_hold`). Run again
+on 690a8b6 with the grip's friction in use measured while each object was in the air (FR-036): the
+same 180 runs to the last digit, and the section on how close each grip came to slipping.
 
 ## Against the first run
 

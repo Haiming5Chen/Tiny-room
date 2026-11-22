@@ -2147,3 +2147,16 @@ past the last block of a program that ends holding what it looked for. Checked i
 
 Not claimed: the camera's error itself - the runs say what it cost, not how far off each sighting
 was; a round object found; a camera anywhere else.
+
+## How close each grip came to slipping — 2026-11-22
+
+ADR 0077 amended (FR-043, FR-036's friction in use). Each bench run keeps the most of its grip's
+friction in use while the object was in the air, held by the jaws alone. The arm lab, known pose, the
+same 180 runs to the last digit: held cubes 55 % at the median and 92 % at the most (turned 90), the
+standing block 42 % (72 %), the lying block 35 % (41 %); lost by its ends, 100 %, 9 of 9; the lying
+block that crept over the 2 mm line, 45 %. Report: docs/sweeps/2026-11-22-grasp-bench-squeeze-first.md.
+Checked in `tests/test_graspbench.py` (one new). Suites on MuJoCo 3.10.0: 1230 passed with a display,
+1158 headless.
+
+Not claimed: friction in use while the object still touches the bench; a margin a real gripper would
+need - it is the engine's pyramidal cone (ADR 0061).

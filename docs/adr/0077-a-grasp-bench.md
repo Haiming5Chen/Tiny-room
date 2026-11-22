@@ -91,6 +91,15 @@ designed.
   it had looked for made the runner read past its last block (`Runner.carrying`): mended. Checked in
   `tests/test_graspbench.py` (two new, one slow) and `tests/test_friction_use.py` (one new). Suites:
   1229 passed with a display, 1157 headless.
+- *How close to slipping* (22 November): each run follows the share of its grip's friction in use
+  while the object is in the air, held by the jaws alone (FR-036's `handling.grip_use`), and keeps the
+  most (`Outcome.grip`); the report gives each object's median and most over its held runs, and each
+  lost run's (`grips`). The arm lab, the same 180 runs to the last digit (reading the friction changes
+  nothing): the cube 55 % at the median, 92 % at the most - turned 90, 16 deg off square one way, where
+  turned 0, 16 deg the other way, takes 60 %; the standing block 42 % (72 %); the lying block, held, 35 %
+  (41 %); by its ends 100 % - it slides - 9 of 9; and the one that crept over the 2 mm line, 45 %: it
+  crept inside its friction cones, as OPEN LW-039's block on a slope. Checked in `tests/test_graspbench.py`
+  (one new; the lying block's slow test). Suites: 1230 passed with a display, 1158 headless.
 
 **Boundaries.** One gripper, the kit's on the arm lab, and known pose only: FR-043's camera mode, the
 other designs and the robot library's grippers, intervals clustered by pose, FR-036's friction in use
