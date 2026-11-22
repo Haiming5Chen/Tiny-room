@@ -624,6 +624,14 @@ duration=...)`), fits the rates to fall with the factor (`monotone`, pool-adjace
 the fit falls through one half (`crossing`) and its interval from resampling the draws (`profile`), and
 writes the report (`markdown`; `python -m little_world.inventory.boundary`).
 
+A grasp bench (ADR 0077): `inventory/graspbench.py` sets five diagnostic objects (`OBJECTS`) on a
+bench field (`bench_field`) at a 3 x 3 x 4 grid of poses (`poses`), solves the arm lab's pick-and-place
+template for each (`program`; the grasp no lower than keeps the jaws `JAWS_CLEAR` over the bench,
+`lowest`), runs it through `sweep.run` with the runner's 'ignore' recovery so it goes on as taught, and
+judges each run by the object - lifted, carried, slip in the jaws (`Outcome`) - beside what the grasp
+check felt and the jaws' angle to the object (`skew`). `markdown` writes the table, the reasons and the
+check's four-way count; `python -m little_world.inventory.graspbench` runs it.
+
 `inventory/stages.py` (ADR 0063, standard library) reads where a group of runs failed: how many met each
 goal and every goal before it, the first goal each missed, and - from `Run.stopped`, the block a program
 gave up at - what it was doing; a table for the sweep reports, two short lines for the panels.

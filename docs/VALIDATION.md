@@ -2055,3 +2055,22 @@ The rigid four-point stance of OPEN LW-026, as at the ramps. Checked in `tests/t
 new). Suites on MuJoCo 3.10.0: 1210 passed with a display, 1140 headless.
 
 Not claimed: the draws' stalls at 8 mm traced one by one - the design as designed was.
+
+## A grasp bench — 2026-11-22
+
+ADR 0077 (FR-043, its first slice). Five diagnostic objects - a 25 mm cube, the kit's 25 x 25 x 40 mm
+block standing and lying, a cylinder 25 mm across, a 60 x 40 x 6 mm plate - at 3 x 3 places x 4 turns
+on a bench 18.7 cm up, through the arm lab's pick-and-place template (known pose; the program goes on
+whatever its grasp check feels), judged by the object: lifted 8 cm, carried 18 cm, under 2 mm of slip
+in the jaws over the last 2 s. The arm lab, 180 runs: the cube 36 of 36 held, the standing block 36 of
+36, the lying block 26 of 36 - lost 9 of 9 by its ends, 16 deg from the line its jaws close along (OPEN
+LW-034), held 9 of 9 across them and at 14 deg - the cylinder and the plate 0 of 36. The grasp check
+felt 85 of the 98 held runs held; it missed 13 of the 18 cubes and blocks turned 44 deg to the jaws,
+all held (OPEN LW-056). The cylinder is pushed out of the jaws by one contact a pad (OPEN LW-057); the
+plate is out of the 35 mm pads' reach kept 5 mm over the bench. Report:
+docs/sweeps/2026-11-22-grasp-bench-arm-lab.md. Checked in `tests/test_graspbench.py` (10, all new; two
+in `tests/slow.txt`). Suites on MuJoCo 3.10.0: 1220 passed with a display, 1150 headless.
+
+Not claimed: any other gripper or design; the camera's finder in place of the known pose; intervals
+clustered by pose; why the lying block is held at 14 deg and lost at 16; a cylinder's grip as a real
+one would be held.

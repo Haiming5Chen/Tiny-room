@@ -48,6 +48,8 @@
   20.0 test_boundary.py::test_a_curb_a_kit_cart_clears_and_one_it_cannot
   19.5 test_more_fields.py::test_the_doorway_program_takes_the_platform_through_without_touching_the_frame
   15.1 test_artifacts.py::test_on_the_curb_run_the_casters_contact_with_the_curb_gives_the_cart_energy_it_never_took
+   8.4 test_graspbench.py::test_the_lying_block_is_held_across_the_jaws_and_falls_along_them
+   8.2 test_graspbench.py::test_a_cube_turned_against_the_jaws_is_held_and_its_grasp_check_feels_nothing
    7.2 test_fields.py::test_the_sprint_is_timed_by_the_drive_assist_speed
    7.2 test_more_fields.py::test_the_tilt_table_turns_on_schedule_under_a_machine
    7.1 test_census.py::test_a_sweep_run_hands_its_probe_every_step

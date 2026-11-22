@@ -150,7 +150,9 @@ caster's wheel against a curb's edge given 78 mJ from nowhere (ADR 0074). Every 
 of its set-up, and a paired statistic checks first that its pairs began alike (ADR 0075). A design's
 boundary along one factor says how far it can go - the kit cart's curb profile, the first, shows how much of its
 climbing the engine's energy from nowhere gives it, and the arm cart's tilt profile that the tilt table's
-climb reads a machine going over 2 to 4.6 deg late (ADR 0076).
+climb reads a machine going over 2 to 4.6 deg late (ADR 0076). A grasp bench asks which objects and poses
+a gripper holds: on the arm lab the lying block is lost whenever the jaws take it by its ends, the
+cylinder and the thin plate always, and the grasp check misses held cubes the jaws turned square (ADR 0077).
 Next, by the evaluation of 11 November (docs/EVALUATION.md) - the branch was published on 12
 November (v0.2.0), and its quick tier passes on Linux and Apple silicon: the quick tier mended on
 Windows (OPEN LW-045); a licence chosen; the evidence run on the owner's Mac; one servo checked

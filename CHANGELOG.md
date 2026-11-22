@@ -12,6 +12,10 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 - How far a design can go, the fourth factor: a ramp's slope. The two-wheel robot climbs to 5 deg;
   the kit cart climbs none, its drive wheels lifted by its casters. With 18 set-ups a level instead of
   9, a crossing's interval narrows as statistics say it should (ADR 0076).
+- A grasp bench: five diagnostic objects at 36 poses each, through the arm lab's pick-and-place
+  program, judged by the object. The cube and the kit's block standing are held everywhere; the block
+  lying is lost whenever the jaws take it by its ends, the cylinder and the thin plate always; the
+  grasp check misses held cubes the jaws turned square before it looked (ADR 0077).
 
 ## 0.4.0 - 21 November 2026
 

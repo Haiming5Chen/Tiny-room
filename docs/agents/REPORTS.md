@@ -11,6 +11,28 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · a grasp bench, its first table (FR-043)
+Did: `inventory/graspbench.py` - five diagnostic objects (25 mm cube, the kit's block standing and
+lying, a cylinder, a thin plate) at 3 x 3 places x 4 turns on a bench, through the arm lab's
+pick-and-place template solved for each pose, judged by the object (lifted 8 cm, carried 18 cm, under
+2 mm of slip in 2 s), the program going on whatever its grasp check feels and the check's verdict
+counted against the outcome; the jaws' angle to the object for each run; `python -m
+little_world.inventory.graspbench`. ADR 0077; FR-043 doing (its first slice). Branch claude/fr-043-bench
+on 9d1d3c2.
+Measured (the arm lab, 180 runs): cube 36/36 held, block standing 36/36, block lying 26/36, cylinder 0/36,
+plate 0/36. The arm lab has no wrist roll: its jaws close 74.5 deg from x at the bench, so the four turns
+are 74, 44, 14 and 16 deg against them. The lying block is lost 9/9 by its ends (16 deg) - it turns 40 deg
+in the jaws on the carry and slides out (OPEN LW-034, reproduced) - and held 9/9 across. The grasp check
+missed 13 of 18 held cubes and blocks at 44 deg: they are turned square before it looks, and the 1 s close
+leaves a jaw pushing 4 counts of current where the feel needs 6 (OPEN LW-056). The cylinder is pushed out
+of the jaws by one contact a pad with multiccd off (OPEN LW-057); the plate is out of the 35 mm pads'
+reach. Suites 1220 with a display, 1150 headless.
+Unfinished: FR-043's camera mode, the other grippers, intervals clustered by pose, friction use at the
+lift, the Joint lab's button; why the lying block is held at 14 deg and lost at 16.
+For the owner: LW-056 is a real defect in the template every arm-lab program starts from - a held cube
+can be reported missed. Mending it moves recorded runs (the Fetch closes the same way); it is a
+reliability repair I can take next, measured on the bench before and after.
+
 ## 2026-11-21 · Claude (Cowork) · an 8 mm curb, traced (OPEN LW-052)
 Did: the contacts while the kit cart meets an 8 mm and a 12 mm curb, and a test that holds what they
 show. OPEN LW-052 done; ADR 0076's paragraph says why. Branch claude/lw-052 on 803c680.

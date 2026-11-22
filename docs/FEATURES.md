@@ -374,6 +374,15 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   wheels. The Inventory's *What it can do* shows these for the example a design is, as
   designed, and for any other design the commands that would measure it
   ([ADR 0076](adr/0076-how-far-a-design-can-go.md)).
+- **A grasp bench.** Which objects and poses a gripper holds, asked directly rather than inside a
+  task: five diagnostic objects - a 25 mm cube, the kit's block standing and lying, a cylinder, a thin
+  plate - each at 36 poses on a bench, through the arm lab's pick-and-place template, judged by the
+  object: lifted 10 cm, carried 20 cm, held 2 s without slipping. `python -m
+  little_world.inventory.graspbench --design arm_lab --jobs 2`. On the arm lab the cube and the
+  standing block are held at every pose; the lying block is lost every time the jaws take it by its
+  ends - the loss the Fetch found - and the cylinder and the plate never; and the program's grasp check
+  misses a held cube that the jaws turned square before it looked
+  ([ADR 0077](adr/0077-a-grasp-bench.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the
