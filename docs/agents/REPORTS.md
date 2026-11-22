@@ -11,6 +11,15 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · a motor wired backwards, in What's new (FR-044)
+Did: What's new's first demonstration, *A motor wired backwards* - a sample arm whose elbow motor has a
+negative gear (`assets/samples/arm_elbow_reversed.xml`) brought into Real's Joint lab, once; the Joint
+lab names the elbow. ADR 0079 amended. Branch claude/fr-044-demo on 9c0e7e2.
+Measured: the probe's verdicts on the sample - shoulder agrees, elbow reversed (told +5 deg, -5.0).
+Suites 1231 with a display, 1158 headless.
+Unfinished: FR-044's one-click flip.
+For the owner: What's new -> A motor wired backwards.
+
 ## 2026-11-22 · Claude (Cowork) · how close each grip came to slipping (FR-043)
 Did: each bench run keeps the most of its grip's friction in use while the object is in the air
 (`Outcome.grip`, FR-036's `grip_use`); the report's section 'How close to slipping' (`grips`); the

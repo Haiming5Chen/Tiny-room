@@ -7,10 +7,12 @@ its program, arms the disturbance the sweeps tried and starts the run, and the s
 what to watch for. A workshop mixin.
 """
 from dataclasses import dataclass
+from pathlib import Path
 import textwrap
 
 MUTED = (.6, .74, .77)
 ACCENT = (.37, .83, .69)
+BACKWARDS = Path(__file__).resolve().parents[1] / 'assets' / 'samples' / 'arm_elbow_reversed.xml'
 
 
 @dataclass(frozen=True)
@@ -24,7 +26,8 @@ class Demo:
     where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
                             # 'factory': Real's cell; 'conveyor': beside the roller conveyor;
                             # 'curbs': the kit cart driven at the Curb run's curbs (FR-040);
-                            # 'bench': the arm lab at the grasp bench (ADR 0077)
+                            # 'bench': the arm lab at the grasp bench (ADR 0077);
+                            # 'import': a robot brought in from its file in the Joint lab (ADR 0079)
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
@@ -39,6 +42,12 @@ class Demo:
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('backwards', 'A motor wired backwards',
+         "A two-link arm is brought in from its file, its elbow motor written with a negative gear. On "
+         "import each servo is moved 5 degrees once: the shoulder turns as its file says; the elbow, told "
+         "+5, goes -5 - and the Joint lab says so, where it used to say nothing was wrong.",
+         'on the left, under the robot: one servo not as its file says, and which way it went',
+         '', 'ADR 0079', where='import'),
     Demo('ends', 'By its ends, it falls',
          "On the grasp bench the arm lab picks the kit's block lying on its side, turned so that its jaws - "
          "which no wrist turns - take it by its ends. Felt held, it is lifted; carried along its length it "
@@ -201,6 +210,9 @@ class WhatsNew:
         if demo.where == 'bench':
             self.start_bench_demo(demo)
             return
+        if demo.where == 'import':
+            self.start_import_demo(demo)
+            return
         if not self.building:
             self.simulate()             # back to build: the demonstration sets up its own machine
         self.close_bench()
@@ -303,6 +315,24 @@ class WhatsNew:
         self.start_program()
         self.demo = demo.id
         self.status = f'{demo.title}: {demo.watch}.'
+
+    def start_import_demo(self, demo):
+        """Over to Real's Joint lab with the arm whose elbow is wired backwards, brought in from its file -
+        once: shown again after that from the robot library (ADR 0079)."""
+        from little_world.assets import robot_library
+        from little_world.assets.robot_models import metadata
+        self.demo = demo.id
+        self._switch_view('Real')
+        real = self.workspace_host.active_workspace
+        if real.experiment != 'Joint lab':
+            real.select_experiment('Joint lab')
+        title = 'Two-link arm, elbow wired backwards'
+        asset = next((a for a in robot_library.entries() if metadata(a).get('title') == title), None)
+        if asset is None:
+            real.import_robot_file(str(BACKWARDS))
+        else:
+            real.select_robot(asset)
+        real.status = f'{demo.title}: {demo.watch}.'
 
     def start_factory_demo(self, demo):
         """Over to Real: the Panda's pick-and-place cell, reset, and a production run started

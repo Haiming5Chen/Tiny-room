@@ -20,17 +20,17 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['ends', 'held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
+    assert [d.id for d in DEMOS] == ['backwards', 'ends', 'held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
                                      'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['bench', 'tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
+    assert [d.where for d in DEMOS] == ['import', 'bench', 'tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
                                         'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1.] * 10 + [16.] + [1.] * 7
+    assert [d.heavier for d in DEMOS] == [1.] * 11 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 8 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0.] * 7 + [7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['hand'] * 4 + ['conveyor'] * 2 + ['hand'] * 12
-    assert [d.sensing for d in DEMOS] == ['known'] * 4 + ['camera'] + ['known'] * 13
+    assert [d.product for d in DEMOS] == ['Small block'] * 9 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0.] * 8 + [7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['hand'] * 5 + ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['known'] * 5 + ['camera'] + ['known'] * 13
     assert [(d.id, d.top) for d in DEMOS if d.top] == [('held', 51.)], "the tilt table stopped at 51 deg (ADR 0076)"
     assert [(d.id, d.bench) for d in DEMOS if d.bench] == [('ends', ('block lying', (0., 0., 90.)))], "ADR 0077"
     assert BY_ID['felt'].disturbance == BY_ID['look_again'].disturbance, "the same cube, moved: now felt"
@@ -591,6 +591,57 @@ def test_held_at_51_degrees_the_arm_cart_creeps_along_the_rail_and_goes_over(tmp
     assert 'Stood 3 s at 51 deg' in words and 'stood: still on its wheels 3 s after the table stopped' in words
     report = seen['report']
     assert report.field == 'tilt-51' and report.static[1] == pytest.approx(51.1, abs=.2), report.static
+
+
+@WINDOW
+def test_a_motor_wired_backwards_is_named_in_the_joint_lab_and_imported_once(tmp_path, monkeypatch):
+    """ADR 0079: What's new brings in the arm whose elbow motor is wired backwards; on import each servo
+    is moved once, and the Joint lab says one servo is not as its file says, and which way it went. A
+    second press shows it again from the robot library rather than importing it twice."""
+    import glfw
+    from little_world.assets import robot_library
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {}
+
+    def in_the_lab(real, inner):
+        def drawn():
+            inner()
+            seen['frames'] = seen.get('frames', 0) + 1
+            if seen['frames'] == 3:
+                seen['first'] = real.robot_asset
+                real.events.append(lambda: app.start_demo('backwards'))      # pressed again
+            elif seen['frames'] == 6:
+                seen['second'] = real.robot_asset
+                glfw.set_window_should_close(app.window, True)
+        return drawn
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            button = next(b for b in app.active_workspace.buttons if b.label == 'A motor wired backwards')
+            button.action()                     # over to Real: its own draw from here on
+            real = app.workspace_host.active_workspace
+            assert real.app_mode == 'Real' and real.experiment == 'Joint lab' and app.demo == 'backwards'
+            seen['words'] = said(real, monkeypatch, 'draw_joint_lab')
+            monkeypatch.setattr(real, 'draw', in_the_lab(real, real.draw))
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=120)
+    assert seen.get('second'), seen
+    assert seen['first'] == seen['second'] and robot_library.is_user(seen['first'])
+    assert len(robot_library.entries()) == 1, "imported once"
+    from little_world.assets.robot_models import metadata
+    meta = metadata(seen['first'])
+    assert [p['verdict'] for p in meta['probe']] == ['agrees', 'reversed']
+    words = ' '.join(seen['words'])
+    assert 'Each servo moved once on import: 1 not as its file says - see below.' in words
+    assert "Check: 'elbow' sent +5 deg went -5.0" in words
 
 
 @WINDOW

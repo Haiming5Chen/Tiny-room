@@ -38,6 +38,11 @@ moved as its file says, above its checks. A servo on a tendon is not probed.
   test unchanged.
 - The probe adds 0.01 to 0.05 s to an import.
 - Suites on MuJoCo 3.10.0: 1226 passed with a display, 1154 headless.
+- *In What's new* (22 November): *A motor wired backwards* brings into Real's Joint lab a sample arm
+  whose elbow motor has a negative gear (`assets/samples/arm_elbow_reversed.xml`, kept deliberately
+  wrong) - imported once; pressed again, shown from the robot library - and the Joint lab says one
+  servo is not as its file says, and which way it went. Checked in `tests/test_whats_new.py` (a window
+  test). Suites: 1231 passed with a display, 1158 headless.
 
 **Boundaries.** One servo at a time, from home only, with the contacts off: what a joint does under
 load, or at another pose, is not probed. The name check reads names; a joint named nothing like its

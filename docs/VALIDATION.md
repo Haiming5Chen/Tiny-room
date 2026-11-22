@@ -2160,3 +2160,14 @@ Checked in `tests/test_graspbench.py` (one new). Suites on MuJoCo 3.10.0: 1230 p
 
 Not claimed: friction in use while the object still touches the bench; a margin a real gripper would
 need - it is the engine's pyramidal cone (ADR 0061).
+
+## A motor wired backwards, in What's new — 2026-11-22
+
+ADR 0079 amended. What's new's first demonstration brings into Real's Joint lab a sample arm whose
+elbow motor has a negative gear; the import's probe finds the shoulder as its file says and the elbow
+reversed, and the Joint lab says one servo is not as its file says and which way it went. Pressed
+again, the arm is shown from the robot library, not imported twice. Checked in
+`tests/test_whats_new.py` (one window test new; the demonstrations' list). Suites on MuJoCo 3.10.0:
+1231 passed with a display, 1158 headless.
+
+Not claimed: what the demonstration shows is the planted fault's - a file's own faults are its own.
