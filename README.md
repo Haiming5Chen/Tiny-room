@@ -70,8 +70,8 @@ This is a simulation, and nothing in it has been checked against hardware. What 
 claims with numbers, and you can measure them again:
 
 ```sh
-little-world evidence                    # thirteen headline claims, here against recorded: 4 min
-little-world evidence --quick            # the six that take seconds
+little-world evidence                    # fifteen headline claims, here against recorded: 4 min
+little-world evidence --quick            # the seven that take seconds
 python -m pip install -e '.[workshop,dev]'
 python -m pytest -q -m "not slow"        # the quick tier: about 1,000 tests in a minute or two
 python -m pytest -q                      # everything without a window: about 25 min on two cores

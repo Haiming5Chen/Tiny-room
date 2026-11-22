@@ -3,12 +3,12 @@
 Written by `little-world evidence --markdown` from `src/little_world/evidence.py`; a test keeps the two the same.
 
 Every physical claim in this project has a number, a decision record that explains it and a test that holds
-it. This page lists thirteen headline claims with the numbers recorded for them
-(Linux x86_64, Python 3.13, MuJoCo 3.10.0, 10 Nov 2026) and the tolerance inside which a re-run still counts as holding. Run
+it. This page lists fifteen headline claims with the numbers recorded for them
+(Linux x86_64, Python 3.13, MuJoCo 3.10.0, 10 Nov 2026; the grasp bench and the import probe 22 Nov) and the tolerance inside which a re-run still counts as holding. Run
 
 ```sh
 little-world evidence            # all of them, about four minutes on two cores
-little-world evidence --quick    # the six that take seconds
+little-world evidence --quick    # the seven that take seconds
 little-world evidence --only fetch tilt --json mine.json
 ```
 
@@ -91,6 +91,31 @@ The arm lab lifts its cube by finger contact and rests it in the tray.
 | resting in the tray at | 5.744 s | 0.5 s |
 
 Why: [docs/adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md](adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md). Held by `tests/test_arm_tasks.py::test_the_pick_and_place_template_meets_the_fields_goals`. Again: `little-world evidence --only pick-place` (about 2 s).
+
+## `grasp-bench`
+
+On the grasp bench the arm lab holds the kit's block lying across its jaws; taken by its ends it uses all of its friction, slides out and falls.
+
+| Measured | Recorded | Holds within |
+| --- | --- | --- |
+| across the jaws: held | yes | the same |
+| across the jaws: lifted | 9.51 cm | 0.5 cm |
+| by its ends: held | no | the same |
+| by its ends: friction in use at the most | 100 % | 2 % |
+
+Why: [docs/adr/0077-a-grasp-bench.md](adr/0077-a-grasp-bench.md). Held by `tests/test_graspbench.py::test_the_lying_block_is_held_across_the_jaws_and_falls_along_them`. Again: `little-world evidence --only grasp-bench` (about 9 s).
+
+## `import-probe`
+
+Brought in from its own file, an arm whose elbow motor is wired backwards is named: each servo is moved once, and the elbow, told +5 deg, turns -5.
+
+| Measured | Recorded | Holds within |
+| --- | --- | --- |
+| shoulder sent +5 deg: turned | 5.04 deg | 0.25 deg |
+| elbow sent +5 deg: turned | -5.01 deg | 0.25 deg |
+| the elbow named | reversed | the same |
+
+Why: [docs/adr/0079-each-servo-moved-once-on-import.md](adr/0079-each-servo-moved-once-on-import.md). Held by `tests/test_robot_library.py::test_three_planted_faults_are_each_named`. Again: `little-world evidence --only import-probe` (about 1 s).
 
 ## `fetch`
 

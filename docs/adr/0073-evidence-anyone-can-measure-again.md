@@ -60,6 +60,10 @@ registry writes; the command lists, refuses, measures two claims and writes its 
 list names tests that exist; what it lists, and every window test, is marked slow; every link
 leads to a file; the README is short. Suites on MuJoCo 3.10.0: 1179 passed with a display, 1112 headless.
 
+Added on 22 November: the grasp bench's lying block - held across the arm lab's jaws, lost by its
+ends with all of its friction in use (ADR 0077) - and the import's probe naming a motor wired
+backwards on the sample arm kept for it (ADR 0079). Fifteen claims, seven quick.
+
 **Boundaries.** The records are one machine's: a difference elsewhere says the result is not
 portable, not which machine is right. The tolerances are judgment - wide enough for a run that
 ends the same way a little later, not derived. Twelve claims of several hundred: the tests hold

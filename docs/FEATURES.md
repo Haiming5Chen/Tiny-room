@@ -342,7 +342,7 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   assets, a second of physics, an OpenGL window - and prints the line that mends whatever is
   missing. Designs are kept in your own Little World folder
   ([ADR 0072](adr/0072-from-a-clone-to-a-running-window.md)).
-- **Evidence you can measure again.** `little-world evidence` runs thirteen of the project's
+- **Evidence you can measure again.** `little-world evidence` runs fifteen of the project's
   headline measurements on your machine and prints each beside the number recorded for it -
   holds, or differs; two of them are flaws kept in the list. `pytest -m "not slow"` is a quick
   tier of about 1,000 tests in a minute; two GitHub workflows run it and the rest. What was found

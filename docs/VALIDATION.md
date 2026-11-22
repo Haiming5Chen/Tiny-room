@@ -2171,3 +2171,14 @@ again, the arm is shown from the robot library, not imported twice. Checked in
 1231 passed with a display, 1158 headless.
 
 Not claimed: what the demonstration shows is the planted fault's - a file's own faults are its own.
+
+## Two more claims anyone can measure again — 2026-11-22
+
+ADR 0073 amended. `little-world evidence` measures fifteen claims: the grasp bench's lying block (held
+across the jaws, lifted 9.51 cm; by its ends not held, 100 % of its friction in use; about 9 s) and the
+import probe on the sample arm whose elbow motor is wired backwards (the shoulder +5.04 deg, the elbow
+-5.01, named reversed; quick). Both hold on Linux, MuJoCo 3.10.0. docs/EVIDENCE.md is written from the
+registry. Held by `tests/test_evidence.py` (the registry, the page). Suites on MuJoCo 3.10.0: 1231
+passed with a display, 1158 headless.
+
+Not claimed: either on another machine - the records are this one's, the tolerances judgment.

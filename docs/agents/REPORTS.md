@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · two more claims anyone can measure again
+Did: `evidence.grasp_bench` and `evidence.import_probe` - the lying block across and by its ends (ADR
+0077), and the probe on the sample arm with its elbow wired backwards (ADR 0079); fifteen claims, seven
+quick; docs/EVIDENCE.md written from the registry; README, FEATURES and ADR 0073 say so. Branch
+claude/evidence-0077 on 3a9f091.
+Measured: both hold - lifted 9.51 cm across, 100 % of its friction by its ends; the shoulder +5.04 deg,
+the elbow -5.01, named reversed. Suites 1231 with a display, 1158 headless.
+Unfinished: nothing of this.
+For the owner: `little-world evidence --only grasp-bench import-probe` measures both on your Mac.
+
 ## 2026-11-22 · Claude (Cowork) · a motor wired backwards, in What's new (FR-044)
 Did: What's new's first demonstration, *A motor wired backwards* - a sample arm whose elbow motor has a
 negative gear (`assets/samples/arm_elbow_reversed.xml`) brought into Real's Joint lab, once; the Joint

@@ -1,7 +1,7 @@
 """`little-world evidence`: the project's headline measurements, re-run here (ADR 0073).
 
 The documents make physical claims with numbers; the tests hold them inside tolerances and
-say pass or fail. This runs thirteen of them again on the machine in front of you and prints
+say pass or fail. This runs fifteen of them again on the machine in front of you and prints
 each number beside the one that was recorded - on Linux, MuJoCo 3.10.0, where every number
 in the documents was measured - so that anyone can see what holds on their own machine and
 what moved. Three record known flaws, kept in the list on purpose: the slope creep (OPEN LW-039),
@@ -9,7 +9,7 @@ the energy a curb's contact gives the cart from nowhere (OPEN LW-047) and the ti
 reading a tip late (OPEN LW-053). One checks the physics check itself (FR-040).
 
     little-world evidence               every claim, about four minutes on two cores
-    little-world evidence --quick       the six that take seconds
+    little-world evidence --quick       the seven that take seconds
     little-world evidence --only fetch tilt
     little-world evidence --list        what is claimed, without running anything
     little-world evidence --json FILE   also write what was measured, to attach to a report
@@ -26,7 +26,7 @@ import sys
 import time
 from dataclasses import dataclass
 
-RECORDED_ON = 'Linux x86_64, Python 3.13, MuJoCo 3.10.0, 10 Nov 2026'
+RECORDED_ON = 'Linux x86_64, Python 3.13, MuJoCo 3.10.0, 10 Nov 2026; the grasp bench and the import probe 22 Nov'
 
 
 @dataclass(frozen=True)
@@ -139,6 +139,30 @@ def doorway():
 def pick_place():
     r = _run('pick_place', 'arm_lab')
     return {'cube lifted at': _when(r, 'lifted'), 'resting in the tray at': _when(r, 'placed')}
+
+
+def grasp_bench():
+    """The grasp bench's telling pair (ADR 0077): the kit's block lying on its side, the arm lab's jaws
+    across it and along it."""
+    from little_world.inventory import graspbench
+    across = graspbench.run('arm_lab', 'block lying', (0., 0., 0.))
+    along = graspbench.run('arm_lab', 'block lying', (0., 0., 90.))
+    return {'across the jaws: held': across.held, 'across the jaws: lifted': 100 * across.lifted,
+            'by its ends: held': along.held, 'by its ends: friction in use at the most': 100 * (along.grip or 0.)}
+
+
+def import_probe():
+    """The import's probe on the sample arm whose elbow motor is wired backwards (ADR 0079)."""
+    import tempfile
+    from math import degrees
+    from pathlib import Path
+    from little_world.physics.importer import prepare
+    sample = Path(__file__).resolve().parent / 'assets' / 'samples' / 'arm_elbow_reversed.xml'
+    with tempfile.TemporaryDirectory() as assets:
+        _, meta, _, _ = prepare(sample, assets)
+    moved = {p['joint']: p for p in meta['probe']}
+    return {'shoulder sent +5 deg: turned': degrees(moved['shoulder']['moved']),
+            'elbow sent +5 deg: turned': degrees(moved['elbow']['moved']), 'the elbow named': moved['elbow']['verdict']}
 
 
 def fetch():
@@ -266,6 +290,16 @@ CLAIMS = (
     Claim('pick-place', 'The arm lab lifts its cube by finger contact and rests it in the tray.',
           '0016-arm-tasks-tool-moves-poses-grasp-checks.md', 'test_arm_tasks.py::test_the_pick_and_place_template_meets_the_fields_goals',
           (Q('cube lifted at', 1.922, .2, 's'), Q('resting in the tray at', 5.744, .5, 's')), pick_place, 2, quick=True),
+    Claim('grasp-bench', 'On the grasp bench the arm lab holds the kit\'s block lying across its jaws; taken by its ends it uses '
+          'all of its friction, slides out and falls.',
+          '0077-a-grasp-bench.md', 'test_graspbench.py::test_the_lying_block_is_held_across_the_jaws_and_falls_along_them',
+          (Q('across the jaws: held', True), Q('across the jaws: lifted', 9.51, .5, 'cm'), Q('by its ends: held', False),
+           Q('by its ends: friction in use at the most', 100., 2., '%')), grasp_bench, 9),
+    Claim('import-probe', 'Brought in from its own file, an arm whose elbow motor is wired backwards is named: each servo is '
+          'moved once, and the elbow, told +5 deg, turns -5.',
+          '0079-each-servo-moved-once-on-import.md', 'test_robot_library.py::test_three_planted_faults_are_each_named',
+          (Q('shoulder sent +5 deg: turned', 5.04, .25, 'deg'), Q('elbow sent +5 deg: turned', -5.01, .25, 'deg'),
+           Q('the elbow named', 'reversed')), import_probe, 1, quick=True),
     Claim('fetch', 'The arm on its cart drives 1.8 m to a table, finds the cube with its camera, picks it up, brings it back '
           'and sets it in the bin: every goal met, the cube in the bin at 36.9 s, without looking twice.',
           '0042-set-down-not-dropped.md', 'test_fetch.py::test_the_mobile_manipulator_fetches_the_cube_by_itself',
@@ -350,10 +384,10 @@ def markdown():
     lines = ['# Evidence: what is claimed, where it was measured, and how to measure it again', '',
              'Written by `little-world evidence --markdown` from `src/little_world/evidence.py`; a test keeps the two the same.', '',
              'Every physical claim in this project has a number, a decision record that explains it and a test that holds',
-             'it. This page lists thirteen headline claims with the numbers recorded for them',
+             'it. This page lists fifteen headline claims with the numbers recorded for them',
              f'({RECORDED_ON}) and the tolerance inside which a re-run still counts as holding. Run', '',
              '```sh', 'little-world evidence            # all of them, about four minutes on two cores',
-             'little-world evidence --quick    # the six that take seconds',
+             'little-world evidence --quick    # the seven that take seconds',
              'little-world evidence --only fetch tilt --json mine.json', '```', '',
              'and each number is measured again on your machine and printed beside the recorded one. A physics engine',
              'is deterministic on one machine and build, not across processors, operating systems or MuJoCo releases:',
