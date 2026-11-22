@@ -153,7 +153,9 @@ climbing the engine's energy from nowhere gives it, and the arm cart's tilt prof
 climb reads a machine going over 2 to 4.6 deg late (ADR 0076). A grasp bench asks which objects and poses
 a gripper holds: on the arm lab the lying block is lost whenever the jaws take it by its ends, the
 cylinder and the thin plate always (ADR 0077); its grasp check missed held cubes the jaws had turned square,
-and the pick-and-place template now squeezes before it checks (ADR 0078).
+and the pick-and-place template now squeezes before it checks (ADR 0078). Each servo of an imported robot is
+moved once on import, and what it moved said; a reversed joint, a misnamed actuator or a gripper that does not
+close is named (ADR 0079).
 Next, by the evaluation of 11 November (docs/EVALUATION.md) - the branch was published on 12
 November (v0.2.0), and its quick tier passes on Linux and Apple silicon: the quick tier mended on
 Windows (OPEN LW-045); a licence chosen; the evidence run on the owner's Mac; one servo checked

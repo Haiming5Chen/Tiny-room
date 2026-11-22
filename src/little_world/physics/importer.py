@@ -65,6 +65,12 @@ SQUEEZE_AT = .1         # a gripper squeezes with all its force once its jaws ar
 GRIP = 12.              # N at each jaw: what a gripper whose file gives no effort squeezes with - the kit gripper's (ADR 0017)
 JAW_SOLREF = (.004, 1.) # a jaw's contact: a time constant of twice the 2 ms step, the stiffest MuJoCo takes
 JAW_SOLIMP = (.95, .99, .001)
+NUDGE = radians(5.)     # the import's probe sends each hinge's servo this far from home (FR-044)
+NUDGE_SLIDE = .005      # m: and each slide's
+PROBE_SETTLE = .4       # s the probe holds the robot at home before each nudge
+PROBE_HOLD = 1.         # s it holds each nudge before it reads the joints
+AGREE = .1              # a joint that moves within 10 % of how far it was sent moves as the file says
+PLAIN = {'x': ('forward', 'back'), 'y': ('left', 'right'), 'z': ('up', 'down')}
 VERSION = 1
 
 # What a URDF may say (ROS urdf/XML, read 21 Oct 2026): anything else is reported, because
@@ -633,6 +639,13 @@ def prepare(path, assets, name=None):
                      + (f"its effort in the file, {grip['squeeze']:.3g} {grip['unit']}" if grip['given']
                         else "the file gives no effort: the kit gripper's")
                      + '); the tool point is between its fingers, and the grasp blocks hold with it')
+    # Each servo moved once, and what it moved said (FR-044): a file's own actuators are taken as
+    # written, and a negative gear or a reversed gripper passes every other check.
+    probed = grip if grip is not None else _gripper(model, servos, mimic, jid, home, parent) if own else None
+    point = (grip['palm'], grip['point']) if grip is not None else (tool, (0., 0., 0.))
+    probes = probe(model, joints, home, servos, [home[n] for _, n in servos], base.name, point, probed)
+    for p in probes:
+        (report.found if p['verdict'] in ('agrees', 'closes') else report.warn)(p['words'])
     hinge_n = sum(k == 'hinge' for k in joint_kind.values())
     report.lines.insert(0, ('found', f'{title} ({kind}): {len(bodies)} links, {len(joints)} joints '
                             f'({hinge_n} hinge{"s" if hinge_n != 1 else ""}'
@@ -653,6 +666,7 @@ def prepare(path, assets, name=None):
         gripper=None if grip is None else dict(channel=grip['channel'], open=grip['open'], closed=grip['closed'],
                                                jaws=list(grip['jaws'])),
         report=report.lines,
+        probe=[{k: p[k] for k in ('actuator', 'joint', 'sent', 'moved', 'verdict')} for p in probes],
     )
     return spec, meta, report, copied
 
@@ -757,6 +771,141 @@ def _moves(model, body, root):
             return True
         body = int(model.body_parentid[body])
     return False
+
+
+# -- the probe (FR-044) -----------------------------------------------------------------
+
+
+def probe(model, joints, home, servos, ctrl, root, tool=None, gripper=None):
+    """Each servo sent a little way from home, one at a time - a hinge's 5 deg, a slide's 5 mm - in a
+    copy of the model at the app's 2 ms step and integrator, its contacts off, and what moved: one dict for each
+    (actuator, joint, sent, moved, verdict, words), then the gripper's, told to close, if there is one.
+    `servos` are (actuator, joint) pairs, `ctrl` their home commands, `tool` a (link, offset) whose
+    point is followed, `gripper` an importer gripper (channel, closed, jaws). A verdict is 'agrees'
+    (moved within AGREE of what it was sent), 'reversed', 'scaled', 'still' or 'renamed' (the
+    actuator's name is another joint's); the gripper's 'closes', 'opens' or 'still' (FR-044)."""
+    model = _scratch(model)
+    model.opt.timestep = .002
+    model.opt.integrator = mj.mjtIntegrator.mjINT_IMPLICITFAST     # as the backend runs every scene
+    model.opt.disableflags |= int(mj.mjtDisableBit.mjDSBL_CONTACT)
+    data = mj.MjData(model)
+    jid = {n: model.joint(n).id for n in joints}
+    acts = [model.actuator(a).id for a, _ in servos]
+    base = model.body(root).id
+    # The tool point: the link given, else the one the last servo turns.
+    link = model.body(tool[0]).id if tool and tool[0] else int(model.jnt_bodyid[jid[servos[-1][1]]]) if servos else None
+    offset = np.asarray(tool[1] if tool else (0., 0., 0.), dtype=float)
+
+    def start():
+        mj.mj_resetData(model, data)
+        for n in joints:
+            data.qpos[model.jnt_qposadr[jid[n]]] = home[n]
+        for a, c in zip(acts, ctrl):
+            data.ctrl[a] = c
+        mj.mj_forward(model, data)
+        for _ in range(round(PROBE_SETTLE / model.opt.timestep)):
+            mj.mj_step(model, data)
+
+    def hold():
+        for _ in range(round(PROBE_HOLD / model.opt.timestep)):
+            mj.mj_step(model, data)
+
+    def angles():
+        return {n: float(data.qpos[model.jnt_qposadr[jid[n]]]) for n in joints}
+
+    def point():
+        if link is None:
+            return None
+        return data.xpos[link] + data.xmat[link].reshape(3, 3) @ offset
+
+    out = []
+    for channel, ((name, joint), a) in enumerate(zip(servos, acts)):
+        if gripper is not None and channel == gripper['channel'] or model.actuator_trntype[a] != mj.mjtTrn.mjTRN_JOINT:
+            continue        # a gripper is told to close below; a servo on a tendon is not probed
+        j = jid[joint]
+        hinge = model.jnt_type[j] == mj.mjtJoint.mjJNT_HINGE
+        start()
+        # Within the joint's limits and the servo's range: up from home if there is room, else down.
+        low, high = model.jnt_range[j] if model.jnt_limited[j] else (-np.inf, np.inf)
+        if model.actuator_ctrllimited[a]:
+            low, high = max(low, model.actuator_ctrlrange[a][0]), min(high, model.actuator_ctrlrange[a][1])
+        room = (high - home[joint], home[joint] - low)
+        step = min(NUDGE if hinge else NUDGE_SLIDE, .8 * max(room))
+        sent = step if room[0] >= step else -step
+        before, was = angles(), point()
+        frame = data.xmat[base].reshape(3, 3).copy()
+        data.ctrl[a] += sent
+        hold()
+        after = angles()
+        moved = after[joint] - before[joint]
+        ratio = moved / sent
+        verdict = ('agrees' if abs(ratio - 1) <= AGREE else 'reversed' if abs(ratio + 1) <= AGREE
+                   else 'still' if abs(ratio) < AGREE else 'scaled')
+        unit, scale = ('deg', degrees(1.)) if hinge else ('mm', 1000.)
+        told = f"'{joint}' sent {scale * sent:+.0f} {unit}"
+        went = _went(frame, None if was is None else point() - was)
+        words = {'agrees': f'{told} {"turned" if hinge else "slid"} {scale * moved:+.1f} {unit}{went} - as the file says',
+                 'reversed': f"{told} went {scale * moved:+.1f} {unit}: the other way - its actuator '{name}' drives it "
+                             'backwards',
+                 'still': f"{told} did not move: its actuator '{name}' does not drive it",
+                 'scaled': f"{told} went {scale * moved:+.1f} {unit}: {abs(ratio):.2g} times as far - its actuator "
+                           f"'{name}' is scaled"}[verdict]
+        named = next((n for n in joints if n != joint and _names(n, name) and not _names(joint, name)), None)
+        if named and verdict == 'agrees':
+            verdict, words = 'renamed', f"Its actuator '{name}' drives '{joint}', though its name says '{named}'"
+        out.append(dict(actuator=name, joint=joint, sent=float(sent), moved=float(moved), verdict=verdict, words=words))
+    if gripper is not None:
+        name, joint = servos[gripper['channel']]
+        a = acts[gripper['channel']]
+        start()
+        wide = _gap(model, data, gripper['jaws'])
+        data.ctrl[a] = gripper['closed']
+        hold()
+        narrow = _gap(model, data, gripper['jaws'])
+        verdict = 'closes' if narrow <= wide - CLOSING else 'opens' if narrow >= wide + CLOSING else 'still'
+        words = {'closes': f"Told to close, '{joint}' brought its jaws together ({1000 * wide:.0f} to {1000 * narrow:.0f} mm apart) "
+                           '- as the file says',
+                 'opens': f"Told to close, '{joint}' opened its jaws ({1000 * wide:.0f} to {1000 * narrow:.0f} mm apart): its "
+                          f"actuator '{name}' drives it backwards",
+                 'still': f"Told to close, '{joint}' did not bring its jaws together ({1000 * wide:.0f} mm apart): its actuator "
+                          f"'{name}' may drive it backwards"}[verdict]
+        out.append(dict(actuator=name, joint=joint, sent=float(gripper['closed']), moved=float(wide - narrow),
+                        verdict=verdict, words=words))
+    return out
+
+
+def _scratch(model):
+    """A copy of a compiled model, to change its options on."""
+    import copy
+    return copy.copy(model)
+
+
+def _names(joint, actuator):
+    """Whether an actuator's name names this joint: the joint's name, less a '_joint' ending, within it."""
+    stem = re.sub(r'_?joint$', '', joint, flags=re.I).lower()
+    return len(stem) >= 3 and stem in actuator.lower()
+
+
+def _went(frame, moved):
+    """Where the tool point went, in the robot base's words: ', the tool 31 mm down'."""
+    if moved is None:
+        return ''
+    local = frame.T @ moved
+    if np.linalg.norm(local) < .001:
+        return ', the tool point where it was'
+    k = int(np.argmax(np.abs(local)))
+    way = PLAIN['xyz'[k]][0 if local[k] > 0 else 1]
+    return f', the tool {1000 * abs(local[k]):.0f} mm {way}'
+
+
+def _gap(model, data, jaws):
+    """The gap between two jaws: the nearest of their shapes' distances (m), 0 touching."""
+    a, b = (model.body(name).id for name in jaws)
+    def shapes(body):
+        mine = [g for g in range(model.ngeom) if model.geom_bodyid[g] == body]
+        return [g for g in mine if model.geom_contype[g] or model.geom_conaffinity[g]] or mine
+    distances = [mj.mj_geomDistance(model, data, g, h, 1., None) for g in shapes(a) for h in shapes(b)]
+    return max(0., float(min(distances))) if distances else 0.
 
 
 # -- the library ------------------------------------------------------------------------

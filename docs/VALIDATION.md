@@ -2118,3 +2118,17 @@ Suites on MuJoCo 3.10.0: 1223 passed with a display, 1151 headless.
 
 Not claimed: that the bench's grid suits a design other than the arm lab - its bench stands where the
 arm lab reaches; a run there of a design that cannot reach it says so, pose by pose.
+
+## Each servo moved once on import — 2026-11-22
+
+ADR 0079 (FR-044). At the end of every import each servo is sent 5 deg (a slide 5 mm) from home in a
+copy of the model at 2 ms with the backend's integrator and no contacts, held 1 s, and what moved is
+read; a gripper is told to close. The robot library's test robots agree (each joint +5.0 deg when
+sent +5; the gripper and the claw close); the four Menagerie arms agree, each servo within 3 % (the
+Panda's hand, on a tendon, not probed); three planted faults that the importer took without a word
+before - a negative gear, two actuators on each other's joints, a reversed claw - are each named.
+The probe adds 0.01 to 0.05 s to an import. Checked in `tests/test_robot_library.py` (three new).
+Suites on MuJoCo 3.10.0: 1226 passed with a display, 1154 headless.
+
+Not claimed: a joint under load or at another pose than home; an actuator whose name says nothing of
+its joint; a fault mended by the app - the report names it.

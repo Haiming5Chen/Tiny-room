@@ -20,6 +20,9 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 - The pick-and-place template squeezes before it checks its grasp. On the grasp bench its check missed
   13 of 18 held cubes and blocks the jaws had turned square before it looked; now it feels every held
   part, and the arm lab's cube reaches the tray 0.02 s later (ADR 0078).
+- A robot brought in from its own file has each servo moved once on import, and the report - and the
+  Joint lab - say what it moved, or what the file gets wrong: a joint turned backwards, an actuator on
+  another joint than its name says, a gripper that does not close (ADR 0079).
 
 ## 0.4.0 - 21 November 2026
 

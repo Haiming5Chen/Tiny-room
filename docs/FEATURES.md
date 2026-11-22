@@ -183,7 +183,11 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   own weight, no stronger than the file's effort limit - and says in plain words what it found,
   what it added and what to check (a misspelt attribute, a joint too weak to hold the arm up, a
   mesh MuJoCo cannot read). The robot is then driven from the keyboard, programmed with blocks
-  and placed like the Menagerie arms ([ADR 0044](adr/0044-robots-from-their-own-files.md)).
+  and placed like the Menagerie arms ([ADR 0044](adr/0044-robots-from-their-own-files.md)). On
+  import each servo is moved once, 5 deg from home, and the report says what it moved - "'shoulder'
+  sent +5 deg turned +5.0 deg, the tool 49 mm forward - as the file says" - or names what the file
+  gets wrong: a joint turned backwards, an actuator on another joint than its name says, a gripper
+  that does not close when told to ([ADR 0079](adr/0079-each-servo-moved-once-on-import.md)).
 - **The tool travels its line.** In Tool mode a step now carries the tool along a straight line
   at 5 cm/s instead of letting each joint take its own path - a 10 cm step of the kit arm strayed
   up to 12.7 mm from its line, now 0.3 mm - and holding the arrow keys, or Page Up and Page Down,

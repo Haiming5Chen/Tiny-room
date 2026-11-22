@@ -542,3 +542,106 @@ def test_a_claw_closing_on_a_fixed_jaw_squeezes_as_the_kit_gripper_when_its_file
     # jaws meet, 0.62 rad - 77 % of its travel - and presses them together.
     assert control.display_position('servo_1')[0] == pytest.approx(77., abs=1.)
     assert jaw_force(backend, 'machine/root__robot_claw', 'machine/root__robot_fixed_jaw') > 5.
+
+
+# -- the probe: each servo moved once, and what it moved said (FR-044) --------------------
+
+def own_arm(shoulder='shoulder', elbow='elbow', gear=1):
+    """The two-link arm as a MuJoCo model with position servos of its own - `shoulder_motor` on
+    `shoulder` and `elbow_motor` on `elbow` - or a planted fault: a negative gear, swapped joints."""
+    return f'''<mujoco model="own_arm">
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="base_link">
+      <geom type="cylinder" size="0.08 0.025" pos="0 0 0.025" mass="2"/>
+      <body name="upper_arm" pos="0 0 0.05">
+        <joint name="shoulder" type="hinge" axis="0 1 0" range="-2 2"/>
+        <geom type="box" size="0.025 0.025 0.15" pos="0 0 0.15" mass="1.5"/>
+        <body name="forearm" pos="0 0 0.3">
+          <joint name="elbow" type="hinge" axis="0 1 0" range="-2.5 2.5"/>
+          <geom type="box" size="0.02 0.02 0.125" pos="0 0 0.125" mass="0.8"/>
+          <body name="tool0" pos="0 0 0.25"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="shoulder_motor" joint="{shoulder}" kp="800" kv="40"/>
+    <position name="elbow_motor" joint="{elbow}" kp="400" kv="20" gear="{gear}"/>
+  </actuator>
+</mujoco>'''
+
+
+def own_claw(gear=1):
+    """A claw closing on a fixed jaw, with a servo of its own; `gear` -1 plants a reversed one."""
+    return f'''<mujoco model="own_claw">
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="palm">
+      <geom type="box" size="0.05 0.02 0.01" mass="0.4"/>
+      <body name="fixed_jaw" pos="0.04 0 0.03"><geom type="box" size="0.005 0.01 0.02" mass="0.02"/></body>
+      <body name="claw" pos="-0.04 0 0.01">
+        <joint name="claw_joint" type="hinge" axis="0 1 0" range="-0.3 0.9"/>
+        <geom type="box" size="0.005 0.01 0.02" pos="0 0 0.02" mass="0.05"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator><position name="claw_motor" joint="claw_joint" kp="5" kv="0.1" gear="{gear}" ctrlrange="-0.3 0.9"/></actuator>
+</mujoco>'''
+
+
+def probed(tmp_path, name, text):
+    path = tmp_path / f'{name}.xml'
+    path.write_text(text, encoding='utf-8')
+    asset, report = import_robot(path)
+    from little_world.assets.robot_models import metadata
+    return {p['joint']: p['verdict'] for p in metadata(asset)['probe']}, report
+
+
+def test_each_servo_is_moved_once_and_the_report_says_what_it_moved(tmp_path):
+    """FR-044: after import each servo is sent 5 deg from home, one at a time, and the report says
+    what moved, in the robot base's words - here as the file says, for servos the importer added
+    and for a file's own."""
+    asset, report = import_robot(package(tmp_path, arm()))
+    found = report.of('found')
+    assert "'shoulder' sent +5 deg turned +5.0 deg, the tool 49 mm forward - as the file says" in found
+    assert "'elbow' sent +5 deg turned +5.0 deg, the tool 22 mm forward - as the file says" in found
+    assert not any('sent' in t for t in report.of('warning'))
+    verdicts, report = probed(tmp_path, 'own_arm', own_arm())
+    assert verdicts == {'shoulder': 'agrees', 'elbow': 'agrees'} and not report.of('warning')
+    path = tmp_path / 'gripper.urdf'
+    path.write_text(GRIPPER, encoding='utf-8')
+    _, report = import_robot(path)
+    assert any(t.startswith("Told to close, 'left_finger_joint' brought its jaws together (80 to 0 mm apart)")
+               for t in report.of('found'))
+
+
+def test_three_planted_faults_are_each_named(tmp_path):
+    """FR-044's check: a negative gear, two actuators on each other's joints and a reversed gripper
+    pass every other check of the import; the probe names each."""
+    verdicts, report = probed(tmp_path, 'negated', own_arm(gear=-1))
+    assert verdicts == {'shoulder': 'agrees', 'elbow': 'reversed'}
+    assert "'elbow' sent +5 deg went -5.0 deg: the other way - its actuator 'elbow_motor' drives it backwards" \
+        in report.of('warning')
+    verdicts, report = probed(tmp_path, 'swapped', own_arm('elbow', 'shoulder'))
+    assert verdicts == {'shoulder': 'renamed', 'elbow': 'renamed'}
+    assert "Its actuator 'shoulder_motor' drives 'elbow', though its name says 'shoulder'" in report.of('warning')
+    verdicts, report = probed(tmp_path, 'claw', own_claw())
+    assert verdicts == {'claw_joint': 'closes'}
+    verdicts, report = probed(tmp_path, 'reversed', own_claw(gear=-1))
+    assert verdicts == {'claw_joint': 'still'}
+    assert any(t.startswith("Told to close, 'claw_joint' did not bring its jaws together") for t in report.of('warning'))
+
+
+def test_the_shipped_arms_pass_the_probe():
+    """FR-044's check: the four Menagerie arms' servos each move their joint as sent, within 10 %
+    (the Panda's hand, a servo on a tendon, is not probed)."""
+    import mujoco as mj
+    from little_world.assets.robot_models import MODELS, metadata, model_path, tool
+    from little_world.physics.importer import probe
+    for asset in MODELS:
+        meta = metadata(asset)
+        model = mj.MjModel.from_xml_path(str(model_path(asset)))
+        rows = probe(model, meta['joints'], dict(zip(meta['joints'], meta['home'])),
+                     list(zip(meta['actuators'], meta['servo_joints'])), meta['ctrl'], meta['root'], tool(asset))
+        assert len(rows) == (7 if asset != 'ur5e' else 6) and {r['verdict'] for r in rows} == {'agrees'}, (asset, rows)

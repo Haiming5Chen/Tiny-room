@@ -100,11 +100,18 @@ class RealLab:
         if robot_library.is_user(self.robot_asset):
             from little_world.assets.robot_models import metadata
             text('Your robot, from its own file.',18,475,11,(.66,.77,.79),270)
-            checks=[t for kind,t in metadata(self.robot_asset).get('report',()) if kind=='warning']
+            meta=metadata(self.robot_asset);top=498
+            if meta.get('probe') is not None:       # each servo moved once on import (FR-044)
+                odd=sum(p['verdict'] not in ('agrees','closes') for p in meta['probe'])
+                said='Each servo moved once on import: '+('as its file says.' if not odd else
+                      f'{odd} not as its file says - see below.')
+                for line in textwrap.wrap(said,40):
+                    text(line,18,top,11,(.66,.77,.79),270);top+=19
+            checks=[t for kind,t in meta.get('report',()) if kind=='warning']
             lines=[l for t in checks for l in textwrap.wrap('Check: '+t,40)] or ['Its import found nothing to check.']
-            room=max(0,int((wh-140-498)/19))
+            room=max(0,int((wh-140-top)/19))
             for i,line in enumerate(lines[:room]):
-                text(line,18,498+i*19,11,(.9,.72,.4),270)
+                text(line,18,top+i*19,11,(.9,.72,.4),270)
         else:text('Original meshes, joints and servos.',18,475,11,(.66,.77,.79),270)
         if self.robot_asset!='franka_panda' and not robot_library.is_user(self.robot_asset):
             text('Arm-only model: no gripper.',18,498,11,(.9,.72,.4),270)

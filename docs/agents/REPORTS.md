@@ -11,6 +11,19 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · each servo moved once on import (FR-044 done)
+Did: `importer.probe` - at the end of every import each servo is sent 5 deg (a slide 5 mm) from home in
+a copy of the model at 2 ms, implicit integrator, contacts off, held 1 s, and what moved is said in the
+report ("'shoulder' sent +5 deg turned +5.0 deg, the tool 49 mm forward - as the file says") and kept in
+the metadata; a gripper is told to close; an actuator whose name is another joint's is named. The Joint
+lab says whether each servo moved as its file says. ADR 0079; FR-044 done. Branch claude/fr-044-probe on
+cf33bb0.
+Measured: the test robots and the four Menagerie arms agree (within 3 %); a negative gear, swapped
+actuators and a reversed claw - which the importer took without a word before - are each named; the
+probe adds 0.01 to 0.05 s to an import. Suites 1226 with a display, 1154 headless.
+Unfinished: FR-044's one-click flip; joints under load or away from home are not probed.
+For the owner: nothing to decide. Screenshot: the Joint lab with an arm whose elbow turns backwards.
+
 ## 2026-11-22 · Claude (Cowork) · the grasp bench in the Inventory (FR-043)
 Did: the Inventory's fifth tab, *Grasp bench* - the arm lab's recorded table as designed (coloured, with
 what to read in it), and a button that runs the bench on the design in hand in another process, its

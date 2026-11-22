@@ -460,7 +460,8 @@ robot. MuJoCo's own readers parse it and `MjSpec` edits, compiles and writes it;
 adds only what driving needs - position servos sized from the robot's weight and inertia, mimic
 joints as equalities, one body per link, visual shapes kept and collision shapes hidden behind
 them, links overlapping at the home pose excluded from colliding - and reports it in plain
-words. `assets/robot_library.py` (standard library) keeps the results outside the repository,
+words. Last, `probe` moves each servo once in a copy of the model and says what moved (ADR 0079):
+its verdicts go into the report and the metadata (`probe`), and the Joint lab shows them. `assets/robot_library.py` (standard library) keeps the results outside the repository,
 one folder per robot that is never rewritten (`$LITTLE_WORLD_ROBOTS`, else the platform's
 application-data folder), and names them `user:<name>`. Designs carry the name, never a path:
 the core accepts the pattern, `robot_models` resolves it, and the backend attaches a library
