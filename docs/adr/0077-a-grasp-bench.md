@@ -68,6 +68,15 @@ designed.
   bench's program for it and runs it: felt held, lifted, turned more than 20 deg in the jaws on the
   carry, on the floor when the program completes (`tests/test_whats_new.py`, a window test). Suites:
   1221 passed with a display, 1150 headless.
+- *In the Inventory* (22 November): a fifth tab, *Grasp bench*, shows the table the bench recorded for
+  an example as designed (`RECORDED`, `recorded`: the arm lab's, its report and what to read in it),
+  and runs the bench on the current design in another process - its button the varied runs' way of
+  launching a sweep - the table filling from the runs' progress lines as they come in (`progress`,
+  `counts`), then read back from the outcomes it wrote (`from_json`, `summary`). FR-043 asked for the
+  button in the Joint lab; the kit's arm is built in the workshop, so it is in the Inventory beside *What
+  it can do*. Checked in `tests/test_graspbench.py` (the record against its report, the lines, the
+  outcomes read back) and `tests/test_inventory.py` (a window test, the command a stand-in). Suites:
+  1223 passed with a display, 1151 headless.
 
 **Boundaries.** One gripper, the kit's on the arm lab, and known pose only: FR-043's camera mode, the
 other designs and the robot library's grippers, intervals clustered by pose, FR-036's friction in use

@@ -11,6 +11,15 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · the grasp bench in the Inventory (FR-043)
+Did: the Inventory's fifth tab, *Grasp bench* - the arm lab's recorded table as designed (coloured, with
+what to read in it), and a button that runs the bench on the design in hand in another process, its
+table filling from the progress lines; `graspbench.RECORDED`, `recorded`, `progress`, `counts`,
+`from_json`, `summary`. ADR 0077 amended. Branch claude/fr-043-tab on 15bf4a5.
+Measured: nothing new - the table is the bench's of ADR 0078. Suites 1223 with a display, 1151 headless.
+Unfinished: the bench's grid stands where the arm lab reaches; another design is run on it as it is.
+For the owner: Inventory -> Grasp bench shows it (screenshot sent).
+
 ## 2026-11-22 · Claude (Cowork) · the template squeezes before it checks (OPEN LW-056)
 Did: `tool_motion.take_hold` - close the jaws for 1 s, squeeze 0.6 deg more (`SQUEEZE`), then check the
 grasp; the pick-and-place template and the grasp bench's program take hold so. The arm lab's evidence

@@ -381,7 +381,9 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   little_world.inventory.graspbench --design arm_lab --jobs 2`. On the arm lab the cube and the
   standing block are held at every pose; the lying block is lost every time the jaws take it by its
   ends - the loss the Fetch found - and the cylinder and the plate never. What's new's *By its ends, it
-  falls* runs the lying block's case in the window ([ADR 0077](adr/0077-a-grasp-bench.md)). The bench
+  falls* runs the lying block's case in the window, and the Inventory's *Grasp bench* tab shows the arm
+  lab's table and runs the bench on the design in hand, its table filling as the runs finish
+  ([ADR 0077](adr/0077-a-grasp-bench.md)). The bench
   found the program's grasp check missing held cubes the jaws had turned square before it looked: the
   pick-and-place template now squeezes 0.6 deg more before it checks, and feels every one
   ([ADR 0078](adr/0078-the-template-squeezes-before-it-checks.md)).

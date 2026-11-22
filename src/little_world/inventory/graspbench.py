@@ -29,6 +29,7 @@ The statistics are the standard library's; the runs come from `inventory.sweep` 
 """
 from dataclasses import dataclass
 from math import cos, radians, sin
+import re
 
 from little_world.inventory.confidence import interval
 
@@ -48,6 +49,19 @@ BENCH = (.16, .16)          # m: the bench's top, wide enough for the grid and t
 LIFT, CARRY, HOLD = .10, .20, 2.   # m up, m to the side, s held there
 VIEW = ((.36, .05, .26), .75, -125., -18.)   # the window's camera: the bench and the carry beside it
 SLIP = .002                 # m: the most an object may move in the jaws over the last HOLD seconds
+
+
+# What the bench measured for an example as designed (ADR 0077, 0078): held of the 9 places at each
+# turn, the report that says so, and what to read in it - the Inventory's Grasp bench tab shows it.
+RECORDED = {
+    'arm_lab': ({'cube': (9, 9, 9, 9), 'block': (9, 9, 9, 9), 'block lying': (8, 8, 9, 0),
+                 'cylinder': (0, 0, 0, 0), 'plate': (0, 0, 0, 0)},
+                'docs/sweeps/2026-11-22-grasp-bench-squeeze-first.md',
+                "The arm lab's jaws, which no wrist turns, close 74, 44, 14 and 16 deg from the object's length at "
+                "the four turns: the lying block falls when they take it by its ends. The cylinder slips out by one "
+                "contact a pad (OPEN LW-057); the plate is out of the pads' reach. The grasp check felt all 97 held."),
+}
+LINE = re.compile(r'\s*\d+/\d+ (.+) \((-?[\d.]+), (-?[\d.]+), (-?[\d.]+)\): (.+)$')
 
 
 def poses():
@@ -328,6 +342,55 @@ def run(design, name, pose):
     felt, between = (bool(result.felt[-1][1]), bool(result.felt[-1][2])) if result.felt else (None, None)
     return Outcome(name, tuple(pose), lifted=float(last[2] - first[2]), carried=float(np.linalg.norm((last - first)[:2])),
                    slip=slip, message=result.message, felt=felt, between=between, skew=jaws_angle)
+
+
+def recorded(blueprint):
+    """(the example's name, {object: {turn: (held, tried)}}, its report, what to read in it) when
+    `blueprint` is an example the bench measured, as designed; None for any other design."""
+    from little_world.inventory.sweep import design
+    for name, (held, report, note) in RECORDED.items():
+        if blueprint == design(name):
+            return (name, {n: {t: (h, len(SHIFTS) ** 2) for t, h in zip(TURNS, row)} for n, row in held.items()},
+                    report, note)
+    return None
+
+
+def summary(outcomes):
+    """A run's two lines under its table: the jaws' angle at each turn, and what the grasp check felt."""
+    angles = jaw_angles(outcomes)
+    (felt, held), _ = check(outcomes)
+    lines = []
+    if angles:
+        lines.append('The jaws close ' + ', '.join(f'{a:.0f}' for a in angles.values()) + ' deg from the object\'s length '
+                     'at the ' + ', '.join(f'{t:g}' for t in angles) + ' deg turns (the median over the places).')
+    if held:
+        lines.append(f'The grasp check felt {felt} of the {held} held runs held.')
+    return lines
+
+
+def progress(line):
+    """(object, pose, held) from one of the bench's progress lines ('12/180 cube (0.0, 0.0, 30.0): held'),
+    None for any other line."""
+    found = LINE.match(line)
+    if not found or found[1] not in OBJECTS:
+        return None
+    return found[1], (float(found[2]), float(found[3]), float(found[4])), found[5] == 'held'
+
+
+def counts(found):
+    """{object: {turn: (held, tried)}} from (object, pose, held) triples - the table as runs come in."""
+    out = {}
+    for name, pose, held in found:
+        h, t = out.setdefault(name, {}).get(pose[2], (0, 0))
+        out[name][pose[2]] = (h + held, t + 1)
+    return out
+
+
+def from_json(text):
+    """The Outcomes the command line wrote beside its report (`--out`)."""
+    import json
+    return tuple(Outcome(name, tuple(pose), lifted, carried, slip, message, felt, between, skew)
+                 for name, pose, lifted, carried, slip, message, felt, between, skew in json.loads(text))
 
 
 def _one(job):

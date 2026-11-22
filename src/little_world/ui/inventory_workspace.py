@@ -1,6 +1,9 @@
 """Saved drafts, finished designs and side-by-side evidence views."""
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
+import sys
+import tempfile
 import textwrap
 import mujoco as mj
 from little_world.inventory.store import Inventory,fingerprint
@@ -16,6 +19,7 @@ class InventoryWorkspace:
         from little_world.inventory.benchmark import environment_fingerprint
         self.trial_environment=environment_fingerprint()
         self.comparison=None;self.comparison_future=None;self.comparison_executor=None;self.comparison_status='No comparison trial run yet.'
+        self.grasp_bench=None       # the grasp bench running in another process, or what it found (ADR 0077)
 
     def show_inventory(self):
         if not self.building:
@@ -109,7 +113,7 @@ class InventoryWorkspace:
         x,y,w,h=rect;mj.mjr_render(mj.MjrRect(int(x*fw/ww),int((wh-y-h)*fh/wh),int(w*fw/ww),int(h*fh/wh)),scene,backend._preview_context or self.context)
 
     def draw_inventory(self,ui,button,text,ww,wh,fw,fh):
-        self.poll_comparison();ui.begin();self.buttons=[]
+        self.poll_comparison();self.poll_grasp_bench();ui.begin();self.buttons=[]
         ui.rect(0,0,ww,wh,(.055,.075,.095))
         self.draw_navigation(ui,button,text,ww)
         text('INVENTORY  /  Save versions and compare your designs.',24,67,12,(.61,.72,.77))
@@ -139,7 +143,7 @@ class InventoryWorkspace:
         self.inventory_preview(self.editor.blueprint,(x,158,half,184),ww,wh,fw,fh)
         if r:self.inventory_preview(r.blueprint,(x+half+16,158,half,184),ww,wh,fw,fh)
         ui.begin()
-        for i,tab in enumerate(('Overview','Parts changes','Performance','What it can do')):
+        for i,tab in enumerate(('Overview','Parts changes','Performance','What it can do','Grasp bench')):
             button(tab,x+i*145,354,137,lambda t=tab:(setattr(self,'inventory_tab',t),setattr(self,'inventory_scroll',0)),active=self.inventory_tab==tab,h=28)
         left=self.inventory_report(self.editor.blueprint);right=self.inventory_report(r.blueprint) if r else None
         if self.inventory_tab=='Overview':
@@ -174,6 +178,7 @@ class InventoryWorkspace:
             button('Previous',x,wh-85,100,lambda:setattr(self,'inventory_scroll',max(0,self.inventory_scroll-8)),h=28)
             button('More',x+108,wh-85,100,lambda:setattr(self,'inventory_scroll',min(max(0,len(lines)-1),self.inventory_scroll+8)),h=28)
         elif self.inventory_tab=='What it can do':self.draw_capability(button,text,x,width,wh)
+        elif self.inventory_tab=='Grasp bench':self.draw_grasp_bench(ui,button,text,x,width,wh)
         else:self.draw_comparison(button,text,x,ww,wh,r)
         message=self.status if not self.inventory_errors else f'{len(self.inventory_errors)} unreadable inventory file(s); existing valid designs remain available.'
         text(message,24,wh-27,11,(.6,.74,.77),ww-48)
@@ -196,6 +201,89 @@ class InventoryWorkspace:
                 textwrap.wrap('Each runs every level on the same set-ups and prints where success falls through one half, with '
                               'an interval (ADR 0076).',wide)
         for i,line in enumerate(lines[self.inventory_scroll:self.inventory_scroll+max(1,int((wh-480)/20))]):text(line,x+8,401+i*20,12,(.7,.79,.8),width-16)
+
+    # -- the grasp bench (ADR 0077) ------------------------------------------------------------------
+
+    def bench_command(self,design,out):
+        from little_world.ui.varied_runs import JOBS
+        return [sys.executable,'-m','little_world.inventory.graspbench','--design',str(design),'--jobs',str(JOBS),'--out',str(out)]
+
+    def start_grasp_bench(self):
+        """The current design on the grasp bench, in another process so the window stays live: its
+        progress lines fill the table as runs finish."""
+        from little_world.inventory.graspbench import OBJECTS,poses
+        from little_world.ui.varied_runs import launch
+        self.stop_grasp_bench()
+        folder=Path(tempfile.mkdtemp(prefix='little-world-bench-'))
+        design=folder/'design.json';design.write_text(self.editor.blueprint.to_json(),encoding='utf-8')
+        out=folder/'bench.md'
+        state=launch(self.bench_command(design,out),len(OBJECTS)*len(poses()))
+        state.update(blueprint=self.editor.blueprint,out=out.with_suffix('.json'),report=out)
+        self.grasp_bench=state
+        self.status=f'The grasp bench is running in the background: {state["total"]} runs, a few minutes on two cores.'
+
+    def stop_grasp_bench(self):
+        from little_world.ui.varied_runs import halt
+        halt(self.grasp_bench);self.grasp_bench=None
+
+    def poll_grasp_bench(self):
+        from little_world.inventory.graspbench import check,from_json,table
+        from little_world.ui.varied_runs import finished
+        b=self.grasp_bench
+        if finished(b,from_json,'grasp bench'):
+            _,total=table(b['result']);held=sum(h for h,_ in total.values());(felt,of),_=check(b['result'])
+            self.status=f'The grasp bench is done: {held} of {sum(t for _,t in total.values())} held; the grasp check felt {felt} of the {of} held.'
+
+    def copy_grasp_bench_report(self):
+        import glfw
+        glfw.set_clipboard_string(None,self.grasp_bench['report'].read_text(encoding='utf-8'))
+        self.status='The grasp bench\'s report is on the clipboard (Markdown).'
+
+    def draw_grasp_bench(self,ui,button,text,x,width,wh):
+        """Five objects at 36 poses each on a bench, through the arm lab's pick-and-place template, judged by
+        the object (ADR 0077): an example's record, or the current design run here, its table filling as the
+        runs finish."""
+        from little_world.inventory.graspbench import counts,progress,recorded,summary,table
+        muted,light,warn=(.6,.74,.77),(.86,.9,.93),(1,.7,.4)
+        text('Each object at 9 places x 4 turns: approach, close, lift 10 cm, carry 20 cm, hold 2 s. Held: lifted, '
+             'carried and still in the jaws (ADR 0077).',x+8,398,11,muted,width-16)
+        b=self.grasp_bench
+        mine=b is not None and b['blueprint'] is self.editor.blueprint
+        running=mine and b['result'] is None and not b['error']
+        button('Stop the bench' if running else 'Run the grasp bench (180 runs)',x,420,250,
+               self.stop_grasp_bench if running else self.start_grasp_bench,h=28,tone='danger' if running else None)
+        notes=[]
+        if mine and b['result'] is not None:
+            by_turn,_=table(b['result']);label='This design, as it is now: run here.';notes=summary(b['result'])
+            button('Copy the report',x+258,420,150,self.copy_grasp_bench_report,h=28)
+        elif running:
+            by_turn=counts([p for p in map(progress,list(b['lines'])) if p])
+            label=f'{b["done"]} of {b["total"]} runs'
+            ui.rect(x+420,432,max(1,width-436),6,(.14,.19,.23))
+            ui.rect(x+420,432,max(1,width-436)*b['done']/max(1,b['total']),6,(.37,.83,.69))
+        else:
+            found=recorded(self.editor.blueprint)
+            if mine and b['error']:by_turn,label={},'The bench stopped: '+b['error']
+            elif found:by_turn,label,notes=found[1],f'Recorded for the example {found[0]}, as designed: {found[2]}',[found[3]]
+            else:by_turn,label={},'Not measured for this design: run the bench on it.'
+        text(label,x+8,458,11,warn if mine and b['error'] else muted,width-16)
+        self.draw_bench_table(ui,text,x,482,by_turn,light,muted)
+        lines=[line for note in notes for line in textwrap.wrap(note,max(40,int(width/6.5)))]
+        for i,line in enumerate(lines[:max(0,int((wh-690)/18))]):text(line,x+8,652+i*18,11,muted,width-16)
+
+    def draw_bench_table(self,ui,text,x,y,by_turn,light,muted):
+        """Held of tried by object and turn: green all held, red none, amber some."""
+        from little_world.inventory.graspbench import OBJECTS,TURNS
+        text('Object',x+8,y,11,muted)
+        for j,turn in enumerate(TURNS):text(f'{turn:g} deg',x+172+j*92,y,11,muted)
+        text('Held',x+172+len(TURNS)*92,y,11,muted)
+        for i,name in enumerate(OBJECTS):
+            row=y+24+i*28;text(name,x+8,row,12,light);held=tried=0
+            for j,turn in enumerate(TURNS):
+                h,t=by_turn.get(name,{}).get(turn,(0,0));held+=h;tried+=t
+                if t:ui.rect(x+166+j*92,row-5,86,22,(.16,.45,.36) if h==t else (.45,.18,.16) if h==0 else (.5,.38,.14))
+                text(f'{h} of {t}' if t else '-',x+174+j*92,row,12,light)
+            text(f'{held} of {tried}' if tried else '-',x+174+len(TURNS)*92,row,12,light)
 
     def draw_comparison(self,button,text,x,ww,wh,record):
         button('Drive / hold trial',x,398,155,lambda:self.start_comparison('hold_drive'),record is not None and self.comparison_future is None,h=30)

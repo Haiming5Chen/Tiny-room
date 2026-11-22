@@ -2104,3 +2104,17 @@ display, 1150 headless.
 
 Not claimed: the Fetch's program, which still checks before it squeezes; parts of other widths; why a
 harder squeeze lets held parts creep more.
+
+## The grasp bench in the Inventory — 2026-11-22
+
+ADR 0077 amended. The Inventory's fifth tab, *Grasp bench*: for the arm lab as designed, the table its
+report records (cube and standing block 36 of 36, the lying block 25 of 36, cylinder and plate none),
+coloured by how many were held, and what to read in it; for the design in hand, a button that runs the
+bench in another process, the table filling from its progress lines and then read back from the
+outcomes it writes, with the jaws' angle and what the grasp check felt. Checked in
+`tests/test_graspbench.py` (the record against its report; the lines and the outcomes read back; one
+new) and `tests/test_inventory.py` (one window test, the command a stand-in that prints two runs).
+Suites on MuJoCo 3.10.0: 1223 passed with a display, 1151 headless.
+
+Not claimed: that the bench's grid suits a design other than the arm lab - its bench stands where the
+arm lab reaches; a run there of a design that cannot reach it says so, pose by pose.

@@ -90,6 +90,61 @@ def test_weaker_motor_has_larger_simulated_tracking_error():
 
 
 @pytest.mark.skipif(__import__('os').environ.get('LITTLE_WORLD_TEST_RENDER')!='1',reason='requires display')
+def test_the_grasp_bench_tab_shows_the_arm_labs_record_and_runs_the_bench_on_the_design(tmp_path,monkeypatch):
+    """ADR 0077: the Inventory's Grasp bench tab shows what the bench measured for the arm lab as designed, and
+    runs the bench on the current design in another process, its table filling as the runs come in - here a
+    stand-in for the command that prints two runs and writes their outcomes."""
+    import glfw,sys,textwrap
+    from little_world.ui.workshop import Workshop
+    app=Workshop(tmp_path/'robot.json',arm_lab_blueprint())
+    fake=tmp_path/'bench.py'
+    fake.write_text(textwrap.dedent('''
+        import json, sys, time
+        out = sys.argv[sys.argv.index('--out') + 1]
+        rows = [['cube', [0.0, 0.0, 0.0], 0.097, 0.195, 0.0008, 'Completed', True, True, 74.5],
+                ['block lying', [0.0, 0.0, 90.0], -0.187, 0.22, 0.0003, 'Completed', True, True, 15.5]]
+        for i, r in enumerate(rows):
+            print(f'{i + 1}/2 {r[0]} ({r[1][0]}, {r[1][1]}, {r[1][2]}): ' + ('held' if r[2] > 0.08 else 'not lifted'), flush=True)
+            time.sleep(0.5)
+        open(out, 'w', encoding='utf-8').write('# Grasp bench: robot.json')
+        open(out[:-3] + '.json', 'w', encoding='utf-8').write(json.dumps(rows))
+    '''),encoding='utf-8')
+    monkeypatch.setattr(app,'bench_command',lambda design,out:[sys.executable,str(fake),'--out',str(out)])
+    words=[];seen={};step={'n':0}
+    draw_inventory=app.draw_inventory
+    def spy(ui,button,text,*rest):
+        def written(w,*a,**k):
+            words.append(w);return text(w,*a,**k)
+        return draw_inventory(ui,button,written,*rest)
+    monkeypatch.setattr(app,'draw_inventory',spy)
+    original_draw=app.draw
+    def draw():
+        n=step['n'];step['n']+=1
+        if n==0:app.show_inventory();app.inventory_tab='Grasp bench'
+        words.clear();original_draw()
+        if n==1:
+            seen['record']=' '.join(words);seen['buttons']=[b.label for b in app.buttons]
+            app.start_grasp_bench()
+        elif n>=2:
+            b=app.grasp_bench
+            if 'Stop the bench' in [x.label for x in app.buttons]:seen['stop']=True
+            if b['result'] is None and not b['error']:
+                assert n<3000,b['lines'];return
+            seen['done']=' '.join(words);seen['status']=app.status
+            glfw.set_window_should_close(app.window,True)
+    app.draw=draw;app.run(seconds=60)
+    record=seen['record']
+    assert 'Run the grasp bench (180 runs)' in seen['buttons']
+    assert 'Recorded for the example arm_lab, as designed: docs/sweeps/2026-11-22-grasp-bench-squeeze-first.md' in record
+    assert '25 of 36' in record and '36 of 36' in record and 'felt all 97 held' in record
+    assert seen.get('stop'), "while it runs the button stops it"
+    done=seen['done']
+    assert 'This design, as it is now: run here.' in done and '1 of 1' in done and '0 of 1' in done
+    assert 'The grasp check felt 1 of the 1 held runs held.' in done
+    assert seen['status']=='The grasp bench is done: 1 of 2 held; the grasp check felt 1 of the 1 held.'
+
+
+@pytest.mark.skipif(__import__('os').environ.get('LITTLE_WORLD_TEST_RENDER')!='1',reason='requires display')
 def test_what_it_can_do_shows_an_examples_measured_limits_and_how_to_measure_another(tmp_path,monkeypatch):
     """ADR 0076: the Inventory's fourth tab says how far the current design can go - the arm cart as designed,
     what the boundary studies measured for it; a design not measured, how to measure it."""

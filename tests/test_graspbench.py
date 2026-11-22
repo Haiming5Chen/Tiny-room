@@ -1,6 +1,7 @@
 """The grasp bench (FR-043, ADR 0077): its grid, its objects, how it judges a run, its report -
 and, through MuJoCo, the arm lab's gripper on the lying block and the cube."""
 from math import cos, radians, sin
+from pathlib import Path
 
 import pytest
 
@@ -84,6 +85,32 @@ def test_the_report_says_what_the_grasp_check_felt_against_the_outcome():
     assert '| plate | 0 | 0 | 0 | 1 |' in text
     assert 'It felt 3 of the 4 held runs held, and 1 of the 2 others.' in text
     assert gb.jaw_angles(found) == {0.: 74.5, 30.: 44.5, 90.: 15.5}
+
+
+def test_the_arm_labs_record_is_its_report_and_a_runs_lines_fill_the_table():
+    # The Inventory's Grasp bench tab (ADR 0077): the arm lab's record, as designed, is what its report says;
+    # a run's progress lines fill the table as they come in, and its outcomes are read back.
+    import json
+    from little_world.robots.arm_lab import arm_lab_blueprint
+    from little_world.robots.mobile_manipulator import mobile_manipulator_blueprint
+    name, by_turn, report, note = gb.recorded(arm_lab_blueprint())
+    assert name == 'arm_lab' and gb.recorded(mobile_manipulator_blueprint()) is None
+    page = (Path(__file__).resolve().parents[1] / report).read_text(encoding='utf-8')
+    for obj, row in by_turn.items():
+        cells = ' | '.join('{} of {}'.format(*row[turn]) for turn in gb.TURNS)
+        assert f'| {obj} | {cells} |' in page, obj
+    assert 'It felt 97 of the 97 held runs held' in page and 'felt all 97 held' in note
+    lines = ['1/180 cube (-0.02, -0.02, 0.0): held', '2/180 cube (-0.02, -0.02, 30.0): not lifted', 'Traceback',
+             '3/180 sphere (0.0, 0.0, 0.0): held']
+    found = [p for p in map(gb.progress, lines) if p]
+    assert found == [('cube', (-.02, -.02, 0.), True), ('cube', (-.02, -.02, 30.), False)]
+    assert gb.counts(found) == {'cube': {0.: (1, 1), 30.: (0, 1)}}
+    outcomes = _outcomes()
+    written = json.dumps([[o.name, list(o.pose), o.lifted, o.carried, o.slip, o.message, o.felt, o.between, o.skew]
+                          for o in outcomes])
+    assert gb.from_json(written) == outcomes
+    assert gb.summary(outcomes) == ["The jaws close 74, 44, 16 deg from the object's length at the 0, 30, 90 deg turns "
+                                    "(the median over the places).", 'The grasp check felt 3 of the 4 held runs held.']
 
 
 def test_the_bench_field_sets_the_object_where_the_grid_says():

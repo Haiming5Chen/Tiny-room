@@ -630,7 +630,10 @@ template for each (`program`; the grasp no lower than keeps the jaws `JAWS_CLEAR
 `lowest`), runs it through `sweep.run` with the runner's 'ignore' recovery so it goes on as taught, and
 judges each run by the object - lifted, carried, slip in the jaws (`Outcome`) - beside what the grasp
 check felt and the jaws' angle to the object (`skew`). `markdown` writes the table, the reasons and the
-check's four-way count; `python -m little_world.inventory.graspbench` runs it.
+check's four-way count; `python -m little_world.inventory.graspbench` runs it. The Inventory's *Grasp
+bench* tab (`ui/inventory_workspace.py`) shows an example's record (`RECORDED`, `recorded`) or launches
+the command for the design in hand, as the varied runs launch a sweep, and fills its table from the
+progress lines (`progress`, `counts`) and then the outcomes (`from_json`, `summary`).
 
 `inventory/stages.py` (ADR 0063, standard library) reads where a group of runs failed: how many met each
 goal and every goal before it, the first goal each missed, and - from `Run.stopped`, the block a program
