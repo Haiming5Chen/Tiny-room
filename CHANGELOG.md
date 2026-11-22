@@ -20,7 +20,8 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
   instead of its known place, the arm lab drops what it dropped before: the camera finds every box.
   Its report says how close each grip came to slipping, and a robot from the library takes it too: the
   Panda holds the cylinder the kit's jaws cannot, and with its wrist turned to each box holds the
-  factory cell's parts at every pose, as the cell does (ADR 0077).
+  factory cell's parts at every pose, as the cell does - What's new's *Its wrist turned, held* shows it
+  (ADR 0077).
 - The pick-and-place template squeezes before it checks its grasp. On the grasp bench its check missed
   13 of 18 held cubes and blocks the jaws had turned square before it looked; now it feels every held
   part, and the arm lab's cube reaches the tray 0.02 s later (ADR 0078).

@@ -11,6 +11,16 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · its wrist turned, held - in What's new (FR-043)
+Did: What's new's *Its wrist turned, held* - the Panda at the grasp bench with the kit's block lying
+along its jaws, its wrist turned first (`Demo.design`, `Demo.turned`; `start_bench_demo` takes a library
+robot). ADR 0077 amended. FR-043 marked done: its checks (1), (3) and (4) met, (2) not run as written
+(the frontier says why); OPEN LW-034 notes the turned wrist. Branch claude/fr-043-turned-demo.
+Measured: in the window the run completes with the jaws across the block and the block held up to the
+end. Suites 1236 with a display, 1162 headless.
+Unfinished: FR-043's check (2) as written - the Fetch's compact arm reaches with its jaws level.
+For the owner: What's new -> Its wrist turned, held (beside *By its ends, it falls*, the kit's arm).
+
 ## 2026-11-22 · Claude (Cowork) · the Panda's wrist turned, and the cell's parts (FR-043's check 3)
 Did: `--turned` - the bench's program turns the arm's wrist so its jaws close square to each box
 (`_wrist`, `_square`); the factory cell's two parts on the bench when named (`PARTS`). ADR 0077

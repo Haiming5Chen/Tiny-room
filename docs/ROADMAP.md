@@ -152,7 +152,8 @@ boundary along one factor says how far it can go - the kit cart's curb profile, 
 climbing the engine's energy from nowhere gives it, and the arm cart's tilt profile that the tilt table's
 climb reads a machine going over 2 to 4.6 deg late (ADR 0076). A grasp bench asks which objects and poses
 a gripper holds: on the arm lab the lying block is lost whenever the jaws take it by its ends, the
-cylinder and the thin plate always (ADR 0077); its grasp check missed held cubes the jaws had turned square,
+cylinder and the thin plate always; the Panda, its wrist turning its jaws square to each box, holds the cube, both
+blocks and the factory cell's parts at every pose, as the cell does (ADR 0077); its grasp check missed held cubes the jaws had turned square,
 and the pick-and-place template now squeezes before it checks (ADR 0078). Each servo of an imported robot is
 moved once on import, and what it moved said; a reversed joint, a misnamed actuator or a gripper that does not
 close is named (ADR 0079).

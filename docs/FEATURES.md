@@ -394,8 +394,8 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   92 %, the lying block by its ends 100 %. A robot from the library takes the bench too: the Panda,
   squeezing 70 N, holds the cylinder the kit's jaws push out, and drops a cube taken by its corners
   that the kit's rotary jaws turn square (`--design franka_panda`); with its wrist turned to each box
-  (`--turned`) it holds every box at every pose, and the factory cell's two parts 72 of 72, as the cell
-  does ([ADR 0077](adr/0077-a-grasp-bench.md)). The bench
+  (`--turned`) it holds the cube and both blocks at every pose, and the factory cell's two parts 72 of 72, as the cell
+  does; What's new's *Its wrist turned, held* shows it in the window ([ADR 0077](adr/0077-a-grasp-bench.md)). The bench
   found the program's grasp check missing held cubes the jaws had turned square before it looked: the
   pick-and-place template now squeezes 0.6 deg more before it checks, and feels every one
   ([ADR 0078](adr/0078-the-template-squeezes-before-it-checks.md)).

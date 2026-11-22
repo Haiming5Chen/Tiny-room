@@ -2210,3 +2210,13 @@ slow). Suites on MuJoCo 3.10.0: 1235 passed with a display, 1162 headless.
 Not claimed: a wrist whose axis misses the tool point (the arm lab's has none, and is told so); the
 cell's parts in the cell's own wood (the bench's is 8 % denser); FR-043's check (2), the kit's arm on
 the Fetch's cart.
+
+## Its wrist turned, held — What's new, 2026-11-22
+
+ADR 0077 amended. What's new's *Its wrist turned, held* runs the bench's program for the Panda with its
+wrist turned, the kit's block lying along the line its jaws close on, in the window: the window test
+presses the button as a user does and checks the run completes, the jaws end across the block's
+length (90 deg within 5) and the block is held up a lift over where it lay. Suites on MuJoCo 3.10.0:
+1236 passed with a display, 1162 headless.
+
+Not claimed: the demonstration measures nothing the bench did not; one pose of one object.

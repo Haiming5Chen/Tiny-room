@@ -26,7 +26,7 @@ class Demo:
     where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
                             # 'factory': Real's cell; 'conveyor': beside the roller conveyor;
                             # 'curbs': the kit cart driven at the Curb run's curbs (FR-040);
-                            # 'bench': the arm lab at the grasp bench (ADR 0077);
+                            # 'bench': a machine at the grasp bench (ADR 0077);
                             # 'import': a robot brought in from its file in the Joint lab (ADR 0079)
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
@@ -38,10 +38,18 @@ class Demo:
     squeeze: float = 0.             # the Fetch's jaws squeezing this many newtons by current, 0: as solved (FR-037)
     top: float = 0.                 # 'tilt': the table stopped at this angle and held (ADR 0076); 0: it climbs to 60
     bench: tuple = ()               # 'bench': (object, (dx, dy, turn)) on the grasp bench (ADR 0077)
+    design: str = 'arm_lab'         # 'bench': the machine there - an example design or a library robot
+    turned: bool = False            # 'bench': its wrist turns its jaws square to the object first
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('turned', 'Its wrist turned, held',
+         "The Panda from the robot library at the grasp bench, the kit's block lying along the line its "
+         "jaws close on: taken so, by its ends, it slips out. Here its seventh joint first turns the hand, "
+         "as the factory cell holds it, and the jaws close across the block: lifted, carried, held.",
+         'the hand turns over the block before it goes down; the block rides in the jaws to the end',
+         '', 'ADR 0077', where='bench', bench=('block lying', (0., 0., 0.)), design='franka_panda', turned=True),
     Demo('backwards', 'A motor wired backwards',
          "A two-link arm is brought in from its file, its elbow motor written with a negative gear. On "
          "import each servo is moved 5 degrees once: the shoulder turns as its file says; the elbow, told "
@@ -295,21 +303,22 @@ class WhatsNew:
         self.status = f'{demo.title}: {demo.watch}.'
 
     def start_bench_demo(self, demo):
-        """The arm lab at the grasp bench with one object at one pose (ADR 0077), the bench's program -
-        the arm lab's pick-and-place template, solved for where the object is - run as the bench runs it."""
-        from little_world.inventory import graspbench, sweep
+        """A machine at the grasp bench - the arm lab, or a robot from the library - with one object at one
+        pose (ADR 0077), the bench's program - the pick-and-place template, solved for where the object
+        is, the jaws turned square to it first if the demonstration says - run as the bench runs it."""
+        from little_world.inventory import graspbench
         name, pose = demo.bench
         if not self.building:
             self.simulate()
         self.close_bench()
         self.stop_program()
-        blueprint = sweep.design('arm_lab')
+        blueprint = graspbench.machine(demo.design)
         self.edit(lambda: self.editor.load(blueprint))
         self.program_edit(type(self.program)())
         field = graspbench.bench_field(name, pose)
         self.set_field(field.id)
         self.arm_disturbance(None)
-        program, _ = graspbench.program(field, blueprint, top=graspbench.height(name) / 2)
+        program, _ = graspbench.program(field, blueprint, top=graspbench.height(name) / 2, turned=demo.turned)
         self.program_edit(program)
         self.show_program()
         self.start_program()

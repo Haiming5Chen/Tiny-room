@@ -20,19 +20,20 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['backwards', 'ends', 'held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
+    assert [d.id for d in DEMOS] == ['turned', 'backwards', 'ends', 'held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
                                      'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['import', 'bench', 'tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
+    assert [d.where for d in DEMOS] == ['bench', 'import', 'bench', 'tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
                                         'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1.] * 11 + [16.] + [1.] * 7
+    assert [d.heavier for d in DEMOS] == [1.] * 12 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 9 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0.] * 8 + [7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['hand'] * 5 + ['conveyor'] * 2 + ['hand'] * 12
-    assert [d.sensing for d in DEMOS] == ['known'] * 5 + ['camera'] + ['known'] * 13
+    assert [d.product for d in DEMOS] == ['Small block'] * 10 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0.] * 9 + [7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['hand'] * 6 + ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['known'] * 6 + ['camera'] + ['known'] * 13
     assert [(d.id, d.top) for d in DEMOS if d.top] == [('held', 51.)], "the tilt table stopped at 51 deg (ADR 0076)"
-    assert [(d.id, d.bench) for d in DEMOS if d.bench] == [('ends', ('block lying', (0., 0., 90.)))], "ADR 0077"
+    assert [(d.id, d.bench, d.design, d.turned) for d in DEMOS if d.bench] == [
+        ('turned', ('block lying', (0., 0., 0.)), 'franka_panda', True), ('ends', ('block lying', (0., 0., 90.)), 'arm_lab', False)], "ADR 0077"
     assert BY_ID['felt'].disturbance == BY_ID['look_again'].disturbance, "the same cube, moved: now felt"
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
@@ -642,6 +643,51 @@ def test_a_motor_wired_backwards_is_named_in_the_joint_lab_and_imported_once(tmp
     words = ' '.join(seen['words'])
     assert 'Each servo moved once on import: 1 not as its file says - see below.' in words
     assert "Check: 'elbow' sent +5 deg went -5.0" in words
+
+
+@WINDOW
+def test_its_wrist_turned_the_panda_holds_the_block_it_would_take_by_its_ends(tmp_path, monkeypatch):
+    """ADR 0077: What's new sets the Panda at the grasp bench with the kit's block lying along the line its jaws
+    close on, and runs the bench's program with its wrist turned: the hand turns, the jaws close across the
+    block, and it is lifted, carried and held to the end."""
+    import glfw
+    import numpy as np
+    from little_world.inventory.graspbench import LIFT, TOP
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'Its wrist turned, held')
+        elif n == 2:
+            assert app.field_id == 'grasp_bench' and not app.building and app.demo == 'turned'
+            assert app.runner.state == 'running' and any(b.robot_asset == 'franka_panda' for b in app.editor.bodies)
+            seen['part'] = app.backend.model.body('objects/part').id
+            seen['fingers'] = [app.backend.model.body('machine/root__robot_' + f).id for f in ('left_finger', 'right_finger')]
+        elif n == 3:
+            d = app.backend.data
+            if app.runner.state == 'running':
+                assert app.state.time < 40., app.runner.message
+                return
+            closing = d.xpos[seen['fingers'][1]] - d.xpos[seen['fingers'][0]]
+            length = d.xmat[seen['part']].reshape(3, 3)[:, 0]
+            seen['across'] = float(np.degrees(np.arccos(abs(closing[:2] @ length[:2]) / np.linalg.norm(closing[:2]) / np.linalg.norm(length[:2]))))
+            seen['end'], seen['message'] = float(d.xpos[seen['part']][2]), app.runner.message
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    assert step['n'] == 4, step
+    assert seen['message'] == 'Completed'
+    assert seen['end'] > TOP + .0125 + LIFT - .01, "held up in the jaws to the end"
+    assert seen['across'] == pytest.approx(90., abs=5.), "the jaws across the block's length"
 
 
 @WINDOW

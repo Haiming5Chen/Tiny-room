@@ -128,6 +128,11 @@ designed.
   the small block slips out at 7 of the 9 places turned 30 deg.
   docs/sweeps/2026-11-22-grasp-bench-panda-turned.md. Checked in `tests/test_graspbench.py` (two new,
   one slow). Suites: 1235 passed with a display, 1162 headless.
+- *In What's new* (22 November): *Its wrist turned, held* sets the Panda at the bench with the kit's
+  block lying along the line its jaws close on - by its ends, as it comes - and runs the bench's program
+  with its wrist turned: the hand turns over the block, the jaws close across it, and it is lifted,
+  carried and held to the end. Checked in `tests/test_whats_new.py` (a window test). Suites: 1236
+  passed with a display, 1162 headless.
 
 **Boundaries.** Two grippers: the kit's on the arm lab, and the Panda's from the robot library (the
 library's other arms have no hand; a gripper brought in from its own file is taken, and no bench has
