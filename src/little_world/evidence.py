@@ -265,7 +265,7 @@ CLAIMS = (
           doorway, 22),
     Claim('pick-place', 'The arm lab lifts its cube by finger contact and rests it in the tray.',
           '0016-arm-tasks-tool-moves-poses-grasp-checks.md', 'test_arm_tasks.py::test_the_pick_and_place_template_meets_the_fields_goals',
-          (Q('cube lifted at', 1.902, .2, 's'), Q('resting in the tray at', 5.724, .5, 's')), pick_place, 2, quick=True),
+          (Q('cube lifted at', 1.922, .2, 's'), Q('resting in the tray at', 5.744, .5, 's')), pick_place, 2, quick=True),
     Claim('fetch', 'The arm on its cart drives 1.8 m to a table, finds the cube with its camera, picks it up, brings it back '
           'and sets it in the bin: every goal met, the cube in the bin at 36.9 s, without looking twice.',
           '0042-set-down-not-dropped.md', 'test_fetch.py::test_the_mobile_manipulator_fetches_the_cube_by_itself',

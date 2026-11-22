@@ -91,7 +91,7 @@ def test_the_command_lists_and_refuses_and_measures_the_quickest_claim(capsys, t
     import json
     written = json.loads(report.read_text(encoding='utf-8'))
     assert written['held'] == written['total'] == 4 and [c['id'] for c in written['claims']] == ['pick-place', 'slope-creep']
-    assert written['claims'][0]['measured']['cube lifted at'] == pytest.approx(1.902, abs=.2)
+    assert written['claims'][0]['measured']['cube lifted at'] == pytest.approx(1.922, abs=.2)
 
 
 def test_the_slow_list_names_tests_that_exist_and_is_read_back():

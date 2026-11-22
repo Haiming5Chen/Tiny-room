@@ -111,19 +111,26 @@ def test_the_lying_block_is_held_across_the_jaws_and_falls_along_them():
     across = gb.run('arm_lab', 'block lying', (0., 0., 0.))
     along = gb.run('arm_lab', 'block lying', (0., 0., 90.))
     assert across.skew == pytest.approx(74.5, abs=1.) and along.skew == pytest.approx(15.5, abs=1.)
-    assert across.held and across.slip < .0015
+    assert across.held and across.slip < .0018                     # it creeps: 1.6 mm in the hold's 2 s
     assert not along.held and along.felt and along.lifted < -.1      # off the bench, on the floor
 
 
-def test_a_cube_turned_against_the_jaws_is_held_and_its_grasp_check_feels_nothing():
-    # OPEN LW-056: the template's 1 s close ends three pulses past a 25 mm cube's faces, where a jaw
-    # pushes with 4 counts of current - under the 6 the feel needs (ADR 0048). Turned 30 deg (its
-    # faces 44 deg from the jaws), the cube turns square in them before the check begins, and the
-    # check feels nothing; square to them it is felt while it still turns.
+def test_a_cube_turned_against_the_jaws_is_held_and_felt_held(monkeypatch):
+    # ADR 0078 (OPEN LW-056): the template closes for 1 s, squeezes 0.6 deg more, then checks. Turned
+    # 30 deg (its faces 44 deg from the jaws), the cube is turned square in them before the check; at
+    # rest each jaw stops 6 pulses short pushing with 10 counts of current, over the 6 the feel needs
+    # (ADR 0048) - checked straight after the 1 s close it pushed with 4 and the check felt nothing.
+    from little_world.control import feel
+    read, last = feel.read, {}
+
+    def kept(*args, **kwargs):
+        last['jaws'] = read(*args, **kwargs)
+        return last['jaws']
+    monkeypatch.setattr(feel, 'read', kept)
     turned = gb.run('arm_lab', 'cube', (0., 0., 30.))
-    square = gb.run('arm_lab', 'cube', (0., 0., 0.))
-    assert turned.held and turned.felt is False and turned.between
-    assert square.held and square.felt
+    assert turned.held and turned.felt and turned.between
+    jaws = last['jaws']                                             # in the hold, resting on the cube
+    assert feel.holding(jaws) and min(j.current for j in jaws) >= 8 and min(j.short for j in jaws) >= 4, jaws
 
 
 def test_the_plate_is_out_of_the_tall_pads_reach():

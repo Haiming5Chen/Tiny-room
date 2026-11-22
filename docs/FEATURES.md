@@ -380,9 +380,11 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   object: lifted 10 cm, carried 20 cm, held 2 s without slipping. `python -m
   little_world.inventory.graspbench --design arm_lab --jobs 2`. On the arm lab the cube and the
   standing block are held at every pose; the lying block is lost every time the jaws take it by its
-  ends - the loss the Fetch found - and the cylinder and the plate never; and the program's grasp check
-  misses a held cube that the jaws turned square before it looked. What's new's *By its ends, it falls*
-  runs the lying block's case in the window ([ADR 0077](adr/0077-a-grasp-bench.md)).
+  ends - the loss the Fetch found - and the cylinder and the plate never. What's new's *By its ends, it
+  falls* runs the lying block's case in the window ([ADR 0077](adr/0077-a-grasp-bench.md)). The bench
+  found the program's grasp check missing held cubes the jaws had turned square before it looked: the
+  pick-and-place template now squeezes 0.6 deg more before it checks, and feels every one
+  ([ADR 0078](adr/0078-the-template-squeezes-before-it-checks.md)).
 - **A radar on the frontier, keyed on its own decisions.** New robotics papers, open
   models, repositories and MuJoCo's own changelog are scored against this project's
   decision records and roadmap and filed under the decision each could change, with the

@@ -51,7 +51,8 @@ designed.
   jaws turn them square before the check begins, and at rest the 1 s close leaves each jaw 2 or 3
   pulses short of its goal, pushing with 4 counts of current - under the 6 the feel needs. At turn 0
   (16 deg off square) a cube is felt only while the jaws still turn and press it: from 4.98 to 5.24
-  s, the check beginning at 4.99 s (traced; OPEN LW-056). The 10 lying blocks lost after the check it felt held - they were.
+  s, the check beginning at 4.99 s (traced; OPEN LW-056, mended in ADR 0078: the template squeezes
+  before it checks). The 10 lying blocks lost after the check it felt held - they were.
 - The cylinder is never lifted. With multiccd off (ADR 0027) each pad touches it at one point - one at
   its top rim, the other near its foot - and closing they push it 10 mm towards the arm, out of their
   grip; it stands on the bench on one contact, 1.7 mm deep. With multiccd on (a probe, not adopted)

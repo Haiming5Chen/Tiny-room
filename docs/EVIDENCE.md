@@ -87,8 +87,8 @@ The arm lab lifts its cube by finger contact and rests it in the tray.
 
 | Measured | Recorded | Holds within |
 | --- | --- | --- |
-| cube lifted at | 1.902 s | 0.2 s |
-| resting in the tray at | 5.724 s | 0.5 s |
+| cube lifted at | 1.922 s | 0.2 s |
+| resting in the tray at | 5.744 s | 0.5 s |
 
 Why: [docs/adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md](adr/0016-arm-tasks-tool-moves-poses-grasp-checks.md). Held by `tests/test_arm_tasks.py::test_the_pick_and_place_template_meets_the_fields_goals`. Again: `little-world evidence --only pick-place` (about 2 s).
 

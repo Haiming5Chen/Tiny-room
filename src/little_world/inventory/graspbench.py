@@ -12,10 +12,11 @@ the outcome judged by the object - not by the program's own account of it.
 - Poses: 3 x 3 places 2 cm apart round the bench's middle, each at 4 turns about the vertical.
 - Protocol: the arm lab's pick-and-place template (`tool_motion.pick_and_place`): jaws open; 6 cm
   above the object's top, down to its centre - or as low as the jaws keep 5 mm over the bench;
-  close for 1 s; the grasp check; lift 10 cm; carry 20 cm to the side; hold 2 s. Known pose: the
-  program is solved for where the object is (the camera's finder is not used here). The program
-  goes on as taught whatever its grasp check feels (the runner's 'ignore', FR-022), so the outcome
-  is the grip's; what the check felt is reported beside it.
+  close for 1 s and squeeze 0.6 deg more, then the grasp check (`tool_motion.take_hold`, ADR 0078);
+  lift 10 cm; carry 20 cm to the side; hold 2 s. Known pose: the program is solved for where the
+  object is (the camera's finder is not used here). The program goes on as taught whatever its
+  grasp check feels (the runner's 'ignore', FR-022), so the outcome is the grip's; what the check
+  felt is reported beside it.
 - Held: lifted 8 cm or more and carried 18 cm or more at the end, and slipped under 2 mm in the
   jaws over the run's last 2 s. A pose the arm cannot reach, or a run that cannot be set up, is
   not held: what is missing counts as a failure.
@@ -214,14 +215,14 @@ def bench_field(name, pose):
 def program(field, blueprint, top=0., clearance=.06, speed=40.):
     """The protocol as a program, solved for this arm and the object where it stands (known pose):
     open, `clearance` above its top (`top` over its centre), down to its centre - or as low as the
-    jaws keep JAWS_CLEAR over the bench - close, grasp check, lift, carry, hold. Returns (the program,
-    the jaws' angle to a box's x axis there, deg, or None for a round object). ValueError if a point
-    is out of reach."""
+    jaws keep JAWS_CLEAR over the bench - close and squeeze, grasp check, lift, carry, hold. Returns
+    (the program, the jaws' angle to a box's x axis there, deg, or None for a round object).
+    ValueError if a point is out of reach."""
     from math import atan2, degrees
     import mujoco as mj
     import numpy as np
     from little_world import Entity, World
-    from little_world.control.tool_motion import REACHED, ToolMotion
+    from little_world.control.tool_motion import REACHED, ToolMotion, take_hold
     from little_world.inventory import sweep
     from little_world.physics.mujoco_backend import MujocoBackend
     from little_world.programming.program import Block, Program
@@ -271,7 +272,7 @@ def program(field, blueprint, top=0., clearance=.06, speed=40.):
     def pose(label, pace):
         return Block('pose', value=pace, duration=2., angles=poses_[label])
     return Program((Block('action', jaws, -1, .6), pose('above', speed), pose('at', speed / 2),
-                    Block('action', jaws, 1, 1.), Block('grasp', 'objects/part', duration=.5),
+                    *take_hold(jaws, 'objects/part'),
                     pose('lifted', speed / 2), pose('carried', speed / 2), Block('wait', duration=HOLD))), jaws_angle
 
 

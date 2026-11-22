@@ -2087,3 +2087,20 @@ with a display, 1150 headless.
 
 Not claimed: the other 35 poses or objects in the window; a run's times in the window match the
 bench's to the frame.
+
+## The template squeezes before it checks — 2026-11-22
+
+ADR 0078 (OPEN LW-056 done). The arm lab's pick-and-place template closes for 1 s, squeezes 0.6 deg
+more and then checks the grasp (`tool_motion.take_hold`); the grasp bench's program does the same. The
+bench, the same 180 poses before and after: the check felt 97 of 97 held runs held (85 of 98 before);
+held at 97 poses both ways, one lying block held before only - it crept 2.14 mm in the last 2 s, 1.85
+before (exact McNemar p = 1.0). Resting on the cube turned 30 deg each jaw pushes with 10 counts of
+current, over the feel's 6 (4 before). Held parts creep a little more: the cube 0.51 mm at the median
+in 2 s (0.29). The arm lab's pick-and-place as designed: cube lifted at 1.922 s, in the tray at 5.744 s
+(0.02 s later; the evidence's records follow). Report: docs/sweeps/2026-11-22-grasp-bench-squeeze-first.md.
+Checked in `tests/test_graspbench.py` (the turned cube held and felt, its jaws' registers at rest),
+`tests/test_arm_tasks.py` and `tests/test_evidence.py`. Suites on MuJoCo 3.10.0: 1221 passed with a
+display, 1150 headless.
+
+Not claimed: the Fetch's program, which still checks before it squeezes; parts of other widths; why a
+harder squeeze lets held parts creep more.

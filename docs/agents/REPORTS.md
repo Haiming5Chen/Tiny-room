@@ -11,6 +11,20 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · the template squeezes before it checks (OPEN LW-056)
+Did: `tool_motion.take_hold` - close the jaws for 1 s, squeeze 0.6 deg more (`SQUEEZE`), then check the
+grasp; the pick-and-place template and the grasp bench's program take hold so. The arm lab's evidence
+records follow its times. ADR 0078; OPEN LW-056 done. Branch claude/lw-056 on a42e716.
+Measured: the grasp bench before and after, paired on 180 poses: the check felt 97 of 97 held runs
+(85 of 98 before); held at 97 poses both ways, one lying block held only before (it crept 2.14 mm, over
+the 2 mm line). Resting on a 25 mm cube a jaw pushes 10 counts of current, the feel needing 6 (4 before).
+Held parts creep a little more (the cube 0.51 mm at the median in 2 s, 0.29 before). The arm lab's cube
+lands in the tray 0.02 s later. Suites 1221 with a display, 1150 headless.
+Unfinished: the Fetch's program still checks before it squeezes - its cube stands square to its jaws in
+every set-up, so its check is felt; changing it would move its recorded runs. Why a harder squeeze lets
+parts creep more is not traced.
+For the owner: nothing to decide; the Fetch's order is yours if you want it the same.
+
 ## 2026-11-22 · Claude (Cowork) · the grasp bench in the window (FR-043)
 Did: What's new's *By its ends, it falls* - the arm lab on the grasp bench with the kit's block lying,
 turned so its jaws take it by its ends, the bench's program solved and run in the window; the bench's

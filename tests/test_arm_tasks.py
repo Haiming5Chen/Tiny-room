@@ -90,7 +90,7 @@ mujoco = pytest.importorskip('mujoco')
 import numpy as np  # noqa: E402
 from little_world import Entity, World  # noqa: E402
 from little_world.control.mujoco_keyboard import MujocoKeyboardControl  # noqa: E402
-from little_world.control.tool_motion import ToolMotion, pick_and_place  # noqa: E402
+from little_world.control.tool_motion import SQUEEZE, ToolMotion, pick_and_place  # noqa: E402
 from little_world.fields import FIELDS, TRAY, field_scene  # noqa: E402
 from little_world.fields.goals import GoalTracker  # noqa: E402
 from little_world.physics.mujoco_backend import MujocoBackend  # noqa: E402
@@ -186,6 +186,9 @@ def test_the_pick_and_place_template_meets_the_fields_goals():
     with world:
         program = pick_and_place(motion, 'control_jaws', (TRAY[0], TRAY[1], .006))
         assert program.version == 2 and any(b.kind == 'grasp' for b in program.blocks)
+        at = next(i for i, b in enumerate(program.blocks) if b.kind == 'grasp')
+        assert [(b.kind, b.value, b.duration) for b in program.blocks[at - 2:at]] == \
+            [('action', 1, 1.), ('action', 1, SQUEEZE)], "closed, squeezed, then checked (ADR 0078)"
         runner, goals = run_program(world, backend, control, program)
         assert runner.state == 'completed', runner.message
         assert goals['lifted'].status == 'met' and goals['placed'].status == 'met'

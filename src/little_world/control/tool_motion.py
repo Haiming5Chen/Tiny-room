@@ -486,7 +486,7 @@ def pick_and_place(motion, jaws, place, target=None, clearance=.06, speed=40.):
     pose = lambda label, pace: Block('pose', value=pace, duration=2., angles=poses[label])
     blocks = [Block('action', jaws, -1, .6)] if steps else []
     blocks += [pose('above', speed), pose('at', speed / 2)] if steps else []
-    blocks += [Block('action', jaws, 1, 1.), Block('grasp', target, duration=.5),
+    blocks += [*take_hold(jaws, target),
                pose('lift', speed / 2), pose('over', speed), pose('down', speed / 2),
                Block('action', jaws, -1, .8), pose('retract', speed)]
     return Program(tuple(blocks))
@@ -506,9 +506,20 @@ SET_GAP = .002          # m over the surface an object's lowest corner is let go
 JAWS_CLEAR = .005       # m the jaws keep over that surface as they set the object down
 TILT_STEP = 5.          # degrees: jaw tilts tried over the place, from how they point
 TILT_MOST = 60.         # degrees down: the steepest tilt tried
-SQUEEZE = .02           # s the jaws keep closing once the object is felt held, before it is carried:
-                        # their 1 s ramp ends just past the kit cube, holding it at about 0.5 N a pad,
-                        # and tilted it then crept out (ADR 0042); 0.6 degrees more holds at about 1 N
+SQUEEZE = .02           # s the jaws keep closing past their 1 s ramp: it ends just past the kit cube,
+                        # holding it at about 0.5 N a pad, and tilted it then crept out (ADR 0042);
+                        # 0.6 degrees more holds at about 1 N. The Fetch squeezes once the cube is felt
+                        # held; the pick-and-place template before it checks (`take_hold`, ADR 0078)
+
+
+def take_hold(jaws, target):
+    """The pick-and-place template's blocks that take hold of `target`: close the jaws for 1 s, keep
+    closing SQUEEZE more, then check the grasp from the jaws' servos (0.5 s). Checked straight after the
+    ramp, a 25 mm part was felt only while the jaws still pressed it: resting, each jaw stops 2 or 3
+    pulses short of its goal, pushing with 4 counts of current - under the 6 the feel needs - and a part
+    the jaws had turned square before the check was held and not felt (OPEN LW-056); squeezed, each rests
+    6 pulses short pushing with 10 (ADR 0078)."""
+    return (Block('action', jaws, 1, 1.), Block('action', jaws, 1, SQUEEZE), Block('grasp', target, duration=.5))
 
 
 FULL_CLOSE = 1.4        # s: the kit jaws' target from fully open (-12 deg) to fully closed (30 deg) at 30 deg/s
