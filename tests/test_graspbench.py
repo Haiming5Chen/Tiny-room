@@ -166,3 +166,30 @@ def test_the_plate_is_out_of_the_tall_pads_reach():
     plate = gb.run('arm_lab', 'plate', (0., 0., 0.))
     assert not plate.held and plate.felt is None and plate.lifted == 0.
     assert plate.reason == 'the arm cannot close its jaws on it without striking the bench'
+
+
+def test_the_bench_with_its_camera_looks_for_the_object_and_aims_its_poses():
+    # FR-043's second mode: a depth camera beyond the bench, as the Fetch's at its table, and a program
+    # that looks for the object where it is planned and reaches where it was seen (ADR 0032, 0025).
+    from little_world.inventory import sweep
+    field = gb.bench_field('cube', (0., 0., 0.), camera=True)
+    assert field.id == 'grasp_bench_camera' and field.camera == ('bench_camera', 'realsense_d435')
+    names = {c.id for c in next(e for e in field.build() if e.id == 'field').blueprint.components}
+    assert {'camera_post', 'camera_bracket', 'camera_head', 'bench_camera'} <= names
+    program, _ = gb.program(field, sweep.design('arm_lab'), top=gb.height('cube') / 2, look=True)
+    look = next(b for b in program.blocks if b.kind == 'look')
+    assert look.target == 'objects/part' and look.secondary == gb.SEARCH
+    assert look.point == pytest.approx((gb.CENTRE[0], gb.CENTRE[1], gb.TOP + .0125 + .0005), abs=.002)
+    assert all(b.point for b in program.blocks if b.kind == 'pose'), "every pose aimed at its point"
+    known, _ = gb.program(gb.bench_field('cube', (0., 0., 0.)), sweep.design('arm_lab'), top=gb.height('cube') / 2)
+    assert not any(b.kind == 'look' or b.point for b in known.blocks), "known pose: no look, no aim"
+    assert gb.run('arm_lab', 'cylinder', (0., 0., 0.), look=True).reason == \
+        'not looked for: the camera finds boxes (ADR 0032)'
+
+
+def test_a_cube_off_the_benchs_middle_is_found_by_the_camera_and_picked():
+    # Solved for the bench's middle, the program finds the cube 2.8 cm away with the camera, reaches it
+    # there and carries it to the place 20 cm from the middle (ADR 0077).
+    found = gb.run('arm_lab', 'cube', (.02, .02, 30.), look=True)
+    assert found.held and found.felt and found.message == 'Completed'
+    assert found.carried == pytest.approx(.195, abs=.005)

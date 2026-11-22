@@ -11,6 +11,21 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · the grasp bench with its camera (FR-043)
+Did: FR-043's second mode - `bench_field(..., camera=True)` (a D435 depth camera beyond the bench, as the
+Fetch's), `program(..., look=True)` (a look for the object, poses aimed at where it was seen), the
+program solved for the bench's middle so the camera must find the object up to 2.8 cm away;
+`--camera`; 'carried' measured from where the program planned the pick. `Runner.carrying` read past
+the last block of a program that ends holding what it looked for: mended. ADR 0077 amended. Branch
+claude/fr-043-camera on e6b6f62.
+Measured: the camera found every box at every pose (no look failed); cube 36/36, standing block 35,
+lying block 24, cylinder not looked for (the finder knows boxes), plate out of reach. Against the known
+pose: 94 box poses held both ways, 3 only known, 1 only found (p = 0.63). Suites 1229 with a display,
+1157 headless.
+Unfinished: other grippers (the Panda needs an exact jaw clearance over the bench and a yaw-holding
+tool solver); friction use at the lift.
+For the owner: on the arm lab, perception is not where grasps fail; the jaws are.
+
 ## 2026-11-22 · Claude (Cowork) · each servo moved once on import (FR-044 done)
 Did: `importer.probe` - at the end of every import each servo is sent 5 deg (a slide 5 mm) from home in
 a copy of the model at 2 ms, implicit integrator, contacts off, held 1 s, and what moved is said in the

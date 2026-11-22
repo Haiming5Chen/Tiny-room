@@ -386,7 +386,9 @@ measure the headline numbers again; [the evaluation](EVALUATION.md) says what do
   standing block are held at every pose; the lying block is lost every time the jaws take it by its
   ends - the loss the Fetch found - and the cylinder and the plate never. What's new's *By its ends, it
   falls* runs the lying block's case in the window, and the Inventory's *Grasp bench* tab shows the arm
-  lab's table and runs the bench on the design in hand, its table filling as the runs finish
+  lab's table and runs the bench on the design in hand, its table filling as the runs finish. With
+  `--camera` a depth camera beyond the bench finds each object wherever in the grid it is: on the arm
+  lab it finds every box, so what the jaws drop is the gripper's, not the camera's
   ([ADR 0077](adr/0077-a-grasp-bench.md)). The bench
   found the program's grasp check missing held cubes the jaws had turned square before it looked: the
   pick-and-place template now squeezes 0.6 deg more before it checks, and feels every one

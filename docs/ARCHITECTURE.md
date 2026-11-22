@@ -634,7 +634,9 @@ check felt and the jaws' angle to the object (`skew`). `markdown` writes the tab
 check's four-way count; `python -m little_world.inventory.graspbench` runs it. The Inventory's *Grasp
 bench* tab (`ui/inventory_workspace.py`) shows an example's record (`RECORDED`, `recorded`) or launches
 the command for the design in hand, as the varied runs launch a sweep, and fills its table from the
-progress lines (`progress`, `counts`) and then the outcomes (`from_json`, `summary`).
+progress lines (`progress`, `counts`) and then the outcomes (`from_json`, `summary`). With `look`
+(`--camera`) the bench's field has a depth camera and the program, solved for the bench's middle,
+looks for the object and aims its poses at where it was seen.
 
 `inventory/stages.py` (ADR 0063, standard library) reads where a group of runs failed: how many met each
 goal and every goal before it, the first goal each missed, and - from `Run.stopped`, the block a program

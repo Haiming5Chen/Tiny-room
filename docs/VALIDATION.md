@@ -2132,3 +2132,18 @@ Suites on MuJoCo 3.10.0: 1226 passed with a display, 1154 headless.
 
 Not claimed: a joint under load or at another pose than home; an actuator whose name says nothing of
 its joint; a fault mended by the app - the report names it.
+
+## The grasp bench with its camera — 2026-11-22
+
+ADR 0077 amended (FR-043's second mode). A RealSense D435's depth camera beyond the bench; each
+program solved for the bench's middle, finding the object with the camera and reaching where it was
+seen, up to 2.8 cm away. The arm lab, 180 runs: cube 36 of 36, standing block 35, lying block 24,
+cylinder not looked for (the finder knows boxes), plate out of the pads' reach. The camera found every
+box; against the known pose, held at 94 box poses both ways, 3 only known, 1 only found (exact McNemar
+p = 0.63). Report: docs/sweeps/2026-11-22-grasp-bench-camera.md. `Runner.carrying` no longer reads
+past the last block of a program that ends holding what it looked for. Checked in
+`tests/test_graspbench.py` (two new) and `tests/test_friction_use.py` (one new). Suites on MuJoCo
+3.10.0: 1229 passed with a display, 1157 headless.
+
+Not claimed: the camera's error itself - the runs say what it cost, not how far off each sighting
+was; a round object found; a camera anywhere else.

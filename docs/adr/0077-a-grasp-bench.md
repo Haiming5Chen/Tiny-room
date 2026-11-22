@@ -77,6 +77,20 @@ designed.
   it can do*. Checked in `tests/test_graspbench.py` (the record against its report, the lines, the
   outcomes read back) and `tests/test_inventory.py` (a window test, the command a stand-in). Suites:
   1223 passed with a display, 1151 headless.
+- *Found by the camera* (22 November), FR-043's second mode: `bench_field(..., camera=True)` adds a
+  RealSense D435's depth camera 45 cm beyond the bench and 78 cm over it, on a post behind it as the
+  Fetch's (`CAMERA_AT`); with `look` the program is solved for the bench's middle at the object's turn,
+  looks for the object there (6 cm round, `SEARCH`) and reaches where it was seen, its poses aimed at
+  their points (ADR 0032, 0025), and carries it to the place 20 cm from the middle - so 'carried' is
+  measured from where the program planned to pick it up. `python -m little_world.inventory.graspbench
+  --camera`; docs/sweeps/2026-11-22-grasp-bench-camera.md. The camera found every box at every pose;
+  the cylinder is not looked for (the finder knows boxes). Against the known pose: held at 94 box poses
+  both ways, 3 only known, 1 only found (exact McNemar p = 0.63) - a block taken by its corners a few
+  millimetres off and left on the bench, and lying blocks creeping either side of the 2 mm line. On
+  the arm lab what the jaws drop is the gripper's, not the camera's. A program that ended holding what
+  it had looked for made the runner read past its last block (`Runner.carrying`): mended. Checked in
+  `tests/test_graspbench.py` (two new, one slow) and `tests/test_friction_use.py` (one new). Suites:
+  1229 passed with a display, 1157 headless.
 
 **Boundaries.** One gripper, the kit's on the arm lab, and known pose only: FR-043's camera mode, the
 other designs and the robot library's grippers, intervals clustered by pose, FR-036's friction in use

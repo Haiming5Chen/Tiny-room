@@ -294,7 +294,7 @@ class Runner:
         grasp check that found it held, and no opening of the jaws since (FR-036)."""
         if not self.holding():return False
         blocks=self.program.blocks
-        return not any(blocks[i].kind=='action' and blocks[i].value<0 for i in range(self.felt+1,self.index+1))
+        return not any(blocks[i].kind=='action' and blocks[i].value<0 for i in range(self.felt+1,min(self.index+1,len(blocks))))
     def alarm(self,message='An alarm: looking again'):
         """A detector outside the program says its reach is going wrong (FR-022): it recovers as
         its own recovery does, whatever recovery it was given - opens the jaws by as much as they

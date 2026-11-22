@@ -58,6 +58,7 @@
    6.7 test_factory.py::test_a_production_run_places_part_after_part_in_its_own_slot
    4.8 test_cell_camera.py::test_a_run_found_by_the_camera_places_each_part_and_a_part_not_there_is_not_picked
    4.7 test_fetch.py::test_a_program_drives_the_platform_to_a_point_and_a_heading
+   4.7 test_graspbench.py::test_a_cube_off_the_benchs_middle_is_found_by_the_camera_and_picked
    4.4 test_process_window.py::test_a_production_run_says_where_each_part_was_left_and_a_fed_part_off_centre_is_still_placed
    4.2 test_agent_docs.py::test_the_status_script_prints_open_items_and_the_last_report
    4.0 test_arm_tasks.py::test_registered_robots_move_their_tool_too[ur5e]

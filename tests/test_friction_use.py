@@ -113,3 +113,14 @@ def test_reading_friction_use_changes_nothing_in_a_run():
     run('sprint', bp, trace=plain)
     run('sprint', bp, trace=read, probe=every_wheel)
     assert plain and read == plain
+
+
+def test_a_program_that_ends_holding_what_it_looked_for_is_still_carrying_it():
+    # Runner.carrying read one block past a program's end once it completed holding what it had
+    # looked for - the grasp bench's runs with its camera end in a hold (ADR 0077).
+    from little_world.programming.program import Block, Program, Runner
+    runner = Runner()
+    runner.start(Program((Block('look', 'objects/part', value=1., duration=5., point=(0., 0., 0.)),
+                          Block('grasp', 'objects/part', duration=.5), Block('wait', duration=1.))))
+    runner.after_look, runner.felt, runner.index, runner.state = 0, 1, 3, 'completed'
+    assert runner.carrying()
