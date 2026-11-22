@@ -20,18 +20,19 @@ from little_world.ui.whats_new import BY_ID, DEMOS
 
 def test_each_demonstration_says_what_to_watch_and_arms_one_of_the_fetch_fields_disturbances():
     labels = {d.label for d in DEFAULTS['fetch'] + WEAK['fetch']}
-    assert [d.id for d in DEMOS] == ['held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
+    assert [d.id for d in DEMOS] == ['ends', 'held', 'nowhere', 'felt', 'seen', 'fed', 'conveyor', 'squeeze', 'panda', 'repeats', 'slip',
                                      'tipping', 'hot_motor', 'factory', 'look_again', 'frozen', 'shove', 'alarm'], "newest first"
     assert set(BY_ID) == {d.id for d in DEMOS}
-    assert [d.where for d in DEMOS] == ['tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
+    assert [d.where for d in DEMOS] == ['bench', 'tilt', 'curbs', 'fetch', 'factory', 'factory', 'conveyor', 'fetch', 'factory', 'fetch',
                                         'fetch', 'tilt', 'fetch', 'factory'] + ['fetch'] * 4
-    assert [d.heavier for d in DEMOS] == [1.] * 9 + [16.] + [1.] * 7
+    assert [d.heavier for d in DEMOS] == [1.] * 10 + [16.] + [1.] * 7
     assert [d.id for d in DEMOS if d.after] == ['repeats'], "the one that ends on its run's report"
-    assert [d.product for d in DEMOS] == ['Small block'] * 7 + ['Tall block'] + ['Small block'] * 9
-    assert [d.squeeze for d in DEMOS] == [0., 0., 0., 0., 0., 0., 7.] + [0.] * 10
-    assert [d.feeder for d in DEMOS] == ['hand'] * 3 + ['conveyor'] * 2 + ['hand'] * 12
-    assert [d.sensing for d in DEMOS] == ['known'] * 3 + ['camera'] + ['known'] * 13
+    assert [d.product for d in DEMOS] == ['Small block'] * 8 + ['Tall block'] + ['Small block'] * 9
+    assert [d.squeeze for d in DEMOS] == [0.] * 7 + [7.] + [0.] * 10
+    assert [d.feeder for d in DEMOS] == ['hand'] * 4 + ['conveyor'] * 2 + ['hand'] * 12
+    assert [d.sensing for d in DEMOS] == ['known'] * 4 + ['camera'] + ['known'] * 13
     assert [(d.id, d.top) for d in DEMOS if d.top] == [('held', 51.)], "the tilt table stopped at 51 deg (ADR 0076)"
+    assert [(d.id, d.bench) for d in DEMOS if d.bench] == [('ends', ('block lying', (0., 0., 90.)))], "ADR 0077"
     assert BY_ID['felt'].disturbance == BY_ID['look_again'].disturbance, "the same cube, moved: now felt"
     for demo in DEMOS:
         assert demo.title and demo.shows and demo.watch and demo.adr.startswith('ADR ')
@@ -593,6 +594,53 @@ def test_held_at_51_degrees_the_arm_cart_creeps_along_the_rail_and_goes_over(tmp
 
 
 @WINDOW
+def test_by_its_ends_the_lying_block_is_lifted_turns_in_the_jaws_and_falls(tmp_path, monkeypatch):
+    """ADR 0077: What's new sets the kit's block lying on the grasp bench, turned so that the arm lab's jaws
+    take it by its ends, and runs the bench's program in the window: the block is felt held and lifted,
+    turns in the jaws as it is carried, and slides out onto the floor."""
+    import glfw
+    import numpy as np
+    from little_world.inventory.graspbench import TOP
+    app = window(tmp_path)
+    draw = app.draw
+    step = {'n': 0}
+    seen = {'top': 0., 'turned': 0.}
+
+    def exercise():
+        draw()
+        n = step['n']
+        if n == 0:
+            app.show_whats_new()
+        elif n == 1:
+            click(app, 'By its ends, it falls')
+        elif n == 2:
+            assert app.field_id == 'grasp_bench' and not app.building and app.demo == 'ends'
+            assert app.field_title() == 'Grasp bench' and app.runner.state == 'running'
+            seen['part'] = app.backend.model.body('objects/part').id
+        elif n == 3:
+            d = app.backend.data
+            x = d.xmat[seen['part']].reshape(3, 3)[:, 0]
+            z = float(d.xpos[seen['part']][2])
+            seen['top'] = max(seen['top'], z)
+            if z > TOP + .05:                             # in the air: how far it has turned from where it lay
+                seen['turned'] = max(seen['turned'], abs(90. - np.degrees(np.arctan2(x[1], x[0]))))
+            if app.runner.state == 'running':
+                assert app.state.time < 40., app.runner.message
+                return
+            seen['end'], seen['message'], seen['felt'] = z, app.runner.message, app.runner.felt
+            glfw.set_window_should_close(app.window, True)
+        step['n'] += 1
+
+    monkeypatch.setattr(app, 'draw', exercise)
+    app.run(seconds=600)
+    assert step['n'] == 4, step
+    assert seen['message'] == 'Completed' and seen['felt'] is not None, "felt held: the program carried on"
+    assert seen['top'] > TOP + .1, "lifted"
+    assert seen['turned'] > 20., seen['turned']
+    assert seen['end'] < .05, "on the floor"
+
+
+@WINDOW
 def test_a_motor_run_hot_is_marked_in_the_drive_panel_and_the_cube_is_fetched_as_cool(tmp_path, monkeypatch):
     import glfw
     from little_world.fields.disturbance import hot
@@ -753,7 +801,12 @@ def test_the_panda_held_up_puts_tall_blocks_within_a_millimetre_of_their_slots(t
         if n == 0:
             app.show_whats_new()
         elif n == 1:
-            button = next(b for b in app.active_workspace.buttons if b.label == 'The Panda holds itself up')
+            button = next((b for b in app.active_workspace.buttons if b.label == 'The Panda holds itself up'), None)
+            if button is None:                  # on another of What's new's pages: turn to it, as a user would
+                from little_world.ui.whats_new import demo_pages
+                rows, _ = demo_pages(glfw_height(app))
+                app.demo_page = DEMOS.index(BY_ID['panda']) // rows
+                return
             button.action()
             real = app.active_workspace
             cell['draw'] = real.draw

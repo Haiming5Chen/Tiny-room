@@ -62,6 +62,11 @@ designed.
 - Checked in `tests/test_graspbench.py` (10: 8 quick, the plate's through MuJoCo among them; 2 slow
   - the lying block across the jaws and by its ends, the cube turned 30 deg held and unfelt). Suites
   on MuJoCo 3.10.0: 1220 passed with a display, 1150 headless.
+- *In the window* (22 November): What's new's *By its ends, it falls* loads the arm lab on the bench
+  (the window finds the field by its id, `fields.VARIANTS`) with the lying block at turn 90, solves the
+  bench's program for it and runs it: felt held, lifted, turned more than 20 deg in the jaws on the
+  carry, on the floor when the program completes (`tests/test_whats_new.py`, a window test). Suites:
+  1221 passed with a display, 1150 headless.
 
 **Boundaries.** One gripper, the kit's on the arm lab, and known pose only: FR-043's camera mode, the
 other designs and the robot library's grippers, intervals clustered by pose, FR-036's friction in use

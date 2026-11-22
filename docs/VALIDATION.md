@@ -2074,3 +2074,16 @@ in `tests/slow.txt`). Suites on MuJoCo 3.10.0: 1220 passed with a display, 1150 
 Not claimed: any other gripper or design; the camera's finder in place of the known pose; intervals
 clustered by pose; why the lying block is held at 14 deg and lost at 16; a cylinder's grip as a real
 one would be held.
+
+## The grasp bench in the window — 2026-11-22
+
+ADR 0077 amended. What's new's *By its ends, it falls* loads the arm lab on the grasp bench with the
+kit's block lying at turn 90 (16 deg from the line the jaws close along), solves the bench's program
+for it and runs it in the window: the block is felt held, lifted over 10 cm, turns more than 20 deg in
+the jaws as it is carried, and lies on the floor when the program completes. The window finds the
+bench's field by its id (`fields.VARIANTS`). Checked in `tests/test_whats_new.py` (one window test
+new; the demonstrations' list) and `tests/test_graspbench.py`. Suites on MuJoCo 3.10.0: 1221 passed
+with a display, 1150 headless.
+
+Not claimed: the other 35 poses or objects in the window; a run's times in the window match the
+bench's to the frame.

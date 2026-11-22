@@ -11,6 +11,17 @@ Unfinished: what is not done, not committed or doubtful (OPEN item numbers).
 For the owner: decisions or questions only the owner can settle.
 ```
 
+## 2026-11-22 · Claude (Cowork) · the grasp bench in the window (FR-043)
+Did: What's new's *By its ends, it falls* - the arm lab on the grasp bench with the kit's block lying,
+turned so its jaws take it by its ends, the bench's program solved and run in the window; the bench's
+field found by its id and given a view of the bench and the carry. ADR 0077 amended. Branch
+claude/fr-043-window on 75c969b.
+Measured: in the window the block is felt held, lifted, turns more than 20 deg in the jaws on the carry
+and lies on the floor when the program completes, as on the bench. Suites 1221 with a display, 1150
+headless.
+Unfinished: as the first slice left it (FR-043's camera mode, other grippers, the Joint lab's button).
+For the owner: screenshots in What's new show it - press *By its ends, it falls*.
+
 ## 2026-11-22 · Claude (Cowork) · a grasp bench, its first table (FR-043)
 Did: `inventory/graspbench.py` - five diagnostic objects (25 mm cube, the kit's block standing and
 lying, a cylinder, a thin plate) at 3 x 3 places x 4 turns on a bench, through the arm lab's

@@ -98,6 +98,8 @@ def test_the_bench_field_sets_the_object_where_the_grid_says():
     assert part.geometry.size == (.040, .025, .025) and part.dynamic
     bench = next(b for b in entities['field'].blueprint.components if b.id == 'bench')
     assert bench.transform.position[2] * 2 == pytest.approx(gb.TOP)
+    from little_world.fields import find_field
+    assert find_field('grasp_bench') is field, "the window finds the last one made by its id"
     with pytest.raises(ValueError, match='no bench object called'):
         gb.bench_field('sphere', (0., 0., 0.))
 

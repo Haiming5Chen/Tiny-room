@@ -45,6 +45,7 @@ TURNS = (0., 30., 60., 90.)  # deg about the vertical
 TOP = .187                  # m: the bench's top, the arm lab's pickup stand's height
 BENCH = (.16, .16)          # m: the bench's top, wide enough for the grid and the plate
 LIFT, CARRY, HOLD = .10, .20, 2.   # m up, m to the side, s held there
+VIEW = ((.36, .05, .26), .75, -125., -18.)   # the window's camera: the bench and the carry beside it
 SLIP = .002                 # m: the most an object may move in the jaws over the last HOLD seconds
 
 
@@ -185,9 +186,10 @@ def skew(closing, turn):
 
 def bench_field(name, pose):
     """The bench with one object on it at `pose` (dx, dy, turn) from the grid's middle: the arm lab's
-    pickup stand widened, the object a loose wooden part, its goal to be lifted."""
+    pickup stand widened, the object a loose wooden part, its goal to be lifted. The window finds it by
+    its id, the last one made (`fields.VARIANTS`)."""
     from little_world.core.component import Body, Geometry, Transform
-    from little_world.fields import PICK_PLACE, Field, Zone, field_entities, fixed, slab
+    from little_world.fields import VARIANTS, Field, Zone, field_entities, fixed, slab
     if name not in OBJECTS:
         raise ValueError(f'no bench object called {name!r}; objects: {", ".join(OBJECTS)}')
     shape, size = OBJECTS[name]
@@ -203,8 +205,10 @@ def bench_field(name, pose):
         return field_entities(parts, (part,))
     lifted = Zone('lifted', f'Lifted {100 * LIFT:g} cm', (-2., -2., TOP + h / 2 + LIFT - .01), (2., 2., 3.),
                   target='objects/part')
-    return Field('grasp_bench', 'Grasp bench', f'The {name} on a bench, to be lifted, carried and held.',
-                 entities, goals=(lifted,), home=PICK_PLACE.home)
+    made = Field('grasp_bench', 'Grasp bench', f'The {name} on a bench, to be lifted, carried and held.',
+                 entities, goals=(lifted,), home=VIEW)
+    VARIANTS[made.id] = made
+    return made
 
 
 def program(field, blueprint, top=0., clearance=.06, speed=40.):

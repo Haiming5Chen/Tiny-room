@@ -15,7 +15,8 @@ in [docs/adr/](docs/adr/); what each feature is and how it was measured is in
 - A grasp bench: five diagnostic objects at 36 poses each, through the arm lab's pick-and-place
   program, judged by the object. The cube and the kit's block standing are held everywhere; the block
   lying is lost whenever the jaws take it by its ends, the cylinder and the thin plate always; the
-  grasp check misses held cubes the jaws turned square before it looked (ADR 0077).
+  grasp check misses held cubes the jaws turned square before it looked. What's new's *By its ends, it
+  falls* shows the lying block's case (ADR 0077).
 
 ## 0.4.0 - 21 November 2026
 

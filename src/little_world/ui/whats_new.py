@@ -23,7 +23,8 @@ class Demo:
     adr: str
     where: str = 'fetch'    # 'fetch': the arm on its cart at the Fetch field; 'tilt': on the tilt table;
                             # 'factory': Real's cell; 'conveyor': beside the roller conveyor;
-                            # 'curbs': the kit cart driven at the Curb run's curbs (FR-040)
+                            # 'curbs': the kit cart driven at the Curb run's curbs (FR-040);
+                            # 'bench': the arm lab at the grasp bench (ADR 0077)
     tab: str = ''           # the left panel shown while it runs ('Edit': the drive panel); '' the Guide's
     heavier: float = 1.     # the Fetch cube made this many times as heavy for the run (FR-036)
     after: str = ''         # when set, the run stops as its program ends - its report on the left,
@@ -33,10 +34,17 @@ class Demo:
     sensing: str = 'known'          # how Real's cell finds its parts in a 'factory' demonstration: 'camera' (ADR 0069)
     squeeze: float = 0.             # the Fetch's jaws squeezing this many newtons by current, 0: as solved (FR-037)
     top: float = 0.                 # 'tilt': the table stopped at this angle and held (ADR 0076); 0: it climbs to 60
+    bench: tuple = ()               # 'bench': (object, (dx, dy, turn)) on the grasp bench (ADR 0077)
 
 
 # Newest first; the first four, the sweeps' disturbances, as ADR 0055 made them.
 DEMOS = (
+    Demo('ends', 'By its ends, it falls',
+         "On the grasp bench the arm lab picks the kit's block lying on its side, turned so that its jaws - "
+         "which no wrist turns - take it by its ends. Felt held, it is lifted; carried along its length it "
+         "turns in the jaws, tips, and slides out onto the floor. Turned across the jaws, it is held.",
+         'as it is carried the block turns in the jaws; near the end of the hold it slides out and falls',
+         '', 'ADR 0077', where='bench', bench=('block lying', (0., 0., 90.))),
     Demo('held', 'Held, it goes over sooner',
          'The tilt table climbs to 51 degrees and stops. The arm on its cart, which the climbing table '
          'carries to 54 before it goes over, cannot stand there: pressed against the trip rail it creeps '
@@ -190,6 +198,9 @@ class WhatsNew:
         if demo.where == 'curbs':
             self.start_curb_demo(demo)
             return
+        if demo.where == 'bench':
+            self.start_bench_demo(demo)
+            return
         if not self.building:
             self.simulate()             # back to build: the demonstration sets up its own machine
         self.close_bench()
@@ -268,6 +279,28 @@ class WhatsNew:
         self.program_edit(Program((Block('drive', value=12., secondary=12., duration=13.),)))
         self.start_program()
         self.active_tab = 'Edit'
+        self.demo = demo.id
+        self.status = f'{demo.title}: {demo.watch}.'
+
+    def start_bench_demo(self, demo):
+        """The arm lab at the grasp bench with one object at one pose (ADR 0077), the bench's program -
+        the arm lab's pick-and-place template, solved for where the object is - run as the bench runs it."""
+        from little_world.inventory import graspbench, sweep
+        name, pose = demo.bench
+        if not self.building:
+            self.simulate()
+        self.close_bench()
+        self.stop_program()
+        blueprint = sweep.design('arm_lab')
+        self.edit(lambda: self.editor.load(blueprint))
+        self.program_edit(type(self.program)())
+        field = graspbench.bench_field(name, pose)
+        self.set_field(field.id)
+        self.arm_disturbance(None)
+        program, _ = graspbench.program(field, blueprint, top=graspbench.height(name) / 2)
+        self.program_edit(program)
+        self.show_program()
+        self.start_program()
         self.demo = demo.id
         self.status = f'{demo.title}: {demo.watch}.'
 
